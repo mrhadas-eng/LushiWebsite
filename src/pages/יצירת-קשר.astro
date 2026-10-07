@@ -1,0 +1,36 @@
+---
+import Base from '../layouts/Base.astro';
+import ContactForm from '../components/ContactForm.astro';
+import Social from '../components/Social.astro';
+import { contact, site } from '../data/content.mjs';
+import { img } from '../lib/media.mjs';
+const photo = img(contact.image, 960);
+const mark = img(site.mark);
+---
+<Base title={contact.title}>
+  <section class="contact-page wrap">
+    <div class="cp-text reveal">
+      <a class="cp-phone" href={site.phoneHref} dir="ltr">{site.phone}</a>
+      <h1 class="h-spaced">{contact.title}</h1>
+      <p class="cp-sub">{contact.subtitle}</p>
+      <img class="mark" src={mark.src} alt="Lushi-Logo-01.png" width="80" height="80" />
+      <a class="cp-mail" href={`mailto:${site.email}`}>{site.email}</a>
+      <Social size={24} />
+      <ContactForm variant="page" thanks={contact.thanks} />
+    </div>
+    <img class="cp-img reveal" src={photo.src} srcset={photo.srcset} sizes="(max-width: 760px) 100vw, 534px" alt="lushishirly_ph_NetaCones (37).jpg" width="534" height="800" />
+  </section>
+</Base>
+
+<style>
+  .contact-page { display: grid; grid-template-columns: 1fr 534px; gap: 60px; padding: 50px 0 110px; align-items: start; }
+  .cp-text { display: grid; gap: 18px; justify-items: start; }
+  .cp-phone, .cp-mail { font-family: var(--font-contact); font-weight: 300; font-size: 20px; letter-spacing: 5px; }
+  .cp-sub { font-size: 20px; }
+  .mark { width: 80px; height: 80px; }
+  .cp-img { width: 100%; aspect-ratio: 534 / 800; object-fit: cover; }
+  @media (max-width: 900px) {
+    .contact-page { grid-template-columns: 1fr; }
+    .cp-img { max-height: 520px; }
+  }
+</style>

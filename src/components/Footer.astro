@@ -1,0 +1,19 @@
+---
+import { site } from '../data/content.mjs';
+import Social from './Social.astro';
+const year = new Date().getFullYear();
+---
+<footer class="site-footer">
+  <div class="wrap footer-in">
+    <p class="copy">{site.copyright} © {year}</p>
+    <Social size={18} />
+    <p class="credit">{site.credit} &nbsp;|&nbsp; <a href="/הצהרתנגישות">הצהרת נגישות</a></p>
+  </div>
+</footer>
+<style>
+  .site-footer { background: var(--dark-2); color: #fff; }
+  .footer-in { min-height: 144px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding-block: 28px; text-align: center; }
+  .copy, .credit { font-size: 14px; font-weight: 300; }
+  .credit a { text-decoration: underline; text-underline-offset: 3px; }
+  .site-footer :global(.social a) { color: #fff; }
+</style>

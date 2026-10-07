@@ -1,0 +1,128 @@
+---
+import { nav, site } from '../data/content.mjs';
+import { img } from '../lib/media.mjs';
+import Social from './Social.astro';
+
+const path = decodeURI(Astro.url.pathname).replace(/\/$/, '') || '/';
+const isActive = (item) =>
+  item.href === path || (item.children ?? []).some((c) => c.href === path);
+const logo = img(site.logo);
+---
+<header class="site-header">
+  <div class="topbar">
+    <div class="wrap topbar-in">
+      <a class="phone" href={site.phoneHref} aria-label={`טלפון ${site.phone}`}>
+        <span>{site.phone}</span>
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.4" d="M6.6 3.5h3l1.5 4-2 1.3a11 11 0 0 0 5.9 5.9l1.3-2 4 1.5v3c0 .8-.7 1.5-1.5 1.5A16.6 16.6 0 0 1 5 5c0-.8.7-1.5 1.6-1.5z"/></svg>
+      </a>
+      <Social size={18} />
+    </div>
+  </div>
+
+  <div class="brand">
+    <a href="/" aria-label="הגר לושי - דף הבית">
+      <img src={logo.src} alt="business logo" width="344" height="120" />
+    </a>
+  </div>
+
+  <nav class="menu" aria-label="תפריט ראשי">
+    <button class="menu-toggle" aria-expanded="false" aria-controls="menu-list">
+      <span class="visually-hidden">תפריט</span>
+      <span class="bars" aria-hidden="true"></span>
+    </button>
+    <ul id="menu-list" class="menu-list">
+      {nav.map((item) => (
+        <li class:list={['menu-item', { 'has-sub': item.children, active: isActive(item) }]}>
+          <a href={item.href} aria-current={item.href === path ? 'page' : undefined}>{item.label}</a>
+          {item.children && (
+            <>
+              <button class="sub-toggle" aria-expanded="false" aria-label={`פתיחת ${item.label}`}>
+                <svg viewBox="0 0 10 6" width="10" height="6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" /></svg>
+              </button>
+              <ul class="sub">
+                {item.children.map((c) => (
+                  <li><a href={c.href} aria-current={c.href === path ? 'page' : undefined}>{c.label}</a></li>
+                ))}
+              </ul>
+            </>
+          )}
+        </li>
+      ))}
+    </ul>
+  </nav>
+</header>
+
+<style>
+  .site-header { background: #fff; position: relative; z-index: 20; }
+  .topbar { background: var(--dark); color: #fff; height: 40px; }
+  .topbar-in { height: 100%; display: flex; align-items: center; justify-content: space-between; }
+  .phone {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--font-contact); font-weight: 300; font-size: 15px; letter-spacing: 3.75px;
+    direction: ltr;
+  }
+  .topbar :global(.social a) { color: #fff; }
+
+  .brand { display: flex; justify-content: center; padding: 22px 0 12px; }
+  .brand img { width: 344px; height: auto; }
+
+  .menu { position: relative; }
+  .menu-list {
+    list-style: none; margin: 0; padding: 0 0 18px;
+    display: flex; justify-content: center; flex-wrap: wrap; gap: 0 34px;
+  }
+  .menu-item { position: relative; display: flex; align-items: center; }
+  .menu-item > a { font-size: 18px; line-height: 50px; color: var(--muted); transition: color .2s; }
+  .menu-item.active > a, .menu-item > a:hover { color: var(--ink); }
+  .menu-item.active > a { border-bottom: 1px solid var(--ink); line-height: 1.4; padding-block: 12px 2px; }
+  .sub-toggle { display: none; background: none; border: 0; padding: 8px; cursor: pointer; color: var(--muted); }
+
+  .sub {
+    list-style: none; margin: 0; padding: 8px 0;
+    position: absolute; top: 100%; inset-inline-start: 50%; transform: translateX(50%);
+    min-width: 210px; background: #fff; box-shadow: 0 6px 24px rgba(0,0,0,.08);
+    opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s;
+  }
+  .has-sub:hover .sub, .has-sub:focus-within .sub { opacity: 1; visibility: visible; }
+  .sub a { display: block; padding: 7px 20px; font-size: 16px; color: var(--muted); white-space: nowrap; }
+  .sub a:hover, .sub a[aria-current='page'] { color: var(--ink); background: var(--soft); }
+
+  .menu-toggle { display: none; }
+
+  @media (max-width: 760px) {
+    .topbar-in { flex-direction: row-reverse; }
+    .phone { font-size: 13px; letter-spacing: 2px; }
+    .brand { padding: 16px 0 8px; }
+    .brand img { width: 230px; }
+    .menu-toggle {
+      display: block; position: absolute; top: -66px; inset-inline-start: 16px;
+      width: 36px; height: 36px; background: none; border: 0; cursor: pointer;
+    }
+    .bars, .bars::before, .bars::after { display: block; width: 24px; height: 1.5px; background: var(--ink); position: relative; margin: auto; content: ''; }
+    .bars::before { position: absolute; top: -7px; }
+    .bars::after { position: absolute; top: 7px; }
+    .menu-list { display: none; flex-direction: column; gap: 0; padding: 4px 24px 18px; border-top: 1px solid var(--line); }
+    .menu.open .menu-list { display: flex; }
+    .menu-item { flex-wrap: wrap; justify-content: space-between; border-bottom: 1px solid var(--line); }
+    .menu-item > a, .menu-item.active > a { line-height: 48px; padding: 0; border: 0; }
+    .sub-toggle { display: block; }
+    .sub { position: static; transform: none; box-shadow: none; opacity: 1; visibility: visible; display: none; width: 100%; padding: 0 0 8px; }
+    .has-sub:hover .sub { display: none; }
+    .has-sub.open .sub { display: block; }
+    .sub a { padding: 6px 12px; }
+  }
+</style>
+
+<script>
+  const menu = document.querySelector('.menu');
+  const toggle = document.querySelector('.menu-toggle');
+  toggle?.addEventListener('click', () => {
+    const open = menu.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', String(open));
+  });
+  document.querySelectorAll('.sub-toggle').forEach((b) => b.addEventListener('click', () => {
+    const li = b.closest('.has-sub');
+    const open = li.classList.toggle('open');
+    b.setAttribute('aria-expanded', String(open));
+  }));
+</script>

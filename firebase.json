@@ -1,0 +1,29 @@
+{
+  "hosting": {
+    "public": "dist",
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "ignore": ["firebase.json", "**/.*"],
+    "redirects": [
+      { "source": "/home", "destination": "/", "type": 301 },
+      { "source": "/bio", "destination": "/אודות", "type": 301 },
+      { "source": "/פרוייקטים", "destination": "/לקוחות-פרטיים", "type": 301 },
+      { "source": "/להיות-יפה", "destination": "/להיות-יפה-שירלי", "type": 301 },
+      { "source": "/copy-of-להיות-יפה", "destination": "/להיות-יפה-שירלי", "type": 301 },
+      { "source": "/redesign", "destination": "/עיצוב-מחדש", "type": 301 },
+      { "source": "/go-on-vacation", "destination": "/צאו-לחופשה", "type": 301 },
+      { "source": "/הבן-של-הנגר3", "destination": "/הבן-של-הנגר", "type": 301 },
+      { "source": "/דףנחיתה2", "destination": "/", "type": 301 },
+      { "source": "/דף-נחיתה-פרטיים", "destination": "/לקוחות-פרטיים", "type": 301 },
+      { "source": "/דף-נחיתה-פרטי", "destination": "/לקוחות-פרטיים", "type": 301 },
+      { "source": "/coming-soon", "destination": "/", "type": 301 },
+      { "source": "/thankyou", "destination": "/", "type": 301 },
+      { "source": "/portfolio-collections/**", "destination": "/portfolio", "type": 301 }
+    ],
+    "headers": [
+      { "source": "/media/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
+      { "source": "/fonts/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
+      { "source": "/_astro/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }
+    ]
+  }
+}

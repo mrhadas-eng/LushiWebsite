@@ -1,0 +1,62 @@
+---
+import Base from '../layouts/Base.astro';
+import { projects, categories, site } from '../data/content.mjs';
+import { img } from '../lib/media.mjs';
+interface Props { kind: 'private' | 'commercial'; order: string[]; title: string }
+const { kind, order, title } = Astro.props;
+const c = categories[kind];
+const cards = order.map((s) => projects.find((p) => p.slug === s));
+const mark = img(site.mark);
+---
+<Base title={title} ogImage={cards[0].card.image}>
+  <section class="cat-head wrap reveal">
+    <img class="mark" src={mark.src} alt="Lushi-Logo-01.png" width="80" height="80" />
+    <h1>
+      <span class="pre big">{c.heading[0]}</span>
+      <span class="small">{c.heading[1]}</span>
+    </h1>
+    <div class="cat-text">
+      <p class="pre">{c.text}</p>
+      {c.lead && <p class="lead">{c.lead}</p>}
+    </div>
+  </section>
+
+  <section class="cards wrap" aria-label="פרויקטים">
+    {cards.map((p) => {
+      const im = img(p.card.image, 480);
+      return (
+        <a class="card reveal" href={`/${p.slug}`}>
+          <span class="card-img"><img src={im.src} srcset={im.srcset} sizes="(max-width: 760px) 100vw, 479px" alt={p.card.title} width="479" height="478" loading="lazy" /></span>
+          <span class="card-title">{p.card.title}</span>
+          <span class="card-sub">{p.card.subtitle}</span>
+        </a>
+      );
+    })}
+  </section>
+</Base>
+
+<style>
+  .cat-head { padding: 60px 0 40px; display: grid; grid-template-columns: auto 1fr; gap: 26px 40px; align-items: start; }
+  .mark { width: 80px; height: 80px; grid-row: span 2; }
+  h1 { display: flex; flex-direction: column; gap: 6px; }
+  .big { font-size: 40px; letter-spacing: 6px; line-height: 1.2; }
+  .small { font-size: 22px; letter-spacing: 4px; color: var(--muted); }
+  .cat-text { grid-column: 2; display: grid; gap: 14px; font-size: 18px; line-height: 25.2px; max-width: 760px; }
+  .lead { font-weight: 700; }
+
+  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 46px 22px; padding: 30px 0 110px; }
+  .card { display: flex; flex-direction: column; gap: 6px; }
+  .card-img { display: block; aspect-ratio: 1; overflow: hidden; background: #eee; margin-bottom: 12px; }
+  .card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
+  .card:hover .card-img img { transform: scale(1.04); }
+  .card-title { font-size: 22px; letter-spacing: 2px; color: var(--ink); }
+  .card-sub { font-size: 16px; color: var(--muted); }
+
+  @media (max-width: 760px) {
+    .cat-head { grid-template-columns: 1fr; text-align: center; justify-items: center; padding-top: 36px; }
+    .mark { grid-row: auto; }
+    .cat-text { grid-column: 1; text-align: start; }
+    .big { font-size: 30px; letter-spacing: 4px; }
+    .cards { grid-template-columns: 1fr; gap: 36px; }
+  }
+</style>

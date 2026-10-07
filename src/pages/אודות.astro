@@ -1,0 +1,34 @@
+---
+import Base from '../layouts/Base.astro';
+import { about, site } from '../data/content.mjs';
+import { img } from '../lib/media.mjs';
+const [a, b] = about.images.map((i) => ({ ...img(i.id, 480), alt: i.alt }));
+const mark = img(site.mark);
+---
+<Base title={about.title} ogImage={about.images[1].id}>
+  <section class="about wrap">
+    <img class="a-img a-1 reveal" src={a.src} srcset={a.srcset} sizes="(max-width: 760px) 50vw, 275px" alt={a.alt} width="275" height="412" />
+    <div class="a-text reveal">
+      <img class="mark" src={mark.src} alt="Lushi-Logo-01.png" width="64" height="64" />
+      <h1 class="h-spaced">{about.title}</h1>
+      <h2 class="a-sub">{about.subtitle}</h2>
+      <p class="pre">{about.text}</p>
+    </div>
+    <img class="a-img a-2 reveal" src={b.src} srcset={b.srcset} sizes="(max-width: 760px) 50vw, 274px" alt={b.alt} width="274" height="411" />
+  </section>
+</Base>
+
+<style>
+  .about { display: grid; grid-template-columns: 275px 1fr 274px; gap: 44px; align-items: start; padding: 60px 0 110px; }
+  .a-img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; }
+  .a-2 { margin-top: 160px; }
+  .a-text { display: grid; gap: 16px; justify-items: start; }
+  .mark { width: 64px; height: 64px; }
+  .a-sub { font-size: 20px; font-weight: 400; letter-spacing: 1px; }
+  .a-text p { font-size: 17px; line-height: 25px; }
+  @media (max-width: 900px) {
+    .about { grid-template-columns: 1fr 1fr; }
+    .a-text { grid-column: 1 / -1; grid-row: 1; }
+    .a-2 { margin-top: 0; }
+  }
+</style>

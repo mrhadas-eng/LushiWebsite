@@ -1,0 +1,80 @@
+---
+import { img } from '../lib/media.mjs';
+interface Props { slides: { title: string; subtitle: string; image: string }[] }
+const { slides } = Astro.props;
+---
+<section class="slideshow" aria-roledescription="carousel" aria-label="פרויקטים נבחרים">
+  {slides.map((s, i) => {
+    const im = img(s.image, 1600);
+    return (
+      <div class:list={['slide', { current: i === 0 }]} aria-roledescription="slide" aria-label={`${i + 1} מתוך ${slides.length}`} aria-hidden={i === 0 ? 'false' : 'true'}>
+        <img src={im.src} srcset={im.srcset} sizes="100vw" alt="" loading={i === 0 ? 'eager' : 'lazy'} fetchpriority={i === 0 ? 'high' : undefined} />
+        <div class="caption">
+          <p class="title">{s.title}</p>
+          <p class="subtitle">{s.subtitle}</p>
+        </div>
+      </div>
+    );
+  })}
+  <button class="arrow prev" aria-label="הקודם"><svg viewBox="0 0 17 35" width="17" height="35" aria-hidden="true"><path d="M1 1l15 16.5L1 34" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
+  <button class="arrow next" aria-label="הבא"><svg viewBox="0 0 17 35" width="17" height="35" aria-hidden="true"><path d="M16 1L1 17.5 16 34" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
+  <div class="dots" role="tablist">
+    {slides.map((_, i) => <button class:list={['dot', { on: i === 0 }]} role="tab" aria-label={`שקופית ${i + 1}`} aria-selected={i === 0 ? 'true' : 'false'}></button>)}
+  </div>
+</section>
+
+<style>
+  .slideshow { position: relative; height: 643px; overflow: hidden; background: #ddd; }
+  .slide { position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s ease; }
+  .slide.current { opacity: 1; }
+  .slide img { width: 100%; height: 100%; object-fit: cover; }
+  .slide::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.35), rgba(0,0,0,.05) 55%); }
+  .caption { position: absolute; z-index: 1; inset-inline: 0; bottom: 110px; text-align: center; color: #fff; padding: 0 20px; }
+  .title { font-size: 50px; line-height: 1.1; }
+  .subtitle { font-size: 30px; letter-spacing: 3px; margin-top: 10px; }
+  .arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; background: none; border: 0; color: #fff; cursor: pointer; padding: 10px; opacity: .85; }
+  .arrow:hover { opacity: 1; }
+  .prev { right: 24px; }
+  .next { left: 24px; }
+  .dots { position: absolute; z-index: 2; bottom: 24px; inset-inline: 0; display: flex; justify-content: center; gap: 10px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid #fff; background: #fff; padding: 0; cursor: pointer; opacity: .9; }
+  .dot.on { background: transparent; width: 10px; height: 10px; }
+  @media (max-width: 760px) {
+    .slideshow { height: 70vh; min-height: 380px; }
+    .caption { bottom: 64px; }
+    .title { font-size: 34px; }
+    .subtitle { font-size: 20px; letter-spacing: 2px; }
+    .arrow { display: none; }
+  }
+</style>
+
+<script>
+  document.querySelectorAll('.slideshow').forEach((root) => {
+    const slides = [...root.querySelectorAll('.slide')];
+    const dots = [...root.querySelectorAll('.dot')];
+    let i = 0, timer;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const go = (n) => {
+      slides[i].classList.remove('current'); slides[i].setAttribute('aria-hidden', 'true');
+      dots[i].classList.remove('on'); dots[i].setAttribute('aria-selected', 'false');
+      i = (n + slides.length) % slides.length;
+      slides[i].classList.add('current'); slides[i].setAttribute('aria-hidden', 'false');
+      dots[i].classList.add('on'); dots[i].setAttribute('aria-selected', 'true');
+    };
+    const play = () => { if (!reduce) { clearInterval(timer); timer = setInterval(() => go(i + 1), 5000); } };
+    dots.forEach((d, n) => d.addEventListener('click', () => { go(n); play(); }));
+    root.querySelector('.prev').addEventListener('click', () => { go(i - 1); play(); });
+    root.querySelector('.next').addEventListener('click', () => { go(i + 1); play(); });
+    let x0 = null;
+    root.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+    root.addEventListener('touchend', (e) => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 40) { go(dx > 0 ? i + 1 : i - 1); play(); }
+      x0 = null;
+    });
+    root.addEventListener('mouseenter', () => clearInterval(timer));
+    root.addEventListener('mouseleave', play);
+    play();
+  });
+</script>

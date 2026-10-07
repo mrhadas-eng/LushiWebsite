@@ -1,0 +1,51 @@
+---
+// One page per project, at the same address it had on Wix
+import Base from '../layouts/Base.astro';
+import Gallery from '../components/Gallery.astro';
+import { projects } from '../data/content.mjs';
+
+export function getStaticPaths() {
+  return projects.map((p) => ({ params: { slug: p.slug }, props: { p } }));
+}
+const { p } = Astro.props;
+const list = projects.filter((x) => x.category === p.category);
+const i = list.indexOf(p);
+const prev = list[(i - 1 + list.length) % list.length];
+const next = list[(i + 1) % list.length];
+const back = p.category === 'private' ? { href: '/לקוחות-פרטיים', label: 'פרטיים' } : { href: '/מסחריים', label: 'מסחריים' };
+const description = (p.intro || p.body).split('\n')[0].slice(0, 155);
+---
+<Base title={p.title} description={description} ogImage={p.card?.image ?? p.gallery[0]?.id}>
+  <article class="project wrap">
+    <header class="p-head reveal">
+      <h1 class="h-spaced">{p.title}</h1>
+      {p.intro && <p class="pre p-intro">{p.intro}</p>}
+    </header>
+    <div class="pre p-body reveal">{p.body}</div>
+    <p class="p-credit reveal">צילום: {p.photo}</p>
+
+    <Gallery items={p.gallery} label={`תמונות מהפרויקט ${p.title}`} />
+
+    <nav class="p-nav" aria-label="פרויקטים נוספים">
+      <a href={`/${prev.slug}`}>→ {prev.menu}</a>
+      <a class="back" href={back.href}>כל הפרויקטים ה{back.label}</a>
+      <a href={`/${next.slug}`}>{next.menu} ←</a>
+    </nav>
+  </article>
+</Base>
+
+<style>
+  .project { padding: 56px 0 100px; }
+  .p-head { display: grid; gap: 18px; max-width: 820px; margin-bottom: 26px; }
+  .p-intro { font-size: 18px; line-height: 25.2px; font-weight: 400; }
+  .p-body { font-size: 18px; line-height: 25.2px; max-width: 820px; }
+  .p-credit { font-size: 15px; color: var(--muted); margin: 22px 0 40px; }
+  .p-nav { display: flex; justify-content: space-between; gap: 16px; margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--line); font-size: 16px; color: var(--muted); }
+  .p-nav a:hover { color: var(--ink); }
+  .back { text-align: center; }
+  @media (max-width: 760px) {
+    .project { padding-top: 36px; }
+    .p-nav { flex-wrap: wrap; font-size: 15px; }
+    .back { order: 3; width: 100%; }
+  }
+</style>

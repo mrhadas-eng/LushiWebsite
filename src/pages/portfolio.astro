@@ -1,0 +1,34 @@
+---
+// "מהעיתונות" (press) — kept at /portfolio, its address on Wix
+import Base from '../layouts/Base.astro';
+import { press } from '../data/content.mjs';
+import { img } from '../lib/media.mjs';
+---
+<Base title="מהעיתונות">
+  <section class="press wrap">
+    <h1 class="h-spaced visually-hidden">מהעיתונות</h1>
+    <div class="press-grid">
+      {press.map((p) => {
+        const im = img(p.image, 480);
+        const Tag = p.href ? 'a' : 'div';
+        return (
+          <Tag class="press-item reveal" {...(p.href ? { href: p.href, target: '_blank', rel: 'noopener' } : {})}>
+            <span class="pi-img"><img src={im.src} srcset={im.srcset} sizes="(max-width: 760px) 100vw, 360px" alt="" loading="lazy" /></span>
+            <span class="pi-title">{p.title}</span>
+          </Tag>
+        );
+      })}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .press { padding: 60px 0 110px; }
+  .press-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 40px 24px; }
+  .press-item { display: flex; flex-direction: column; gap: 12px; }
+  .pi-img { display: block; aspect-ratio: 16 / 11; overflow: hidden; background: #eee; }
+  .pi-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
+  a.press-item:hover img { transform: scale(1.03); }
+  .pi-title { font-size: 18px; text-align: center; }
+  @media (max-width: 760px) { .press-grid { grid-template-columns: 1fr; } }
+</style>

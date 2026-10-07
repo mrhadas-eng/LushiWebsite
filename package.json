@@ -1,0 +1,17 @@
+{
+  "name": "hagarlushi-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "fetch-media": "node scripts/fetch-media.mjs"
+  },
+  "dependencies": {
+    "astro": "^5.0.0"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.0"
+  }
+}

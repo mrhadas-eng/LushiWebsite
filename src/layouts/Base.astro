@@ -1,0 +1,56 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { site } from '../data/content.mjs';
+import { img } from '../lib/media.mjs';
+
+interface Props { title?: string; description?: string; ogImage?: string }
+const { title, description = site.description, ogImage } = Astro.props;
+const fullTitle = title ? `${title} | הגר לושי אדריכלות ועיצוב פנים` : site.title;
+const canonical = new URL(Astro.url.pathname, site.url).href;
+const og = ogImage ? img(ogImage, 1600).src : undefined;
+const ogAbs = og ? (og.startsWith('http') ? og : new URL(og, site.url).href) : undefined;
+---
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="format-detection" content="telephone=no" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="google-site-verification" content={site.verification.google} />
+    <meta name="msvalidate.01" content={site.verification.bing} />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    {ogAbs && <meta property="og:image" content={ogAbs} />}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <link rel="icon" type="image/png" href={img(site.mark).src} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Assistant:wght@200;300;400;700&family=Josefin+Sans:wght@300&family=Nunito+Sans:wght@300&family=Open+Sans:wdth,wght@75,400&display=swap"
+    />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">לדלג לתוכן הראשי</a>
+    <Header />
+    <main id="main"><slot /></main>
+    <Footer />
+    <script>
+      // Fade sections in as they scroll into view
+      const io = new IntersectionObserver((entries) => {
+        for (const e of entries) if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); }
+      }, { rootMargin: '0px 0px -8% 0px' });
+      document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+    </script>
+  </body>
+</html>

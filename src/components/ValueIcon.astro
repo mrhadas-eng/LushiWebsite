@@ -1,0 +1,26 @@
+---
+// Simple line icons for the five value statements on the home page
+interface Props { name: string }
+const { name } = Astro.props;
+---
+<svg viewBox="0 0 75 60" width="75" height="60" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round">
+  {name === 'pencil' && (<>
+    <path d="M14 46l6-1 30-30-5-5-30 30z" /><path d="M41 14l5 5" /><path d="M10 52h55" />
+    <path d="M30 52l8-14 8 14" /><path d="M34 45h8" />
+  </>)}
+  {name === 'blend' && (<>
+    <circle cx="29" cy="30" r="17" /><circle cx="46" cy="30" r="17" />
+    <path d="M37.5 15.5v29" />
+  </>)}
+  {name === 'cube' && (<>
+    <path d="M37.5 8l22 11v22l-22 11-22-11V19z" /><path d="M15.5 19l22 11 22-11" /><path d="M37.5 30v22" />
+    <path d="M8 30a29.5 22 0 0 0 59 0" stroke-dasharray="2 3" />
+  </>)}
+  {name === 'hands' && (<>
+    <rect x="12" y="14" width="30" height="30" /><rect x="33" y="20" width="30" height="30" />
+  </>)}
+  {name === 'scale' && (<>
+    <path d="M37.5 8v44" /><path d="M24 52h27" /><path d="M14 18h47" />
+    <path d="M14 18l-8 16h16z" /><path d="M61 18l-8 16h16z" />
+  </>)}
+</svg>

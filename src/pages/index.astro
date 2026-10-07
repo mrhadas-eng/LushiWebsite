@@ -1,0 +1,149 @@
+---
+import Base from '../layouts/Base.astro';
+import Slideshow from '../components/Slideshow.astro';
+import ValueIcon from '../components/ValueIcon.astro';
+import ContactForm from '../components/ContactForm.astro';
+import Social from '../components/Social.astro';
+import { home, site, galleries } from '../data/content.mjs';
+import { img } from '../lib/media.mjs';
+
+const mark = img(site.mark);
+const quoteBg = img(home.quote.image, 1600);
+const tasting = galleries.home;
+---
+<Base ogImage={home.slides[0].image}>
+  <Slideshow slides={home.slides} />
+
+  <!-- Intro -->
+  <section class="intro wrap reveal">
+    <img class="mark" src={mark.src} alt="logo" width="80" height="80" />
+    <h2 class="h-spaced">{home.introTitle}</h2>
+    <p class="intro-text">{home.intro}</p>
+    <div class="intro-links">
+      <a class="link-caps" href="#gallery">צפו בגלריה</a>
+      <a class="link-caps" href="/אודות">קראו עוד</a>
+    </div>
+  </section>
+
+  <!-- Values -->
+  <section class="values wrap reveal" aria-label="מה מקבלים">
+    {home.values.map((v) => (
+      <div class="value">
+        <ValueIcon name={v.icon} />
+        <h3 class="pre">{v.text}</h3>
+      </div>
+    ))}
+  </section>
+
+  <!-- Homes / Businesses -->
+  {[home.homes, home.business].map((s, n) => (
+    <section class:list={['split', 'wrap', 'reveal', { flip: n === 1 }]}>
+      <div class="split-imgs">
+        {s.images.map((im, k) => {
+          const x = img(im.id, 480);
+          return <img class:list={['si', `si-${k}`]} src={x.src} srcset={x.srcset} sizes="(max-width: 760px) 50vw, 372px" alt={im.alt} width="372" height="530" loading="lazy" />;
+        })}
+      </div>
+      <div class="split-text">
+        <h2 class="h-split">{s.title}</h2>
+        {s.lead && <p class="lead">{s.lead}</p>}
+        <p class="pre body">{s.text}</p>
+        <a class="btn-dark" href={s.href}>צפו בפרויקטים</a>
+      </div>
+    </section>
+  ))}
+
+  <!-- Quote -->
+  <section class="quote" lang="en" dir="ltr">
+    <img src={quoteBg.src} srcset={quoteBg.srcset} sizes="100vw" alt="" loading="lazy" />
+    <div class="quote-in reveal">
+      <p class="q">{home.quote.text}</p>
+      <p class="by">{home.quote.by}</p>
+    </div>
+  </section>
+
+  <!-- Tasting gallery: slowly scrolling strip -->
+  <section id="gallery" class="tasting" aria-labelledby="tasting-title">
+    <h2 id="tasting-title" class="h-section reveal">{home.galleryTitle}</h2>
+    <div class="marquee" aria-hidden="false">
+      <div class="track">
+        {[...tasting, ...tasting].map((g, k) => {
+          const t = img(g.id, 480);
+          return <img src={t.src} srcset={t.srcset} sizes="354px" alt="" width="354" height="472" loading="lazy" aria-hidden={k >= tasting.length ? 'true' : undefined} />;
+        })}
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact" class="contact wrap reveal" aria-labelledby="contact-title">
+    <h2 id="contact-title" class="h-section">צרו קשר</h2>
+    <div class="contact-grid">
+      <div class="contact-info">
+        <a class="ci" href={`mailto:${site.email}`}>{site.emailDisplay}</a>
+        <a class="ci" href={site.phoneHref} dir="ltr">{site.phone}</a>
+        <Social size={24} />
+      </div>
+      <ContactForm variant="home" />
+    </div>
+  </section>
+</Base>
+
+<style>
+  .intro { text-align: center; padding: 74px 0 60px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .mark { width: 80px; height: 80px; }
+  .intro-text { max-width: 860px; font-size: 18px; line-height: 25.2px; }
+  .intro-links { display: flex; gap: 60px; margin-top: 18px; }
+
+  .values { display: grid; grid-template-columns: repeat(5, 1fr); gap: 24px; padding: 34px 0 70px; text-align: center; color: var(--ink); }
+  .value { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .value h3 { font-size: 16px; line-height: 19.2px; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; padding: 60px 0; }
+  .split.flip .split-imgs { order: 2; }
+  .split-imgs { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: 600px; }
+  .si { position: absolute; width: 77%; height: 87%; object-fit: cover; }
+  .si-0 { top: 0; right: 0; z-index: 1; }
+  .si-1 { bottom: 0; left: 0; }
+  .split-text { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; }
+  .lead { font-weight: 700; font-size: 18px; line-height: 25.2px; }
+  .body { font-size: 18px; line-height: 25.2px; }
+
+  .quote { position: relative; height: 635px; display: grid; place-items: center; overflow: hidden; color: #fff; text-align: center; }
+  .quote > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .quote::after { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,.28); }
+  .quote-in { position: relative; z-index: 1; padding: 0 24px; font-family: var(--font-latin); font-weight: 300; }
+  .q { font-size: 45px; line-height: 63px; max-width: 900px; }
+  .by { font-size: 30px; line-height: 42px; margin-top: 20px; }
+
+  .tasting { padding: 80px 0 90px; }
+  .tasting h2 { margin-bottom: 44px; }
+  .marquee { overflow: hidden; }
+  .track { display: flex; gap: 12px; width: max-content; animation: slide 70s linear infinite; }
+  .marquee:hover .track { animation-play-state: paused; }
+  .track img { width: 354px; height: 472px; object-fit: cover; flex: none; }
+  @keyframes slide { to { transform: translateX(50%); } }
+  @media (prefers-reduced-motion: reduce) { .track { animation: none; } .marquee { overflow-x: auto; } }
+
+  .contact { padding: 70px 0 110px; }
+  .contact h2 { margin-bottom: 50px; }
+  .contact-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 70px; align-items: start; }
+  .contact-info { display: flex; flex-direction: column; gap: 22px; align-items: flex-start; padding-top: 10px; }
+  .ci { font-family: var(--font-contact); font-weight: 300; font-size: 20px; letter-spacing: 5px; color: var(--ink); }
+
+  @media (max-width: 760px) {
+    .intro { padding: 48px 0 36px; }
+    .intro-links { gap: 36px; }
+    .values { grid-template-columns: repeat(2, 1fr); row-gap: 36px; }
+    .values .value:last-child { grid-column: span 2; }
+    .split { grid-template-columns: 1fr; gap: 32px; padding: 36px 0; }
+    .split.flip .split-imgs { order: 0; }
+    .split-imgs { height: 420px; }
+    .quote { height: 420px; }
+    .q { font-size: 28px; line-height: 38px; }
+    .by { font-size: 20px; line-height: 28px; }
+    .track img { width: 240px; height: 320px; }
+    .contact-grid { grid-template-columns: 1fr; gap: 36px; }
+    .ci { font-size: 17px; letter-spacing: 3px; }
+  }
+</style>
