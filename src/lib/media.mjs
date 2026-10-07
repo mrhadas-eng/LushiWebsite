@@ -25,8 +25,12 @@ export function localOriginal(name) {
   return `${localBase(n)}${path.extname(n).toLowerCase()}`;
 }
 
+// Full-size JPG originals are archived in /originals (not deployed);
+// the site serves the resized WebP versions and the PNG logos from public/media.
 function hasLocal(name) {
-  return fs.existsSync(path.join(PUBLIC_MEDIA, localOriginal(name)));
+  const n = normalize(name);
+  if (/\.png$/i.test(n)) return fs.existsSync(path.join(PUBLIC_MEDIA, localOriginal(n)));
+  return fs.existsSync(path.join(PUBLIC_MEDIA, `${localBase(n)}-w${WIDTHS[0]}.webp`));
 }
 
 function wixUrl(name, w) {
@@ -47,7 +51,7 @@ export function img(name, display = 960) {
     const base = `/media/${localBase(name)}`;
     if (isPng) return { src: `/media/${localOriginal(name)}`, srcset: undefined };
     const avail = WIDTHS.filter((w) => fs.existsSync(path.join(PUBLIC_MEDIA, `${localBase(name)}-w${w}.webp`)));
-    if (!avail.length) return { src: `/media/${localOriginal(name)}`, srcset: undefined };
+    if (!avail.length) return { src: wixUrl(name, display), srcset: undefined };
     const pick = avail.find((w) => w >= display) ?? avail[avail.length - 1];
     return {
       src: `${base}-w${pick}.webp`,
@@ -65,7 +69,9 @@ export function img(name, display = 960) {
 export function full(name) {
   if (hasLocal(name)) {
     const big = path.join(PUBLIC_MEDIA, `${localBase(name)}-w1600.webp`);
-    return fs.existsSync(big) ? `/media/${localBase(name)}-w1600.webp` : `/media/${localOriginal(name)}`;
+    if (fs.existsSync(big)) return `/media/${localBase(name)}-w1600.webp`;
+    const largest = [...WIDTHS].reverse().find((w) => fs.existsSync(path.join(PUBLIC_MEDIA, `${localBase(name)}-w${w}.webp`)));
+    return `/media/${localBase(name)}-w${largest}.webp`;
   }
   return wixUrl(name, 1600);
 }

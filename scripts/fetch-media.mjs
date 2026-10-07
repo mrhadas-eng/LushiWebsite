@@ -1,5 +1,5 @@
-// Downloads every image the site uses from the Wix CDN (full-resolution originals)
-// into public/media, and creates resized WebP versions for fast loading.
+// Downloads every image the site uses from the Wix CDN. Full-resolution originals
+// are archived in /originals; resized WebP versions go to public/media for the site.
 // Also downloads the site's custom Hebrew font.
 //
 // Run once (and again whenever you add images that still live on Wix):
@@ -10,9 +10,11 @@ import sharp from 'sharp';
 import { allMedia } from '../src/data/content.mjs';
 import { normalize, localBase, localOriginal, WIDTHS } from '../src/lib/media.mjs';
 
-const OUT = path.resolve('public/media');
+const OUT = path.resolve('public/media');          // what the site serves
+const ARCHIVE = path.resolve('originals');          // full-size originals (kept in the repo, not deployed)
 const FONT_OUT = path.resolve('public/fonts');
 fs.mkdirSync(OUT, { recursive: true });
+fs.mkdirSync(ARCHIVE, { recursive: true });
 fs.mkdirSync(FONT_OUT, { recursive: true });
 
 async function download(url, dest) {
@@ -26,11 +28,12 @@ let done = 0, skipped = 0, failed = [];
 
 async function handle(name) {
   const n = normalize(name);
-  const orig = path.join(OUT, localOriginal(n));
+  const isPng = /\.png$/i.test(n);
+  const orig = path.join(isPng ? OUT : ARCHIVE, localOriginal(n));
   try {
     if (!fs.existsSync(orig)) await download(`https://static.wixstatic.com/media/${n}`, orig);
     else skipped++;
-    if (!/\.png$/i.test(n)) {
+    if (!isPng) {
       const meta = await sharp(orig).metadata();
       for (const w of WIDTHS) {
         const out = path.join(OUT, `${localBase(n)}-w${w}.webp`);
