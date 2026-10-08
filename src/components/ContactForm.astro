@@ -13,11 +13,15 @@ const f = variant === 'home'
   : { name: 'שם', email: 'דוא"ל', phone: 'טלפון', msg: 'הודעה', nameReq: false, phoneReq: false };
 const uid = `cf-${variant}`;
 ---
-<form class="contact-form" action="https://api.web3forms.com/submit" method="POST" data-key={site.web3formsKey} data-to={site.email} novalidate>
+<form class="contact-form" action="https://api.web3forms.com/submit" method="POST" data-key={site.web3formsKey} data-to={site.email} data-location={variant === 'home' ? 'home' : 'contact'} novalidate>
   <input type="hidden" name="access_key" value={site.web3formsKey} />
   <input type="hidden" name="subject" value="פנייה חדשה מהאתר hagarlushi.com" />
   <input type="hidden" name="from_name" value="hagarlushi.com" />
   <input type="checkbox" name="botcheck" class="visually-hidden" tabindex="-1" autocomplete="off" />
+  <!-- Filled in on submit, so each lead email says where it came from -->
+  <input type="hidden" name="טופס" value={variant === 'home' ? 'דף הבית' : 'דף יצירת קשר'} />
+  <input type="hidden" name="נשלח מהדף" value="" data-fill="page" />
+  <input type="hidden" name="מקור הגעה" value="" data-fill="source" />
 
   <label class="field">
     <span class="visually-hidden">{f.name}</span>
@@ -67,6 +71,23 @@ const uid = `cf-${variant}`;
       const status = form.querySelector('.status');
       status.textContent = '';
       if (!form.checkValidity()) { form.reportValidity(); return; }
+
+      // Lead source: first page of the visit, campaign tags and referrer (see Tracking.astro)
+      let a = {};
+      try { a = JSON.parse(sessionStorage.getItem('hl_attribution') || '{}'); } catch {}
+      const source = [
+        a.utm_source && `utm_source=${a.utm_source}`,
+        a.utm_medium && `utm_medium=${a.utm_medium}`,
+        a.utm_campaign && `utm_campaign=${a.utm_campaign}`,
+        a.utm_term && `utm_term=${a.utm_term}`,
+        a.gclid && 'Google Ads (gclid)',
+        a.fbclid && 'Facebook / Instagram (fbclid)',
+        a.referrer && `הפניה: ${a.referrer}`,
+        a.landing_page && `דף כניסה: ${decodeURI(a.landing_page)}`,
+      ].filter(Boolean).join(' | ') || 'כניסה ישירה';
+      form.querySelector('[data-fill="page"]').value = decodeURI(location.pathname);
+      form.querySelector('[data-fill="source"]').value = source;
+
       const data = new FormData(form);
       if (!form.dataset.key) {
         // No form service configured yet: fall back to the visitor's email app
@@ -80,6 +101,9 @@ const uid = `cf-${variant}`;
         const res = await fetch(form.action, { method: 'POST', headers: { Accept: 'application/json' }, body: data });
         const json = await res.json();
         if (!json.success) throw new Error(json.message);
+        // Conversion event for Google Tag Manager (GA4 key event, Google Ads, Meta Lead)
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({ event: 'generate_lead', form_location: form.dataset.location, page_path: location.pathname });
         form.reset();
         form.querySelectorAll('.field, .send').forEach((el) => (el.hidden = true));
         form.querySelector('.thanks').hidden = false;

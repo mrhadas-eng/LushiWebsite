@@ -1,0 +1,38 @@
+---
+// Floating WhatsApp button (replaces the Wix Chat widget).
+// Number and opening message are set in src/data/content.mjs (site.whatsapp).
+import { site } from '../data/content.mjs';
+const wa = site.whatsapp;
+const href = wa?.number
+  ? `https://wa.me/${wa.number}${wa.message ? `?text=${encodeURIComponent(wa.message)}` : ''}`
+  : null;
+---
+{href && (
+  <a class="wa-float" href={href} target="_blank" rel="noopener" data-track="floating_button"
+     aria-label="שליחת הודעה בוואטסאפ (נפתח בחלון חדש)">
+    <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+      <path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"
+        d="M16 4.5c-6.4 0-11.5 5-11.5 11.2 0 2.2.6 4.2 1.8 6L4.8 27.5l6-1.5c1.6.9 3.4 1.4 5.2 1.4 6.4 0 11.5-5 11.5-11.2S22.4 4.5 16 4.5z"/>
+      <path fill="currentColor"
+        d="M12.3 10.2c.3 0 .6 0 .8.6l1 2.4c.1.3 0 .6-.1.8l-.7.8c-.2.2-.2.5 0 .8.5.9 1.2 1.7 2 2.4.7.6 1.5 1.1 2.4 1.5.3.1.6.1.8-.2l.8-1c.2-.3.5-.3.8-.2l2.3 1.1c.3.1.5.4.4.8-.2 1.2-1.4 2.2-2.6 2.2-3.9-.3-7.9-4-8.6-7.7-.2-1.3.6-2.6 1.7-3.1.4-.2.6-.2 1-.2z"/>
+    </svg>
+  </a>
+)}
+
+<style>
+  .wa-float {
+    position: fixed; z-index: 50;
+    /* Bottom-left: the site is RTL, so buttons like the form's "send" sit on the right */
+    left: max(18px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom));
+    width: 56px; height: 56px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: #25d366; color: #fff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .22);
+    transition: transform .2s, box-shadow .2s;
+  }
+  .wa-float:hover { transform: scale(1.06); box-shadow: 0 6px 18px rgba(0, 0, 0, .28); }
+  .wa-float:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  @media (max-width: 760px) { .wa-float { width: 52px; height: 52px; } }
+  @media (prefers-reduced-motion: reduce) { .wa-float { transition: none; } .wa-float:hover { transform: none; } }
+  @media print { .wa-float { display: none; } }
+</style>

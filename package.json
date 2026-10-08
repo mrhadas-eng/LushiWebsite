@@ -6,7 +6,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "fetch-media": "node scripts/fetch-media.mjs"
+    "fetch-media": "node scripts/fetch-media.mjs",
+    "check-launch": "node scripts/check-launch.mjs"
   },
   "dependencies": {
     "astro": "^5.0.0"

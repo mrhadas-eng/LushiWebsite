@@ -2,6 +2,8 @@
 import '../styles/global.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import Tracking from '../components/Tracking.astro';
+import WhatsAppButton from '../components/WhatsAppButton.astro';
 import { site } from '../data/content.mjs';
 import { img } from '../lib/media.mjs';
 
@@ -18,6 +20,7 @@ const ogAbs = og ? (og.startsWith('http') ? og : new URL(og, site.url).href) : u
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="format-detection" content="telephone=no" />
+    <Tracking />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -45,6 +48,7 @@ const ogAbs = og ? (og.startsWith('http') ? og : new URL(og, site.url).href) : u
     <Header />
     <main id="main"><slot /></main>
     <Footer />
+    <WhatsAppButton />
     <script>
       // Fade sections in as they scroll into view
       const io = new IntersectionObserver((entries) => {

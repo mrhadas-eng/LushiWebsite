@@ -1,0 +1,68 @@
+---
+// Analytics + lead tracking. Goes in <head>.
+//
+// 1. Loads the Google Tag Manager container from the Wix site (site.gtmId), but only on
+//    the real domain, so local testing and Firebase preview links don't pollute the
+//    statistics. To test tags on a preview link, open it once with ?gtm=1.
+// 2. Remembers where the visitor came from (utm_*, gclid, fbclid, referrer, landing page)
+//    so every form submission says which campaign or page produced the lead.
+// 3. Sends lead events to the dataLayer, ready to be used as GTM triggers:
+//      generate_lead   – contact form sent successfully   (form_location: home | contact)
+//      whatsapp_click  – WhatsApp button or link clicked
+//      phone_click     – phone number clicked
+//      email_click     – email address clicked
+import { site } from '../data/content.mjs';
+const gtmId = site.gtmId;
+---
+<script is:inline define:vars={{ gtmId }}>
+  window.dataLayer = window.dataLayer || [];
+
+  // --- where did this visitor come from (first page of the visit wins)
+  (function () {
+    var KEY = 'hl_attribution';
+    try {
+      if (sessionStorage.getItem(KEY)) return;
+      var q = new URLSearchParams(location.search);
+      var a = { landing_page: location.pathname, referrer: document.referrer || '' };
+      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'].forEach(function (k) {
+        if (q.get(k)) a[k] = q.get(k);
+      });
+      sessionStorage.setItem(KEY, JSON.stringify(a));
+    } catch (e) { /* storage blocked: attribution is best-effort */ }
+  })();
+
+  // --- Google Tag Manager, production domain only (or ?gtm=1 for testing)
+  (function () {
+    if (!gtmId) return;
+    var onLiveDomain = /(^|\.)hagarlushi\.com$/.test(location.hostname);
+    var forced = false;
+    try {
+      if (new URLSearchParams(location.search).get('gtm') === '1') sessionStorage.setItem('hl_gtm', '1');
+      forced = sessionStorage.getItem('hl_gtm') === '1';
+    } catch (e) {}
+    if (!onLiveDomain && !forced) return;
+    window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtm.js?id=' + gtmId;
+    document.head.appendChild(s);
+  })();
+
+  // --- lead clicks: phone, email, WhatsApp (works for every link on the site)
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href]');
+    if (!a) return;
+    var href = a.getAttribute('href') || '';
+    var event =
+      /^tel:/i.test(href) ? 'phone_click' :
+      /^mailto:/i.test(href) ? 'email_click' :
+      /(wa\.me|whatsapp\.com)/i.test(href) ? 'whatsapp_click' : null;
+    if (!event) return;
+    window.dataLayer.push({
+      event: event,
+      link_url: href,
+      link_location: a.dataset.track || (a.closest('header') ? 'header' : a.closest('footer') ? 'footer' : 'page'),
+      page_path: location.pathname,
+    });
+  }, { capture: true });
+</script>

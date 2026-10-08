@@ -21,6 +21,15 @@ export const site = {
   // Contact form: create a free key at https://web3forms.com (enter hagarlushi@gmail.com)
   // and paste it here. While empty, the form opens the visitor's email app instead.
   web3formsKey: '',
+  // Google Tag Manager container already used by the Wix site. It loads GA4 (G-4QMWQY3565),
+  // the Google Ads conversion linker (AW-16872313549), the Meta Pixel (629224152313207) and
+  // Microsoft Clarity (qc82doh8lz). Keeping the same container keeps all reporting history.
+  gtmId: 'GTM-KJRR2DNT',
+  // Floating WhatsApp button (replaces the Wix Chat widget). International format, no "+".
+  whatsapp: {
+    number: '972505788634',
+    message: 'היי הגר, הגעתי מהאתר ואשמח לשמוע פרטים',
+  },
   verification: {
     google: 'UeYn46Wcrkw6u26wdLz1ww2poll5RFYGNvCQg7wqu8M',
     bing: '52AD3B89983D64E1366C879933F68C2E',
