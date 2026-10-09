@@ -1,0 +1,36 @@
+---
+// Shown after a contact form is sent. Text lives in src/data/content.mjs (thankYou).
+// The lead is counted here (generate_lead), only when the visitor really arrived from a
+// form, so refreshing the page or opening it directly doesn't count twice.
+import Base from '../layouts/Base.astro';
+import { site, thankYou } from '../data/content.mjs';
+const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` : null;
+---
+<Base title={thankYou.title} noindex>
+  <section class="ty wrap">
+    <h1 class="h-spaced">{thankYou.title}</h1>
+    <p class="ty-text">{thankYou.text}</p>
+    <p class="ty-more">
+      בינתיים אפשר <a href="/לקוחות-פרטיים">לראות עוד פרויקטים</a>
+      {waHref && <>, או <a href={waHref} target="_blank" rel="noopener" data-track="thankyou">לכתוב לנו בוואטסאפ</a></>}.
+    </p>
+    <a class="ty-home" href="/">חזרה לדף הבית</a>
+  </section>
+</Base>
+
+<script is:inline>
+  (function () {
+    var from = null;
+    try { from = sessionStorage.getItem('hl_lead'); sessionStorage.removeItem('hl_lead'); } catch (e) {}
+    if (!from) return;
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ event: 'generate_lead', form_location: from });
+  })();
+</script>
+
+<style>
+  .ty { text-align: center; padding: 120px 0 140px; display: grid; gap: 22px; justify-items: center; }
+  .ty-text { font-size: 22px; }
+  .ty-more a, .ty-home { text-decoration: underline; text-underline-offset: 3px; }
+  .ty-home { margin-top: 10px; }
+</style>

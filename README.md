@@ -33,14 +33,15 @@ Images still load from Wix until they are copied into the repository. Either:
 
 ## Leads and analytics
 
-- **Contact forms** post to Web3Forms, which emails hagarlushi@gmail.com. Set `web3formsKey` in `src/data/content.mjs` (free key from <https://web3forms.com>). Until then the form opens the visitor's email app. Each submission includes the page it was sent from and the visit's source (utm tags, gclid, fbclid, referrer).
+- **Contact forms** POST each lead to the CRM webhook in `site.leadWebhook` (`src/data/content.mjs`), then redirect to `/thankyou`. Until the URL is set, the form opens the visitor's email app. Each lead includes the page it was sent from and the visit's source (utm tags, gclid, fbclid, referrer). Payload and options: `docs/MIGRATION-REVIEW.md`, section 7.
 - **Analytics** use the Wix site's Google Tag Manager container (`gtmId`), so GA4, Google Ads, the Meta Pixel and Clarity carry over. GTM only loads on hagarlushi.com; add `?gtm=1` to a preview URL to test tags.
 - **Lead events** pushed to the dataLayer: `generate_lead`, `whatsapp_click`, `phone_click`, `email_click` (see `src/components/Tracking.astro`).
 - **WhatsApp** floating button: `site.whatsapp` in `src/data/content.mjs`.
 
 ## Before launch
 
-Run `npm run check-launch`, and work through `LAUNCH.md` (DNS, form key, GTM triggers).
+Run `npm run check-launch`, and work through `LAUNCH.md` (DNS, CRM webhook, GTM triggers).
+For an independent review (e.g. ChatGPT), use `docs/MIGRATION-REVIEW.md`, which includes a ready-to-paste prompt.
 
 ## Deploy
 

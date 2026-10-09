@@ -1,31 +1,32 @@
 ---
-// Replaces the Wix form. Submissions go to Web3Forms, which emails them to the
-// studio's Gmail. Set `web3formsKey` in src/data/content.mjs to switch it on;
-// until then the form opens the visitor's email app with the message filled in.
+// Contact form (home page + contact page). Each lead is POSTed straight to the CRM
+// webhook set in src/data/content.mjs (site.leadWebhook), then the visitor is sent to
+// /thankyou, where the lead is counted for analytics (generate_lead).
+//
+// Payload sent to the CRM (English keys, empty values omitted):
+//   full_name, email, phone, message, form ("home" | "contact"),
+//   page_url, page_path, landing_page, referrer,
+//   utm_source, utm_medium, utm_campaign, utm_term, utm_content, gclid, fbclid,
+//   source_summary (one readable line), submitted_at (ISO time), site
 import { site } from '../data/content.mjs';
-interface Props {
-  variant?: 'home' | 'page';
-  thanks?: string;
-}
-const { variant = 'home', thanks = 'תודה שפנית אלי! אחזור אליך בהקדם' } = Astro.props;
+interface Props { variant?: 'home' | 'page' }
+const { variant = 'home' } = Astro.props;
 const f = variant === 'home'
   ? { name: 'שם מלא', email: 'אימייל', phone: 'טלפון', msg: 'במה אוכל לעזור?', nameReq: true, phoneReq: true }
   : { name: 'שם', email: 'דוא"ל', phone: 'טלפון', msg: 'הודעה', nameReq: false, phoneReq: false };
-const uid = `cf-${variant}`;
+const hook = site.leadWebhook ?? {};
+const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` : null;
 ---
-<form class="contact-form" action="https://api.web3forms.com/submit" method="POST" data-key={site.web3formsKey} data-to={site.email} data-location={variant === 'home' ? 'home' : 'contact'} novalidate>
-  <input type="hidden" name="access_key" value={site.web3formsKey} />
-  <input type="hidden" name="subject" value="פנייה חדשה מהאתר hagarlushi.com" />
-  <input type="hidden" name="from_name" value="hagarlushi.com" />
-  <input type="checkbox" name="botcheck" class="visually-hidden" tabindex="-1" autocomplete="off" />
-  <!-- Filled in on submit, so each lead email says where it came from -->
-  <input type="hidden" name="טופס" value={variant === 'home' ? 'דף הבית' : 'דף יצירת קשר'} />
-  <input type="hidden" name="נשלח מהדף" value="" data-fill="page" />
-  <input type="hidden" name="מקור הגעה" value="" data-fill="source" />
+<form class="contact-form" novalidate
+  data-url={hook.url} data-format={hook.format} data-mode={hook.mode}
+  data-thanks={site.thankYouPath} data-to={site.email}
+  data-location={variant === 'home' ? 'home' : 'contact'}>
+  <!-- Spam trap: hidden from people, bots fill it in -->
+  <input type="text" name="website" class="visually-hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
 
   <label class="field">
     <span class="visually-hidden">{f.name}</span>
-    <input type="text" name="name" placeholder={f.name} autocomplete="name" required={f.nameReq} />
+    <input type="text" name="full_name" placeholder={f.name} autocomplete="name" required={f.nameReq} />
   </label>
   <label class="field">
     <span class="visually-hidden">{f.email}</span>
@@ -41,8 +42,10 @@ const uid = `cf-${variant}`;
   </label>
 
   <button type="submit" class="send">שליחה</button>
-  <p class="status" role="status" aria-live="polite" id={uid}></p>
-  <p class="thanks" hidden>{thanks}</p>
+  <p class="status" role="status" aria-live="polite" hidden>
+    השליחה נכשלה. אפשר לנסות שוב, להתקשר ל-<a href={site.phoneHref} dir="ltr">{site.phone}</a>
+    {waHref && <>או <a href={waHref} target="_blank" rel="noopener">לכתוב בוואטסאפ</a></>}.
+  </p>
 </form>
 
 <style>
@@ -60,56 +63,87 @@ const uid = `cf-${variant}`;
   }
   .send:hover { background: #4a4848; }
   .send[disabled] { opacity: .6; cursor: wait; }
-  .status { font-size: 15px; min-height: 1.2em; color: #b3261e; }
-  .thanks { font-size: 18px; color: var(--ink); }
+  .status { font-size: 15px; color: #b3261e; }
+  .status a { text-decoration: underline; }
 </style>
 
 <script>
-  document.querySelectorAll('.contact-form').forEach((form) => {
+  const ATTR_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid', 'referrer', 'landing_page'];
+
+  function attribution() {
+    try { return JSON.parse(sessionStorage.getItem('hl_attribution') || '{}'); } catch { return {}; }
+  }
+
+  function summary(a) {
+    return [
+      a.utm_source && `utm_source=${a.utm_source}`,
+      a.utm_medium && `utm_medium=${a.utm_medium}`,
+      a.utm_campaign && `utm_campaign=${a.utm_campaign}`,
+      a.gclid && 'Google Ads (gclid)',
+      a.fbclid && 'Facebook / Instagram (fbclid)',
+      a.referrer && `referrer: ${a.referrer}`,
+      a.landing_page && `landing: ${decodeURI(a.landing_page)}`,
+    ].filter(Boolean).join(' | ') || 'direct';
+  }
+
+  // countLead=false for spam: the bot sees the normal thank-you page, but no conversion is counted
+  function goToThanks(form: HTMLFormElement, countLead = true) {
+    if (countLead) { try { sessionStorage.setItem('hl_lead', form.dataset.location || ''); } catch {} }
+    location.href = form.dataset.thanks || '/thankyou';
+  }
+
+  document.querySelectorAll<HTMLFormElement>('.contact-form').forEach((form) => {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const status = form.querySelector('.status');
-      status.textContent = '';
+      const status = form.querySelector<HTMLElement>('.status')!;
+      status.hidden = true;
       if (!form.checkValidity()) { form.reportValidity(); return; }
 
-      // Lead source: first page of the visit, campaign tags and referrer (see Tracking.astro)
-      let a = {};
-      try { a = JSON.parse(sessionStorage.getItem('hl_attribution') || '{}'); } catch {}
-      const source = [
-        a.utm_source && `utm_source=${a.utm_source}`,
-        a.utm_medium && `utm_medium=${a.utm_medium}`,
-        a.utm_campaign && `utm_campaign=${a.utm_campaign}`,
-        a.utm_term && `utm_term=${a.utm_term}`,
-        a.gclid && 'Google Ads (gclid)',
-        a.fbclid && 'Facebook / Instagram (fbclid)',
-        a.referrer && `הפניה: ${a.referrer}`,
-        a.landing_page && `דף כניסה: ${decodeURI(a.landing_page)}`,
-      ].filter(Boolean).join(' | ') || 'כניסה ישירה';
-      form.querySelector('[data-fill="page"]').value = decodeURI(location.pathname);
-      form.querySelector('[data-fill="source"]').value = source;
+      const fd = new FormData(form);
+      // Bots fill the hidden field: act normally but send nothing
+      if (fd.get('website')) { goToThanks(form, false); return; }
 
-      const data = new FormData(form);
-      if (!form.dataset.key) {
-        // No form service configured yet: fall back to the visitor's email app
-        const body = `שם: ${data.get('name') || ''}\nאימייל: ${data.get('email')}\nטלפון: ${data.get('phone') || ''}\n\n${data.get('message') || ''}`;
+      const a = attribution();
+      const lead: Record<string, string> = {
+        full_name: String(fd.get('full_name') || '').trim(),
+        email: String(fd.get('email') || '').trim(),
+        phone: String(fd.get('phone') || '').trim(),
+        message: String(fd.get('message') || '').trim(),
+        form: form.dataset.location || '',
+        page_url: location.href.split('#')[0],
+        page_path: decodeURI(location.pathname),
+        source_summary: summary(a),
+        submitted_at: new Date().toISOString(),
+        site: location.hostname,
+      };
+      for (const k of ATTR_KEYS) if (a[k]) lead[k] = k === 'landing_page' ? decodeURI(a[k]) : a[k];
+      for (const k of Object.keys(lead)) if (!lead[k]) delete lead[k];
+
+      const url = form.dataset.url;
+      if (!url) {
+        // Not connected to the CRM yet: open the visitor's email app (testing only)
+        const body = Object.entries(lead).map(([k, v]) => `${k}: ${v}`).join('\n');
         location.href = `mailto:${form.dataset.to}?subject=${encodeURIComponent('פנייה מהאתר')}&body=${encodeURIComponent(body)}`;
         return;
       }
-      const btn = form.querySelector('.send');
+
+      const json = form.dataset.format !== 'form';
+      const noCors = form.dataset.mode !== 'cors';
+      const btn = form.querySelector<HTMLButtonElement>('.send')!;
       btn.disabled = true;
       try {
-        const res = await fetch(form.action, { method: 'POST', headers: { Accept: 'application/json' }, body: data });
-        const json = await res.json();
-        if (!json.success) throw new Error(json.message);
-        // Conversion event for Google Tag Manager (GA4 key event, Google Ads, Meta Lead)
-        window.dataLayer = window.dataLayer || [];
-        window.dataLayer.push({ event: 'generate_lead', form_location: form.dataset.location, page_path: location.pathname });
-        form.reset();
-        form.querySelectorAll('.field, .send').forEach((el) => (el.hidden = true));
-        form.querySelector('.thanks').hidden = false;
+        const res = await fetch(url, {
+          method: 'POST',
+          mode: noCors ? 'no-cors' : 'cors',
+          keepalive: true,
+          // no-cors only allows "simple" content types, so JSON goes as text/plain there
+          headers: { 'Content-Type': json ? (noCors ? 'text/plain;charset=UTF-8' : 'application/json') : 'application/x-www-form-urlencoded;charset=UTF-8' },
+          body: json ? JSON.stringify(lead) : new URLSearchParams(lead).toString(),
+        });
+        if (!noCors && !res.ok) throw new Error(`CRM answered ${res.status}`);
+        goToThanks(form);
       } catch {
-        status.textContent = 'השליחה נכשלה. אפשר לנסות שוב או לכתוב ישירות ל-' + form.dataset.to;
-      } finally {
+        status.hidden = false;
         btn.disabled = false;
       }
     });

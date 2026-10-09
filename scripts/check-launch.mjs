@@ -6,8 +6,11 @@ import { site } from '../src/data/content.mjs';
 const results = [];
 const check = (ok, label, fix) => results.push({ ok, label, fix });
 
-check(Boolean(site.web3formsKey), 'Contact form is connected (web3formsKey)',
-  'Create a free key at https://web3forms.com with hagarlushi@gmail.com and paste it into site.web3formsKey in src/data/content.mjs');
+check(/^https:\/\//.test(site.leadWebhook?.url || ''), 'Contact forms send to the CRM webhook (leadWebhook.url)',
+  'Paste the CRM webhook URL (https://...) into site.leadWebhook.url in src/data/content.mjs');
+check(['json', 'form'].includes(site.leadWebhook?.format) && ['cors', 'no-cors'].includes(site.leadWebhook?.mode),
+  'Webhook format and mode are valid', 'leadWebhook.format must be "json" or "form"; leadWebhook.mode "cors" or "no-cors"');
+check(fs.existsSync('src/pages/thankyou.astro'), 'Thank-you page exists (/thankyou)', 'Restore src/pages/thankyou.astro');
 check(/^GTM-[A-Z0-9]+$/.test(site.gtmId || ''), 'Google Tag Manager container is set (gtmId)',
   'Set site.gtmId in src/data/content.mjs (the Wix site uses GTM-KJRR2DNT)');
 check(/^\d{10,15}$/.test(site.whatsapp?.number || ''), 'WhatsApp number is set',
@@ -15,7 +18,7 @@ check(/^\d{10,15}$/.test(site.whatsapp?.number || ''), 'WhatsApp number is set',
 
 const fb = JSON.parse(fs.readFileSync('firebase.json', 'utf8'));
 const redirects = fb.hosting?.redirects || [];
-check(redirects.some((r) => r.source === '/thankyou'), 'Old Wix pages redirect (firebase.json)',
+check(redirects.some((r) => r.source === '/home'), 'Old Wix pages redirect (firebase.json)',
   'Restore the redirects list in firebase.json');
 
 const media = fs.existsSync('public/media') ? fs.readdirSync('public/media').length : 0;

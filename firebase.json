@@ -17,8 +17,10 @@
       { "source": "/דף-נחיתה-פרטיים", "destination": "/לקוחות-פרטיים", "type": 301 },
       { "source": "/דף-נחיתה-פרטי", "destination": "/לקוחות-פרטיים", "type": 301 },
       { "source": "/coming-soon", "destination": "/", "type": 301 },
-      { "source": "/thankyou", "destination": "/", "type": 301 },
-      { "source": "/portfolio-collections/**", "destination": "/portfolio", "type": 301 }
+      { "source": "/portfolio-collections/**", "destination": "/portfolio", "type": 301 },
+      { "source": "/pages-sitemap.xml", "destination": "/sitemap.xml", "type": 301 },
+      { "source": "/portfolio-projects-sitemap.xml", "destination": "/sitemap.xml", "type": 301 },
+      { "source": "/portfolio-collections-sitemap.xml", "destination": "/sitemap.xml", "type": 301 }
     ],
     "headers": [
       { "source": "/media/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
