@@ -1,0 +1,7 @@
+# Long-lived caching for files whose names change when their content changes.
+/media/*
+  Cache-Control: public, max-age=31536000, immutable
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable

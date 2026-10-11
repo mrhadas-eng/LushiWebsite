@@ -1,0 +1,19 @@
+# Old Wix URLs -> current pages (301). Ported from firebase.json.
+# Served by Cloudflare Workers static assets; see docs/CLOUDFLARE-PLAN.md (task C2).
+/home / 301
+/bio /אודות 301
+/פרוייקטים /לקוחות-פרטיים 301
+/להיות-יפה /להיות-יפה-שירלי 301
+/copy-of-להיות-יפה /להיות-יפה-שירלי 301
+/redesign /עיצוב-מחדש 301
+/go-on-vacation /צאו-לחופשה 301
+/הבן-של-הנגר3 /הבן-של-הנגר 301
+/דףנחיתה2 / 301
+/דף-נחיתה-פרטיים /לקוחות-פרטיים 301
+/דף-נחיתה-פרטי /לקוחות-פרטיים 301
+/coming-soon / 301
+/pages-sitemap.xml /sitemap.xml 301
+/portfolio-projects-sitemap.xml /sitemap.xml 301
+/portfolio-collections-sitemap.xml /sitemap.xml 301
+# Catch-all rules last (Cloudflare matches them more slowly)
+/portfolio-collections/* /portfolio 301

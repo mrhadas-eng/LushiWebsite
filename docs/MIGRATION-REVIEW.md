@@ -1,7 +1,7 @@
 # hagarlushi.com: מסמך בדיקה לפני מעבר מ-Wix
 
 המסמך מתאר את כל מה שבודק חיצוני, למשל ChatGPT, צריך כדי לוודא שהאתר החדש מוכן למעבר ה-DNS ושלא אבדה שום פונקציונליות מאתר ה-Wix.
-עודכן לאחרונה: 2026-10-11 (הוחלט לארח ב-Cloudflare). הממצאים על אתר ה-Wix נאספו ב-2026-10-08.
+עודכן לאחרונה: 2026-10-11 (קוד Cloudflare הושלם ונבדק מקומית; טרם נפרס). הממצאים על אתר ה-Wix נאספו ב-2026-10-08.
 
 ---
 
@@ -45,23 +45,27 @@
 |---|---|
 | מאגר | `github.com/mrhadas-eng/LushiWebsite`, ענף `main` |
 | טכנולוגיה | Astro 5, פלט סטטי מלא (`dist/`), עברית, RTL |
-| אחסון | **Cloudflare Workers (static assets) + Cloudflare DNS**, בתוכנית החינמית. הוחלט ב-2026-10-11. עדיין לא הוגדר: התוכנית והמשימות ב-`docs/CLOUDFLARE-PLAN.md` |
+| אחסון | **Cloudflare Workers (static assets) + Cloudflare DNS**, בתוכנית החינמית. הקוד וההגדרות מוכנים (C1–C4), ועדיין לא נפרס (C5 ושלבי O1–O5 ב-`docs/CLOUDFLARE-PLAN.md`) |
 | דומיין קנוני | `https://www.hagarlushi.com` (עם www) |
-| הרצה מקומית | `npm install`, `npm run dev`, ואז `http://localhost:4321` |
+| הרצה מקומית | `npm install`, ואז `npm run dev` (מהיר, בלי `/api/lead`), או `npm run preview:cf` (סביבת Cloudflare מקומית, כולל `/api/lead`, דורש `.dev.vars`) |
+| בדיקות | `npm test` (Worker וקבצי האתר, אחרי `npm run build`), `npx wrangler deploy --dry-run` (תקינות הגדרות Cloudflare) |
 | בדיקת מוכנות | `npm run check-launch` (מחזיר שגיאה אם חסר משהו קריטי) |
 
 ### מפת קבצים
 
 | מה | איפה |
 |---|---|
-| כל התוכן וההגדרות: טלפון, מייל, וואטסאפ, GTM, webhook | `src/data/content.mjs` (האובייקט `site`) |
+| כל התוכן וההגדרות: טלפון, מייל, וואטסאפ, GTM | `src/data/content.mjs` (האובייקט `site`) |
+| הגדרות Cloudflare | `wrangler.jsonc` |
+| נקודת הקצה `/api/lead` (העברה ל-CRM) | `worker/index.js` |
+| בדיקות אוטומטיות | `test/worker.test.mjs`, `test/site.test.mjs` |
 | תבנית עמוד בסיסית: head, meta, canonical, noindex | `src/layouts/Base.astro` |
 | אנליטיקס ואירועי לידים | `src/components/Tracking.astro` |
 | טופס יצירת קשר ושליחה ל-CRM | `src/components/ContactForm.astro` |
 | דף תודה וספירת ליד | `src/pages/thankyou.astro` |
 | כפתור וואטסאפ צף | `src/components/WhatsAppButton.astro` |
 | sitemap ו-robots | `src/pages/sitemap.xml.js`, `src/pages/robots.txt.js` |
-| הפניות 301 וכותרות cache | כרגע `firebase.json`. יעברו ל-`public/_redirects` ו-`public/_headers` (משימה C2) |
+| הפניות 301 וכותרות cache | `public/_redirects`, `public/_headers` |
 | תוכנית האחסון ב-Cloudflare | `docs/CLOUDFLARE-PLAN.md` |
 | בדיקת מוכנות | `scripts/check-launch.mjs` |
 | משימות פתוחות | `LAUNCH.md` |
@@ -108,7 +112,7 @@
 | 26 דפים (בית, אודות, 2 קטגוריות, 18 פרויקטים, עיתונות, יצירת קשר, נגישות) | כל הדפים, אותן כתובות | ✅ |
 | תפריט עם תתי-תפריטים | `Header.astro`, תפריט המבורגר במובייל | ✅ |
 | מצגת תמונות בדף הבית, גלריה נגללת, גלריות פרויקטים ותצוגת תמונה מוגדלת | `Slideshow.astro`, `Gallery.astro`, `src/lib/lightbox.js` | ✅ |
-| טפסי Wix | שליחה ישירה ל-webhook של ה-CRM, ואז מעבר ל-`/thankyou` | ⏳ חסרה כתובת ה-webhook |
+| טפסי Wix | שליחה ל-`/api/lead` (Cloudflare Worker) שמעביר ל-CRM, ומעבר ל-`/thankyou` רק אחרי אישור ה-CRM | ✅ קוד ונבדק מול CRM מדומה. ⏳ חסרים פרטי ה-CRM האמיתי |
 | Wix Chat | כפתור וואטסאפ צף, `wa.me/972505788634` | ✅ (לאשר מספר והודעה) |
 | GTM: GA4, Ads, Meta, Clarity | אותו קונטיינר, נטען רק בדומיין האמיתי | ✅ |
 | מעקב לידים מהאתר הראשי | לא היה | ✅ אירועים קיימים. ⏳ צריך להגדיר טריגרים ב-GTM |
@@ -129,13 +133,17 @@
 `/להיות-יפה-שירלי`, `/אור-לעתיד`, `/מיברג`, `/סטון-גלרי`, `/יוניקורן`, `/copy-of-יוניקורן-1`, `/געתון`, `/copy-of-יוניקורן`, `/מסודרים-ליד-ביבי`, `/מנהל-הפרויקט`, `/אבק-כוכבים`, `/דירה-להשכיר`, `/האקדמיים`, `/יפה-להשכרה`, `/עיצוב-מחדש`, `/צאו-לחופשה`, `/פסיכולוגית-אלגנטית`, `/הבן-של-הנגר`.
 **חדש:** `/thankyou` (noindex, לא נכלל ב-sitemap).
 
-**הפניות 301** (כרגע ב-`firebase.json`, ויעברו ל-`public/_redirects`) לטיוטות, לכפילויות ולדפי התבנית של Wix:
-`/home`, `/bio`, `/פרוייקטים`, `/להיות-יפה`, `/copy-of-להיות-יפה`, `/redesign`, `/go-on-vacation`, `/הבן-של-הנגר3`, `/דףנחיתה2`, `/דף-נחיתה-פרטיים`, `/דף-נחיתה-פרטי`, `/coming-soon`, `/portfolio-collections/**`, ו-3 כתובות ה-sitemap הישנות.
+**הפניות 301** (`public/_redirects`) לטיוטות, לכפילויות ולדפי התבנית של Wix:
+`/home`, `/bio`, `/פרוייקטים`, `/להיות-יפה`, `/copy-of-להיות-יפה`, `/redesign`, `/go-on-vacation`, `/הבן-של-הנגר3`, `/דףנחיתה2`, `/דף-נחיתה-פרטיים`, `/דף-נחיתה-פרטי`, `/coming-soon`, `/portfolio-collections/*`, ו-3 כתובות ה-sitemap הישנות.
 
-**לבדיקה:**
-- שההפניות בעברית עובדות ב-`_redirects` של Cloudflare (גם בכתובת מקודדת `%D7…`). לבדוק ב-`wrangler dev` ובקישור תצוגה מקדימה לפני המעבר.
-- `html_handling: "drop-trailing-slash"` ב-`wrangler.jsonc`: כל דף נטען בכתובת בלי לוכסן בסוף (200), ו-`/אודות/` מופנה ל-`/אודות`. ברירת המחדל של Cloudflare הפוכה, ותשבור את הכתובות.
-- דומיין ללא www (`hagarlushi.com`) צריך הפניה 301 ל-`www`, דרך Redirect Rule ב-Cloudflare (פירוט ב-`docs/CLOUDFLARE-PLAN.md`, שלב O4).
+**נבדק ב-`wrangler dev` (2026-10-11):**
+- כל 25 הדפים מחזירים 200 בכתובת של Wix, בלי הפניה.
+- כל 16 ההפניות מחזירות 301 ליעד הנכון, כולל מקורות בעברית.
+- `/אודות/` מחזיר 307 ל-`/אודות` (בזכות `html_handling: "drop-trailing-slash"`; ברירת המחדל של Cloudflare הפוכה ותשבור את הכתובות).
+- כתובת לא קיימת מחזירה את דף ה-404 עם סטטוס 404. דף ה-404 ודף התודה הם noindex ובלי canonical.
+- `sitemap.xml` כולל 25 דפים, בלי `lastmod` (תאריך בנייה היה מציג כל דף כ"עודכן" בכל פריסה).
+
+**עוד לבדוק אחרי הפריסה:** אותן בדיקות בכתובת `workers.dev`, והפניית `hagarlushi.com` ל-`www` (Redirect Rule, שלב O5).
 
 ---
 
@@ -160,17 +168,24 @@
 
 ## 7. לידים ושליחה ל-CRM
 
-הגדרות ב-`site.leadWebhook` שבקובץ `content.mjs`:
+**הארכיטקטורה (הושלם ב-2026-10-11):** הטופס שולח JSON לכתובת באותו אתר, `POST /api/lead`. שם Cloudflare Worker (`worker/index.js`) בודק את הבקשה ומעביר אותה ל-webhook של ה-CRM. **כתובת ה-webhook לא נמצאת בקוד האתר:** היא סוד ב-Cloudflare בשם `CRM_WEBHOOK_URL`.
 
-| שדה | ערכים | משמעות |
+| הגדרה | איפה | ערכים |
 |---|---|---|
-| `url` | כתובת https של ה-webhook | ריק = מצב בדיקה (פותח את תוכנת המייל) |
-| `format` | `json` (ברירת מחדל) או `form` | JSON, או `application/x-www-form-urlencoded` |
-| `mode` | `no-cors` (ברירת מחדל) או `cors` | `no-cors` עובד עם כל CRM, אבל אי אפשר לדעת אם ה-CRM החזיר שגיאה. `cors` דורש שה-CRM יאשר את המקור `https://www.hagarlushi.com`, ואז שגיאה מוצגת לגולש |
+| `CRM_WEBHOOK_URL` | Secret ב-Cloudflare (מקומית: `.dev.vars`, לא נשמר ב-git) | כתובת ה-webhook. חובה |
+| `CRM_AUTH_HEADER` | Secret ב-Cloudflare, אופציונלי | כותרת אימות בפורמט `"Name: value"`, למשל `X-Api-Key: …` |
+| `CRM_FORMAT` | `vars` ב-`wrangler.jsonc` | `json` (ברירת מחדל) או `form` |
 
-**תהליך:** בדיקת שדות חובה, ואז מלכודת ספאם (השדה הנסתר `website`; אם מולא, מעבר לדף תודה בלי שליחה ובלי ספירה), ואז `fetch` (POST, `keepalive`), ואז מעבר ל-`/thankyou`. בשגיאת רשת, או בשגיאה ממצב `cors`, מוצגת הודעה עם הטלפון והוואטסאפ, והגולש נשאר בדף.
+**כללי ה-Worker:**
+- מקבל רק `POST` מאותו מקור (`Origin` של האתר עצמו), מסוג `application/json`, בגודל עד 10KB.
+- בודק שדות: אימייל חובה ותקין, שם או טלפון חובה, ומגבלות אורך. מעביר רק שדות מוכרים.
+- מלכודת ספאם (`website` מולא): עונה `ok` ולא מעביר כלום.
+- עונה `{ok:true}` **רק** אם ה-CRM החזיר 2xx בלי גוף שמסמן כישלון (`success:false`, `ok:false`, `status:"error"`). אחרת מחזיר 502 (או 503 אם הסוד לא הוגדר).
+- לא רושם ליומן נתוני ליד או את כתובת ה-webhook, רק קודי סטטוס.
 
-**מבנה הנתונים שנשלח** (מפתחות באנגלית; ערכים ריקים לא נשלחים):
+**בדפדפן:** הגולש עובר ל-`/thankyou` (ושם נספר `generate_lead` פעם אחת) רק אחרי `{ok:true}`. בכישלון: נשאר בדף, כל מה שהקליד נשמר, ומוצגת הודעה עם הטלפון והוואטסאפ, כך שליד לא הולך לאיבוד בשקט.
+
+**מבנה הנתונים שה-CRM מקבל** (מפתחות באנגלית; ערכים ריקים לא נשלחים):
 ```json
 {
   "full_name": "ישראל ישראלי",
@@ -189,13 +204,13 @@
   "landing_page": "/"
 }
 ```
-במצב `json` + `no-cors` הגוף נשלח עם `Content-Type: text/plain`. הדפדפן לא מאפשר JSON מפורש בלי CORS. **לבדוק שה-CRM מפענח גוף כזה,** או לעבור ל-`cors` או ל-`form`.
 
-**נבדק אוטומטית** (דפדפן headless מול webhook מדומה): JSON מדף הבית, form מדף יצירת קשר, שגיאת 500 במצב cors (הודעת שגיאה מוצגת, אין מעבר), בוט (לא נשלח ולא נספר), רענון דף התודה (לא נספר שוב).
+**נבדק (מקומית, 2026-10-11):**
+- 12 בדיקות יחידה של ה-Worker (`npm test`).
+- `wrangler dev` (סביבת Cloudflare המקומית) מול CRM מדומה: מקור זר נדחה (403), בקשה בלי Origin נדחתה (403), אימייל לא תקין נדחה (400), בוט לא הועבר, CRM 500 ו-CRM 200 עם `success:false` החזירו 502, וכותרת האימות הגיעה ל-CRM.
+- דפדפן (מחשב ומובייל): הצלחה מובילה לדף תודה עם המרה אחת, כולל מקור ההגעה. בכישלון מוצגת שגיאה, הנתונים נשמרים, ואין המרה. בוט: אין שליחה ואין המרה.
 
-**מגבלות ידועות:**
-- כרגע כתובת ה-webhook גלויה בקוד הדף, וההגנה היא מלכודת הספאם בלבד. **זה ייפתר במשימה C3:** הטופס ישלח לנקודת קצה באותו אתר, `/api/lead` (Cloudflare Worker), והיא תעביר את הליד ל-CRM. הכתובת תישמר כסוד (`CRM_WEBHOOK_URL`) ולא תופיע בקוד, ונוכל גם להציג לגולש שגיאה אמיתית כשה-CRM נכשל.
-- במצב `no-cors` שגיאה בצד ה-CRM לא נראית לגולש. לכן חשוב לבדוק בעלייה שכל ליד באמת נכנס ל-CRM.
+**לא נבדק (דורש פרטי CRM):** שליחה אמיתית ל-CRM. צריך: כתובת webhook, פורמט ושמות שדות, שיטת אימות, ומה ה-CRM מחזיר בהצלחה ובכישלון (`docs/CLOUDFLARE-PLAN.md`).
 
 ---
 
@@ -206,10 +221,10 @@
 2. לבדוק איפה הדומיין רשום (registrar): ב-Wix או במקום אחר. זה קובע אם מעבירים את הדומיין או רק משנים שרתי שמות.
 
 **סדר מומלץ:**
-1. לפרוס את האתר ל-Cloudflare Workers ולבדוק אותו בכתובת `*.workers.dev` (משימות C1–C5).
-2. להוסיף את `hagarlushi.com` לחשבון Cloudflare, ולוודא שכל הרשומות מ-Wix הועתקו. רשומות MX, מייל ו-`lp` מגדירים "DNS only" (ענן אפור). `www` והדומיין הראשי ממשיכים בשלב הזה להצביע ל-Wix.
-3. להחליף את שרתי השמות ל-Cloudflare ולחכות שהאזור יהיה Active. אין השבתה, כי הרשומות זהות.
-4. לחבר את `www.hagarlushi.com` ל-Worker (Custom Domain), להגדיר Redirect Rule מ-`hagarlushi.com` ל-`www`, ולהגדיר את הסוד `CRM_WEBHOOK_URL`.
+1. **O2:** להוסיף את `hagarlushi.com` לחשבון Cloudflare, ולוודא שכל הרשומות מ-Wix הועתקו. רשומות MX, מייל ו-`lp` מגדירים "DNS only" (ענן אפור). `www` והדומיין הראשי ממשיכים בשלב הזה להצביע ל-Wix.
+2. **O3:** לחבר את GitHub ל-Cloudflare, להגדיר את הסוד `CRM_WEBHOOK_URL`, ולבדוק את האתר בכתובת `*.workers.dev`, כולל ליד בדיקה מכל טופס שמגיע ל-CRM. **לפני כל שינוי DNS.**
+3. **O4:** להחליף את שרתי השמות ל-Cloudflare ולחכות שהאזור יהיה Active. אין השבתה, כי הרשומות זהות.
+4. **O5:** לחבר את `www.hagarlushi.com` ל-Worker (Custom Domain) ולהגדיר Redirect Rule מ-`hagarlushi.com` ל-`www`.
 5. להשאיר את מנוי Wix פעיל עד שהכול נבדק.
 
 פירוט מלא, צעד אחר צעד: `docs/CLOUDFLARE-PLAN.md`, משימות O1–O5.
@@ -243,7 +258,10 @@ curl -s https://www.hagarlushi.com/sitemap.xml | grep -c "<url>"   # 25
 | אישור מספר הוואטסאפ וההודעה הפותחת | בעל האתר | לא |
 | ייצוא רשומות DNS מ-Wix, כולל `lp` ו-MX | בעל האתר | **כן** |
 | טריגרים ב-GTM לאירועי הלידים החדשים | בעל האתר / Claude עם גישה | לא, אבל בלעדיהם הלידים לא נספרים |
-| הגדרת Cloudflare: Worker, `_redirects`, `/api/lead`, פריסה מ-GitHub (C1–C5) | Claude | כן |
-| חשבון Cloudflare, העברת DNS וחיבור הדומיין (O1–O5) | בעל האתר, בהדרכת Claude | כן |
+| ~~הגדרת Cloudflare בקוד: Worker, `_redirects`, `/api/lead` (C1–C4)~~ | Claude | הושלם |
+| חיבור GitHub ל-Cloudflare ופריסה ל-`workers.dev` (C5/O3) | בעל האתר, בהדרכת Claude | כן |
+| חשבון Cloudflare, העברת DNS וחיבור הדומיין (O1, O2, O4, O5) | בעל האתר, בהדרכת Claude | כן |
+| פרטי ה-CRM: פורמט, שמות שדות, אימות, תשובת הצלחה/כישלון | בעל האתר | כן |
+| דף הנחיתה lp.hagarlushi.com: האם להעביר אותו (כרגע מחוץ לתחום, נשאר ב-WordPress) | בעל האתר | לא, כל עוד רשומת ה-DNS שלו נשמרת |
 | מדיניות פרטיות ובאנר עוגיות | בעל האתר | החלטה |
 | ייצוא אנשי קשר, פניות וצ'אטים מ-Wix | בעל האתר | לפני ביטול Wix |

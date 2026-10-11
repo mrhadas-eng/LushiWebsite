@@ -1,9 +1,13 @@
 ---
-// Contact form (home page + contact page). Each lead is POSTed straight to the CRM
-// webhook set in src/data/content.mjs (site.leadWebhook), then the visitor is sent to
-// /thankyou, where the lead is counted for analytics (generate_lead).
+// Contact form (home page + contact page). Each lead is POSTed as JSON to the site's own
+// endpoint /api/lead (worker/index.js), which forwards it to the CRM webhook. Only when the
+// Worker answers { ok: true } (the CRM confirmed the lead) is the visitor sent to /thankyou,
+// where the lead is counted for analytics (generate_lead). On any failure the form keeps
+// what the visitor typed and shows the phone / WhatsApp alternatives.
 //
-// Payload sent to the CRM (English keys, empty values omitted):
+// Under `npm run dev` there is no Worker, so sending fails by design; use `npm run preview:cf`.
+//
+// Payload (English keys, empty values omitted):
 //   full_name, email, phone, message, form ("home" | "contact"),
 //   page_url, page_path, landing_page, referrer,
 //   utm_source, utm_medium, utm_campaign, utm_term, utm_content, gclid, fbclid,
@@ -14,12 +18,10 @@ const { variant = 'home' } = Astro.props;
 const f = variant === 'home'
   ? { name: 'שם מלא', email: 'אימייל', phone: 'טלפון', msg: 'במה אוכל לעזור?', nameReq: true, phoneReq: true }
   : { name: 'שם', email: 'דוא"ל', phone: 'טלפון', msg: 'הודעה', nameReq: false, phoneReq: false };
-const hook = site.leadWebhook ?? {};
 const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` : null;
 ---
 <form class="contact-form" novalidate
-  data-url={hook.url} data-format={hook.format} data-mode={hook.mode}
-  data-thanks={site.thankYouPath} data-to={site.email}
+  data-endpoint={site.leadEndpoint} data-thanks={site.thankYouPath}
   data-location={variant === 'home' ? 'home' : 'contact'}>
   <!-- Spam trap: hidden from people, bots fill it in -->
   <input type="text" name="website" class="visually-hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
@@ -119,30 +121,20 @@ const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` :
       for (const k of ATTR_KEYS) if (a[k]) lead[k] = k === 'landing_page' ? decodeURI(a[k]) : a[k];
       for (const k of Object.keys(lead)) if (!lead[k]) delete lead[k];
 
-      const url = form.dataset.url;
-      if (!url) {
-        // Not connected to the CRM yet: open the visitor's email app (testing only)
-        const body = Object.entries(lead).map(([k, v]) => `${k}: ${v}`).join('\n');
-        location.href = `mailto:${form.dataset.to}?subject=${encodeURIComponent('פנייה מהאתר')}&body=${encodeURIComponent(body)}`;
-        return;
-      }
-
-      const json = form.dataset.format !== 'form';
-      const noCors = form.dataset.mode !== 'cors';
       const btn = form.querySelector<HTMLButtonElement>('.send')!;
       btn.disabled = true;
       try {
-        const res = await fetch(url, {
+        const res = await fetch(form.dataset.endpoint || '/api/lead', {
           method: 'POST',
-          mode: noCors ? 'no-cors' : 'cors',
-          keepalive: true,
-          // no-cors only allows "simple" content types, so JSON goes as text/plain there
-          headers: { 'Content-Type': json ? (noCors ? 'text/plain;charset=UTF-8' : 'application/json') : 'application/x-www-form-urlencoded;charset=UTF-8' },
-          body: json ? JSON.stringify(lead) : new URLSearchParams(lead).toString(),
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(lead),
         });
-        if (!noCors && !res.ok) throw new Error(`CRM answered ${res.status}`);
+        const reply = await res.json().catch(() => ({}));
+        // Success only when the Worker confirms the CRM accepted the lead
+        if (!res.ok || reply.ok !== true) throw new Error(`lead not delivered (${res.status})`);
         goToThanks(form);
       } catch {
+        // Keep everything the visitor typed, and offer the phone / WhatsApp instead
         status.hidden = false;
         btn.disabled = false;
       }

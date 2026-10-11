@@ -1,26 +1,56 @@
-// Pre-launch check: run `npm run check-launch` before pointing the domain at the new host (Cloudflare).
-// Exits with an error if anything that loses leads or statistics is still missing.
+// Pre-launch check: run `npm run check-launch` before pointing the domain at Cloudflare.
+// Fails (exit 1) if anything in the repository that would lose leads, URLs or statistics is missing.
+// Items that live only in a dashboard (Worker secret, DNS, GTM) are listed as manual checks.
 import fs from 'node:fs';
 import { site } from '../src/data/content.mjs';
 
 const results = [];
 const check = (ok, label, fix) => results.push({ ok, label, fix });
 
-check(/^https:\/\//.test(site.leadWebhook?.url || ''), 'Contact forms send to the CRM webhook (leadWebhook.url)',
-  'Paste the CRM webhook URL (https://...) into site.leadWebhook.url in src/data/content.mjs');
-check(['json', 'form'].includes(site.leadWebhook?.format) && ['cors', 'no-cors'].includes(site.leadWebhook?.mode),
-  'Webhook format and mode are valid', 'leadWebhook.format must be "json" or "form"; leadWebhook.mode "cors" or "no-cors"');
+/** Reads a .jsonc file: strips // and /* comments outside strings, then parses. */
+function readJsonc(file) {
+  const src = fs.readFileSync(file, 'utf8');
+  let out = '', inStr = false;
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i], n = src[i + 1];
+    if (inStr) { out += c; if (c === '\\') { out += n; i++; } else if (c === '"') inStr = false; continue; }
+    if (c === '"') { inStr = true; out += c; continue; }
+    if (c === '/' && n === '/') { while (i < src.length && src[i] !== '\n') i++; out += '\n'; continue; }
+    if (c === '/' && n === '*') { i += 2; while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++; i++; continue; }
+    out += c;
+  }
+  return JSON.parse(out.replace(/,(\s*[}\]])/g, '$1'));
+}
+
+// --- Cloudflare configuration
+let wr = null;
+try { wr = readJsonc('wrangler.jsonc'); } catch { /* reported below */ }
+check(Boolean(wr), 'Cloudflare config exists and parses (wrangler.jsonc)', 'Restore wrangler.jsonc (see docs/CLOUDFLARE-PLAN.md, task C1)');
+check(wr?.assets?.directory === './dist', 'Static assets come from the Astro build (assets.directory = ./dist)', 'Set assets.directory to "./dist" in wrangler.jsonc');
+check(wr?.assets?.html_handling === 'drop-trailing-slash', 'URLs keep the Wix form, no trailing slash (html_handling)',
+  'Set assets.html_handling to "drop-trailing-slash" in wrangler.jsonc');
+check(wr?.assets?.not_found_handling === '404-page', 'Unknown URLs get the 404 page (not_found_handling)', 'Set assets.not_found_handling to "404-page"');
+check((wr?.assets?.run_worker_first || []).includes('/api/*') && fs.existsSync(wr?.main || ''), 'Lead endpoint Worker is wired up (/api/* → worker/index.js)',
+  'Set "main": "worker/index.js" and assets.run_worker_first: ["/api/*"]');
+check(['json', 'form'].includes(wr?.vars?.CRM_FORMAT), 'CRM body format is set (vars.CRM_FORMAT = json | form)', 'Set vars.CRM_FORMAT in wrangler.jsonc');
+
+// --- URLs
+const redirects = fs.existsSync('public/_redirects')
+  ? fs.readFileSync('public/_redirects', 'utf8').split('\n').filter((l) => l.trim() && !l.startsWith('#')) : [];
+check(redirects.some((l) => l.startsWith('/home ')) && redirects.length >= 16, `Old Wix URLs redirect (${redirects.length} rules in public/_redirects)`,
+  'Restore public/_redirects (see docs/MIGRATION-REVIEW.md, section 5)');
+check(fs.existsSync('public/_headers'), 'Cache headers are set (public/_headers)', 'Restore public/_headers');
+check(!fs.existsSync('firebase.json'), 'No leftover Firebase config', 'Delete firebase.json (hosting is Cloudflare)');
+
+// --- Leads and measurement
+check(site.leadEndpoint === '/api/lead', 'Forms post to the lead endpoint (/api/lead)', 'Set site.leadEndpoint to "/api/lead" in src/data/content.mjs');
 check(fs.existsSync('src/pages/thankyou.astro'), 'Thank-you page exists (/thankyou)', 'Restore src/pages/thankyou.astro');
-check(/^GTM-[A-Z0-9]+$/.test(site.gtmId || ''), 'Google Tag Manager container is set (gtmId)',
-  'Set site.gtmId in src/data/content.mjs (the Wix site uses GTM-KJRR2DNT)');
+check(site.gtmId === 'GTM-KJRR2DNT', 'Google Tag Manager container unchanged (GTM-KJRR2DNT)',
+  'site.gtmId must stay GTM-KJRR2DNT unless the owner approves a change');
 check(/^\d{10,15}$/.test(site.whatsapp?.number || ''), 'WhatsApp number is set',
   'Set site.whatsapp.number in international format without "+", e.g. 972505788634');
 
-const fb = JSON.parse(fs.readFileSync('firebase.json', 'utf8'));
-const redirects = fb.hosting?.redirects || [];
-check(redirects.some((r) => r.source === '/home'), 'Old Wix pages redirect (firebase.json)',
-  'Restore the redirects list in firebase.json');
-
+// --- Content
 const media = fs.existsSync('public/media') ? fs.readdirSync('public/media').length : 0;
 check(media > 100, `Images are stored locally (${media} files in public/media)`,
   'Run "npm run fetch-media" or the "Copy images from Wix" GitHub Action');
@@ -30,5 +60,13 @@ for (const r of results) {
   console.log(`${r.ok ? '✔' : '✘'} ${r.label}`);
   if (!r.ok) { failed++; console.log(`    → ${r.fix}`); }
 }
-console.log(failed ? `\n${failed} item(s) to fix before launch. See LAUNCH.md.` : '\nCode is ready. Remaining steps outside the code are in LAUNCH.md.');
+
+console.log(`
+Manual checks (cannot be verified from the repository):
+  ☐ Cloudflare secret CRM_WEBHOOK_URL is set on the hagarlushi Worker (and CRM_AUTH_HEADER if the CRM needs one)
+  ☐ A test lead sent from the workers.dev preview arrived in the CRM
+  ☐ DNS: every Wix record copied to Cloudflare, including lp.hagarlushi.com, MX, SPF/DKIM/DMARC
+  ☐ GTM: triggers for generate_lead / whatsapp_click / phone_click / email_click published
+See LAUNCH.md and docs/CLOUDFLARE-PLAN.md.`);
+console.log(failed ? `\n${failed} repository item(s) to fix before launch.` : '\nRepository checks passed.');
 process.exit(failed ? 1 : 0);
