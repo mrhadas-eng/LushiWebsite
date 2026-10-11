@@ -1,7 +1,7 @@
 # hagarlushi.com: מסמך בדיקה לפני מעבר מ-Wix
 
 המסמך מתאר את כל מה שבודק חיצוני, למשל ChatGPT, צריך כדי לוודא שהאתר החדש מוכן למעבר ה-DNS ושלא אבדה שום פונקציונליות מאתר ה-Wix.
-עודכן לאחרונה: 2026-10-09. הממצאים על אתר ה-Wix נאספו ב-2026-10-08.
+עודכן לאחרונה: 2026-10-11 (הוחלט לארח ב-Cloudflare). הממצאים על אתר ה-Wix נאספו ב-2026-10-08.
 
 ---
 
@@ -17,8 +17,9 @@
 
 ```
 אתה בודק טכני לפני העלאה לאוויר. המאגר mrhadas-eng/LushiWebsite הוא אתר סטטי (Astro 5)
-שמחליף את אתר ה-Wix בכתובת https://www.hagarlushi.com ויתארח ב-Firebase Hosting.
-קרא קודם את docs/MIGRATION-REVIEW.md במלואו, ואחריו את הקבצים שהוא מפנה אליהם.
+שמחליף את אתר ה-Wix בכתובת https://www.hagarlushi.com ויתארח ב-Cloudflare Workers (static assets),
+עם DNS ב-Cloudflare. קרא קודם את docs/MIGRATION-REVIEW.md ואת docs/CLOUDFLARE-PLAN.md במלואם,
+ואחריהם את הקבצים שהם מפנים אליהם.
 
 בדוק:
 1. שכל פונקציונליות של אתר ה-Wix (סעיף 4) קיימת באתר החדש או שיש לה החלטה מתועדת.
@@ -26,7 +27,8 @@
 3. שאנליטיקס ואירועי לידים (סעיף 6) מוגדרים נכון, ושלא ייווצרו ספירה כפולה, ספירה חסרה
    או זליגת נתונים מסביבות בדיקה.
 4. ששליחת הלידים ל-CRM (סעיף 7) עמידה: שגיאות רשת, ספאם, CORS, תווים בעברית.
-5. שתוכנית ה-DNS (סעיף 8) לא תפיל שום שירות קיים: דף הנחיתה lp, מייל, אימותים.
+5. שתוכנית ה-DNS והאחסון (סעיף 8 ו-docs/CLOUDFLARE-PLAN.md) לא תפיל שום שירות קיים:
+   דף הנחיתה lp, מייל, אימותים. בדוק במיוחד את הגדרת html_handling (כתובות בלי לוכסן בסוף).
 6. SEO: canonical, sitemap, robots, noindex, הפניות, www מול דומיין ללא www.
 7. נגישות, מובייל וביצועים: רק בעיות ממשיות, לא העדפות סגנון.
 
@@ -43,7 +45,7 @@
 |---|---|
 | מאגר | `github.com/mrhadas-eng/LushiWebsite`, ענף `main` |
 | טכנולוגיה | Astro 5, פלט סטטי מלא (`dist/`), עברית, RTL |
-| אחסון | Firebase Hosting (פרויקט Firebase עדיין לא נוצר, ואין עדיין `.firebaserc` או workflow לפריסה) |
+| אחסון | **Cloudflare Workers (static assets) + Cloudflare DNS**, בתוכנית החינמית. הוחלט ב-2026-10-11. עדיין לא הוגדר: התוכנית והמשימות ב-`docs/CLOUDFLARE-PLAN.md` |
 | דומיין קנוני | `https://www.hagarlushi.com` (עם www) |
 | הרצה מקומית | `npm install`, `npm run dev`, ואז `http://localhost:4321` |
 | בדיקת מוכנות | `npm run check-launch` (מחזיר שגיאה אם חסר משהו קריטי) |
@@ -59,7 +61,8 @@
 | דף תודה וספירת ליד | `src/pages/thankyou.astro` |
 | כפתור וואטסאפ צף | `src/components/WhatsAppButton.astro` |
 | sitemap ו-robots | `src/pages/sitemap.xml.js`, `src/pages/robots.txt.js` |
-| הפניות 301 וכותרות cache | `firebase.json` |
+| הפניות 301 וכותרות cache | כרגע `firebase.json`. יעברו ל-`public/_redirects` ו-`public/_headers` (משימה C2) |
+| תוכנית האחסון ב-Cloudflare | `docs/CLOUDFLARE-PLAN.md` |
 | בדיקת מוכנות | `scripts/check-launch.mjs` |
 | משימות פתוחות | `LAUNCH.md` |
 | תמונות | `public/media` (WebP מוקטן ולוגואים ב-PNG). המקור ברזולוציה מלאה ב-`originals/` ולא עולה לאוויר |
@@ -126,19 +129,19 @@
 `/להיות-יפה-שירלי`, `/אור-לעתיד`, `/מיברג`, `/סטון-גלרי`, `/יוניקורן`, `/copy-of-יוניקורן-1`, `/געתון`, `/copy-of-יוניקורן`, `/מסודרים-ליד-ביבי`, `/מנהל-הפרויקט`, `/אבק-כוכבים`, `/דירה-להשכיר`, `/האקדמיים`, `/יפה-להשכרה`, `/עיצוב-מחדש`, `/צאו-לחופשה`, `/פסיכולוגית-אלגנטית`, `/הבן-של-הנגר`.
 **חדש:** `/thankyou` (noindex, לא נכלל ב-sitemap).
 
-**הפניות 301** (`firebase.json`) לטיוטות, לכפילויות ולדפי התבנית של Wix:
+**הפניות 301** (כרגע ב-`firebase.json`, ויעברו ל-`public/_redirects`) לטיוטות, לכפילויות ולדפי התבנית של Wix:
 `/home`, `/bio`, `/פרוייקטים`, `/להיות-יפה`, `/copy-of-להיות-יפה`, `/redesign`, `/go-on-vacation`, `/הבן-של-הנגר3`, `/דףנחיתה2`, `/דף-נחיתה-פרטיים`, `/דף-נחיתה-פרטי`, `/coming-soon`, `/portfolio-collections/**`, ו-3 כתובות ה-sitemap הישנות.
 
 **לבדיקה:**
-- שההפניות בעברית עובדות ב-Firebase (גם בכתובת מקודדת `%D7…`). לבדוק בקישור תצוגה מקדימה לפני המעבר.
-- `cleanUrls: true` ו-`trailingSlash: false`: לוודא שגם `/אודות/` מגיע לדף.
-- דומיין ללא www (`hagarlushi.com`) צריך הפניה ל-`www`. מגדירים את זה ב-Firebase בהוספת הדומיין ("Redirect to www.hagarlushi.com").
+- שההפניות בעברית עובדות ב-`_redirects` של Cloudflare (גם בכתובת מקודדת `%D7…`). לבדוק ב-`wrangler dev` ובקישור תצוגה מקדימה לפני המעבר.
+- `html_handling: "drop-trailing-slash"` ב-`wrangler.jsonc`: כל דף נטען בכתובת בלי לוכסן בסוף (200), ו-`/אודות/` מופנה ל-`/אודות`. ברירת המחדל של Cloudflare הפוכה, ותשבור את הכתובות.
+- דומיין ללא www (`hagarlushi.com`) צריך הפניה 301 ל-`www`, דרך Redirect Rule ב-Cloudflare (פירוט ב-`docs/CLOUDFLARE-PLAN.md`, שלב O4).
 
 ---
 
 ## 6. אנליטיקס ואירועים
 
-- **טעינה:** `Tracking.astro` טוען את `GTM-KJRR2DNT` רק אם ה-hostname תואם ל-`(^|\.)hagarlushi\.com$`, או אם הכתובת נפתחה פעם אחת עם `?gtm=1` (נשמר ל-session). כך localhost וקישורי התצוגה המקדימה של Firebase לא נספרים.
+- **טעינה:** `Tracking.astro` טוען את `GTM-KJRR2DNT` רק אם ה-hostname תואם ל-`(^|\.)hagarlushi\.com$`, או אם הכתובת נפתחה פעם אחת עם `?gtm=1` (נשמר ל-session). כך localhost וקישורי התצוגה המקדימה של Cloudflare (`*.workers.dev`) לא נספרים.
 - **אין consent mode:** ב-Wix נשלחו ברירות מחדל של הסכמה, ובישראל הן לא נאכפו (`gdprEnforcedGeo: false`). באתר החדש לא נשלחים אותות הסכמה, כך שגוגל מתייחס להסכמה כמאושרת. **לבדוק שזה תואם את ההחלטה על באנר עוגיות.**
 - **מקור הגעה:** בעמוד הראשון של הביקור נשמרים ב-`sessionStorage` (`hl_attribution`) הערכים utm_*, gclid, fbclid, referrer ו-landing_page.
 
@@ -191,7 +194,7 @@
 **נבדק אוטומטית** (דפדפן headless מול webhook מדומה): JSON מדף הבית, form מדף יצירת קשר, שגיאת 500 במצב cors (הודעת שגיאה מוצגת, אין מעבר), בוט (לא נשלח ולא נספר), רענון דף התודה (לא נספר שוב).
 
 **מגבלות ידועות:**
-- כתובת ה-webhook גלויה בקוד הדף, כך שכל אחד יכול לשלוח אליה. ההגנה היא מלכודת הספאם בלבד. הגנה חזקה יותר דורשת שרת ביניים, למשל Firebase Function, שזמינה רק בתוכנית Blaze.
+- כרגע כתובת ה-webhook גלויה בקוד הדף, וההגנה היא מלכודת הספאם בלבד. **זה ייפתר במשימה C3:** הטופס ישלח לנקודת קצה באותו אתר, `/api/lead` (Cloudflare Worker), והיא תעביר את הליד ל-CRM. הכתובת תישמר כסוד (`CRM_WEBHOOK_URL`) ולא תופיע בקוד, ונוכל גם להציג לגולש שגיאה אמיתית כשה-CRM נכשל.
 - במצב `no-cors` שגיאה בצד ה-CRM לא נראית לגולש. לכן חשוב לבדוק בעלייה שכל ליד באמת נכנס ל-CRM.
 
 ---
@@ -203,16 +206,19 @@
 2. לבדוק איפה הדומיין רשום (registrar): ב-Wix או במקום אחר. זה קובע אם מעבירים את הדומיין או רק משנים שרתי שמות.
 
 **סדר מומלץ:**
-1. ליצור פרויקט Firebase, להעלות את האתר ולבדוק אותו בכתובת `*.web.app`.
-2. להעתיק את כל הרשומות הקיימות לספק ה-DNS החדש (Cloudflare חינמי או ה-registrar), **לפני** שמחליפים שרתי שמות.
-3. ב-Firebase Hosting ← Add custom domain להוסיף את `www.hagarlushi.com` (ראשי) ואת `hagarlushi.com` (הפניה ל-www), ולהוסיף את רשומות ה-TXT וה-A שמתקבלות.
-4. להחליף את שרתי השמות. לחכות להפצה ולהנפקת תעודת SSL ב-Firebase (בדרך כלל עד כמה שעות).
+1. לפרוס את האתר ל-Cloudflare Workers ולבדוק אותו בכתובת `*.workers.dev` (משימות C1–C5).
+2. להוסיף את `hagarlushi.com` לחשבון Cloudflare, ולוודא שכל הרשומות מ-Wix הועתקו. רשומות MX, מייל ו-`lp` מגדירים "DNS only" (ענן אפור). `www` והדומיין הראשי ממשיכים בשלב הזה להצביע ל-Wix.
+3. להחליף את שרתי השמות ל-Cloudflare ולחכות שהאזור יהיה Active. אין השבתה, כי הרשומות זהות.
+4. לחבר את `www.hagarlushi.com` ל-Worker (Custom Domain), להגדיר Redirect Rule מ-`hagarlushi.com` ל-`www`, ולהגדיר את הסוד `CRM_WEBHOOK_URL`.
 5. להשאיר את מנוי Wix פעיל עד שהכול נבדק.
+
+פירוט מלא, צעד אחר צעד: `docs/CLOUDFLARE-PLAN.md`, משימות O1–O5.
 
 **בדיקות אחרי המעבר** (אפשר להריץ בטרמינל):
 ```bash
-dig +short www.hagarlushi.com      # Firebase
-dig +short hagarlushi.com          # Firebase
+dig +short NS hagarlushi.com       # שרתי השמות של Cloudflare
+dig +short www.hagarlushi.com      # כתובות Cloudflare
+dig +short hagarlushi.com          # כתובות Cloudflare
 dig +short lp.hagarlushi.com       # אותו יעד כמו לפני המעבר
 dig +short MX hagarlushi.com       # זהה לרשומות שהיו ב-Wix
 dig +short TXT hagarlushi.com      # כולל google-site-verification
@@ -237,6 +243,7 @@ curl -s https://www.hagarlushi.com/sitemap.xml | grep -c "<url>"   # 25
 | אישור מספר הוואטסאפ וההודעה הפותחת | בעל האתר | לא |
 | ייצוא רשומות DNS מ-Wix, כולל `lp` ו-MX | בעל האתר | **כן** |
 | טריגרים ב-GTM לאירועי הלידים החדשים | בעל האתר / Claude עם גישה | לא, אבל בלעדיהם הלידים לא נספרים |
-| יצירת פרויקט Firebase ו-workflow לפריסה מ-GitHub | בעל האתר / Claude | כן |
+| הגדרת Cloudflare: Worker, `_redirects`, `/api/lead`, פריסה מ-GitHub (C1–C5) | Claude | כן |
+| חשבון Cloudflare, העברת DNS וחיבור הדומיין (O1–O5) | בעל האתר, בהדרכת Claude | כן |
 | מדיניות פרטיות ובאנר עוגיות | בעל האתר | החלטה |
 | ייצוא אנשי קשר, פניות וצ'אטים מ-Wix | בעל האתר | לפני ביטול Wix |

@@ -2,7 +2,7 @@
 // Analytics + lead tracking. Goes in <head>.
 //
 // 1. Loads the Google Tag Manager container from the Wix site (site.gtmId), but only on
-//    the real domain, so local testing and Firebase preview links don't pollute the
+//    the real domain, so local testing and Cloudflare preview links (*.workers.dev) don't pollute the
 //    statistics. To test tags on a preview link, open it once with ?gtm=1.
 // 2. Remembers where the visitor came from (utm_*, gclid, fbclid, referrer, landing page)
 //    so every form submission says which campaign or page produced the lead.

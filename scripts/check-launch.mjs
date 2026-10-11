@@ -1,4 +1,4 @@
-// Pre-launch check: run `npm run check-launch` before pointing the domain at Firebase.
+// Pre-launch check: run `npm run check-launch` before pointing the domain at the new host (Cloudflare).
 // Exits with an error if anything that loses leads or statistics is still missing.
 import fs from 'node:fs';
 import { site } from '../src/data/content.mjs';
