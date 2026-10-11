@@ -29,9 +29,15 @@ const FIELDS = {
   full_name: 200, email: 254, phone: 40, message: 5000, form: 20,
   page_url: 2000, page_path: 500, landing_page: 500, referrer: 2000,
   utm_source: 200, utm_medium: 200, utm_campaign: 200, utm_term: 200, utm_content: 200,
-  gclid: 300, fbclid: 300, source_summary: 2500, submitted_at: 40, site: 200,
+  gclid: 300, fbclid: 300, source_summary: 2500, submitted_at: 40, site: 200, consent: 10,
 };
-const FORMS = { home: 'דף הבית', contact: 'דף יצירת קשר' };
+// Forms on www.hagarlushi.com and on the landing pages (lp.hagarlushi.com).
+const FORMS = {
+  home: 'דף הבית', contact: 'דף יצירת קשר',
+  'lp-home': 'דף נחיתה – ראשי', 'lp-architecture': 'דף נחיתה – אדריכלות',
+  'lp-interior-design': 'דף נחיתה – עיצוב פנים', 'lp-renovation': 'דף נחיתה – שיפוץ',
+};
+const isLandingForm = (form) => typeof form === 'string' && form.startsWith('lp-');
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const PHONE_RE = /^[0-9+()\-.\s]{7,40}$/;
 
@@ -67,6 +73,8 @@ export function validateLead(input) {
   if (!lead.phone || !PHONE_RE.test(lead.phone)) return { error: 'invalid_phone' };
   if (!lead.email || !EMAIL_RE.test(lead.email)) return { error: 'invalid_email' };
   if (lead.form && !FORMS[lead.form]) return { error: 'invalid_form' };
+  // The landing-page forms have a required privacy-policy checkbox; enforce it server-side too.
+  if (isLandingForm(lead.form) && lead.consent !== 'yes') return { error: 'missing_consent' };
   return { lead };
 }
 
@@ -75,7 +83,7 @@ function hostOf(url) {
 }
 
 /**
- * OfficeCRM "source": where the lead came from, always starting with "website".
+ * OfficeCRM "source": where the lead came from, starting with "website" (www) or "landing-page" (lp.).
  * e.g. "website / google / cpc", "website / google-ads", "website / facebook", "website / instagram.com",
  * "website / direct". Campaign details go in the notes.
  */
@@ -88,7 +96,7 @@ export function leadSource(lead) {
     const ref = hostOf(lead.referrer || '');
     if (ref && !ref.endsWith('hagarlushi.com')) channel = ref;
   }
-  return `website / ${channel}`.slice(0, 200);
+  return `${isLandingForm(lead.form) ? 'landing-page' : 'website'} / ${channel}`.slice(0, 200);
 }
 
 /** OfficeCRM "notes": everything else useful to whoever calls the lead back (Hebrew labels). */
@@ -104,6 +112,8 @@ export function leadNotes(lead) {
   if (lead.gclid) lines.push(`Google Ads gclid: ${lead.gclid}`);
   if (lead.fbclid) lines.push(`Facebook fbclid: ${lead.fbclid}`);
   if (lead.referrer) lines.push(`הגיע מ: ${lead.referrer}`);
+  if (lead.site) lines.push(`אתר: ${lead.site}`);
+  if (lead.consent === 'yes') lines.push('אישור מדיניות פרטיות: כן');
   if (lead.submitted_at) lines.push(`נשלח: ${lead.submitted_at}`);
   const notes = lines.join('\n');
   return notes.length > MAX_NOTES ? `${notes.slice(0, MAX_NOTES - 1)}…` : notes;

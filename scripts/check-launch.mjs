@@ -3,6 +3,8 @@
 // Items that live only in a dashboard (Worker secret, DNS, GTM) are listed as manual checks.
 import fs from 'node:fs';
 import { site } from '../src/data/content.mjs';
+import { lpSite, lpUsedMedia, lpImg } from '../src/data/lp.mjs';
+import { pendingDecisions } from '../src/data/url-inventory.mjs';
 
 const results = [];
 const check = (ok, label, fix) => results.push({ ok, label, fix });
@@ -57,6 +59,32 @@ const media = fs.existsSync('public/media') ? fs.readdirSync('public/media').len
 check(media > 100, `Images are stored locally (${media} files in public/media)`,
   'Run "npm run fetch-media" or the "Copy images from Wix" GitHub Action');
 
+// --- Landing pages (lp.hagarlushi.com, second Worker)
+let wrl = null;
+try { wrl = readJsonc('wrangler.lp.jsonc'); } catch { /* reported below */ }
+check(Boolean(wrl) && wrl.name !== wr?.name, 'Landing-page Worker config exists (wrangler.lp.jsonc, separate Worker)', 'Restore wrangler.lp.jsonc');
+check(wrl?.assets?.directory === './dist-lp' && wrl?.assets?.html_handling === 'force-trailing-slash',
+  'Landing pages keep the WordPress URLs with a trailing slash (dist-lp, force-trailing-slash)', 'Set assets.directory "./dist-lp" and html_handling "force-trailing-slash"');
+check((wrl?.assets?.run_worker_first || []).includes('/api/*') && wrl?.main === 'worker/index.js',
+  'Landing-page forms use the same lead endpoint (/api/* → worker/index.js)', 'Set "main": "worker/index.js" and run_worker_first ["/api/*"] in wrangler.lp.jsonc');
+const wrlText = fs.existsSync('wrangler.lp.jsonc') ? fs.readFileSync('wrangler.lp.jsonc', 'utf8') : '';
+check(!/https?:\/\/[^\s"]*\/api\/leads|Bearer\s+\w/i.test(wrlText) && !wrl?.vars?.CRM_WEBHOOK_URL && !wrl?.vars?.LEADS_WEBHOOK_API_KEY,
+  'No CRM address or key in wrangler.lp.jsonc', 'Remove them and set them as secrets on hagarlushi-lp');
+const lpPagesBuilt = ['index.html', 'architecture/index.html', 'interior-design/index.html', 'renovation/index.html',
+  'thankyou/index.html', 'privacy/index.html', 'accessibility-statement/index.html'].filter((f) => fs.existsSync(`dist-lp/${f}`)).length;
+check(lpPagesBuilt === 7, `All 7 landing pages are built (${lpPagesBuilt}/7 in dist-lp)`, 'Run npm run build');
+const missingMedia = lpUsedMedia().filter((m) => lpImg(m).local === false);
+check(missingMedia.length === 0, `Landing-page images stored locally (${lpUsedMedia().length - missingMedia.length}/${lpUsedMedia().length})`,
+  'Run the "Copy landing-page images" GitHub Action (fetch-lp-media.yml)');
+check(lpSite.siteKitTagId === 'GT-TQKZV73G', 'Landing-page Google tag unchanged (GT-TQKZV73G, from Site Kit)', 'lpSite.siteKitTagId must stay GT-TQKZV73G unless the owner approves');
+
+// --- Owner decisions (docs/LANDING-PAGE-INVENTORY.md)
+const open = pendingDecisions();
+check(open.length === 0, `Every redirect of an old URL is approved by the owner (${open.length} open)`,
+  `Owner decision needed, then set approved: true in src/data/url-inventory.mjs (or recreate the page):\n${open.map((e) => `      - ${e.host} ${e.url} → ${e.to}: ${e.reason}`).join('\n')}`);
+check(lpSite.popupSendsToCrm === true || lpSite.popupDecision === 'whatsapp-only',
+  'WhatsApp pop-up lead handling decided (send to OfficeCRM, or WhatsApp only)', 'Owner decision: the pop-up has no email field but OfficeCRM requires one (inventory, decision D1)');
+
 let failed = 0;
 for (const r of results) {
   console.log(`${r.ok ? '✔' : '✘'} ${r.label}`);
@@ -65,10 +93,13 @@ for (const r of results) {
 
 console.log(`
 Manual checks (cannot be verified from the repository):
-  ☐ Worker secrets set on hagarlushi: CRM_WEBHOOK_URL (OfficeCRM leads webhook) and LEADS_WEBHOOK_API_KEY (bare key)
+  ☐ Worker secrets set on hagarlushi AND hagarlushi-lp: CRM_WEBHOOK_URL (OfficeCRM leads webhook) and LEADS_WEBHOOK_API_KEY (bare key)
+  ☐ WordPress admin checked: what the Elementor forms/pop-up did on submit (email, webhook, redirect) — inventory section 4
   ☐ A test lead from each form on the workers.dev preview was created in OfficeCRM (and deleted afterwards)
   ☐ DNS: every Wix record copied to Cloudflare, including lp. and office. (OfficeCRM), MX, SPF/DKIM/DMARC
   ☐ GTM: triggers for generate_lead / whatsapp_click / phone_click / email_click published
+  ☐ GTM: Google Ads conversion on lp still fires (lp /thankyou/ page view, or moved to generate_lead)
+  ☐ Google Ads / Meta final URLs checked against the inventory (Wix landing pages /דף-נחיתה-*, /דףנחיתה2)
 See LAUNCH.md and docs/CLOUDFLARE-PLAN.md.`);
 console.log(failed ? `\n${failed} repository item(s) to fix before launch.` : '\nRepository checks passed.');
 process.exit(failed ? 1 : 0);

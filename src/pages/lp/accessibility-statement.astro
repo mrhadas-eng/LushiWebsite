@@ -1,0 +1,11 @@
+---
+// lp.hagarlushi.com/accessibility-statement/  (WordPress page 9) – text exported unchanged.
+import LpBase from '../../layouts/LpBase.astro';
+import { lpLegal } from '../../data/lp.mjs';
+import { legalHtml } from '../../lib/lp-legal.mjs';
+const page = lpLegal.find((p) => p.path === '/accessibility-statement/')!;
+const html = legalHtml(page.wpId);
+---
+<LpBase title={page.title} path={page.path}>
+  <article class="lp-legal">{html ? <Fragment set:html={html} /> : <p>התוכן לא נמצא (src/data/lp/wp-pages.json).</p>}</article>
+</LpBase>

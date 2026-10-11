@@ -9,6 +9,7 @@ Static Astro 5 site replacing the Wix site at https://www.hagarlushi.com (Hebrew
 
 ## Where things are
 - All content and settings: `src/data/content.mjs`.
+- Landing pages and URL inventory (every old URL, decisions D1–D8): `docs/LANDING-PAGE-INVENTORY.md`.
 - Pre-launch / DNS-migration review brief (every setting, ID, URL, redirect, tracking event and the lead payload): `docs/MIGRATION-REVIEW.md`.
 - Owner-facing checklist (Hebrew): `LAUNCH.md`.
 - Commands: `npm install`, `npm run dev`, `npm run build`, `npm test` (after a build), `npm run check-launch`, `npm run preview:cf` (local Cloudflare runtime; needs a git-ignored `.dev.vars`), `npx wrangler deploy --dry-run`.
@@ -18,6 +19,7 @@ Static Astro 5 site replacing the Wix site at https://www.hagarlushi.com (Hebrew
 - Do not change page URLs (they match Wix for SEO), the GTM container ID (`GTM-KJRR2DNT`), or the Hebrew text without the owner's approval.
 - Never commit secrets (the repo is public). OfficeCRM is reached through two Worker secrets: `CRM_WEBHOOK_URL` (webhook address) and `LEADS_WEBHOOK_API_KEY` (bare key; the Worker sends `Authorization: Bearer <key>`). Neither value may appear in the repo, the built site, docs or logs, and tests enforce this for the address. Tests use mocks only: never send test leads to the live CRM.
 - `office.hagarlushi.com` is OfficeCRM: keep its DNS record exactly as is.
-- `lp.hagarlushi.com` is a separate WordPress/Elementor site and is out of scope. Its DNS record must be preserved exactly in any DNS change. Don't replace or redirect it without an approved plan.
+- `lp.hagarlushi.com` (WordPress today) is rebuilt in this repo as a second Worker, `hagarlushi-lp`. The source is `src/pages/lp/`, `src/data/lp.mjs`, `wrangler.lp.jsonc`; the build output is `dist-lp/`. Keep its URLs exactly as they are (with a trailing slash), and its tags `GTM-KJRR2DNT` and `GT-TQKZV73G`. Its DNS record (A 69.62.113.1) must be preserved exactly until the owner approves cutover (docs/CLOUDFLARE-PLAN.md O6). Never redirect lp pages to the homepage, and don't switch off WordPress.
+- Every old URL is listed in `src/data/url-inventory.mjs` and `docs/LANDING-PAGE-INVENTORY.md`. Tests fail if a page or redirect is added or removed without updating it. Set `approved: true` only after the owner approves.
 - OfficeCRM is out of scope: don't change it. The contract (fields `name/phone/email/source`, optional `notes/referrerName`, success = HTTP 2xx + `success: true`) is documented in `docs/CLOUDFLARE-PLAN.md`; the mapping lives in `toCrmPayload` / `leadSource` / `leadNotes` in `worker/index.js`.
 - The owner communicates in Hebrew and English and isn't a developer: give step-by-step instructions for anything they must do in a dashboard.

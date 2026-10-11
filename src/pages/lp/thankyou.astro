@@ -1,0 +1,28 @@
+---
+// lp.hagarlushi.com/thankyou/  (WordPress page 244). Kept at the same URL: the existing Google Ads
+// conversion in GTM fires on this page view. generate_lead is pushed only after a confirmed lead.
+import LpBase from '../../layouts/LpBase.astro';
+import { lpThankYou, lpSite } from '../../data/lp.mjs';
+const wa = lpSite.whatsapp;
+const waUrl = `https://api.whatsapp.com/send/?phone=${wa.number}&text=${encodeURIComponent(wa.message)}&type=phone_number&app_absent=0`;
+---
+<LpBase title={lpThankYou.title} path={lpThankYou.path}>
+  <section class="lp-ty">
+    <svg viewBox="0 0 52 52" width="64" height="64" aria-hidden="true"><circle cx="26" cy="26" r="24" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 27l7 7 15-16" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>
+    <h1>{lpThankYou.heading}</h1>
+    <p>{lpThankYou.text}</p>
+    <a class="lp-ty-wa" href={waUrl} target="_blank" rel="noopener" data-track="lp_thankyou">{lpThankYou.whatsappButton}</a>
+  </section>
+</LpBase>
+<script>
+  import { recordLeadConversion } from '../../lib/lead-client.js';
+  window.dataLayer = window.dataLayer || [];
+  recordLeadConversion(sessionStorage, window.dataLayer);
+</script>
+<style>
+  .lp-ty { min-height: 55vh; display: grid; justify-items: center; align-content: center; gap: 16px; text-align: center; padding: 60px 20px 90px; color: var(--lp-ink); }
+  .lp-ty h1 { margin: 0; font-size: 50px; font-weight: 500; }
+  .lp-ty p { margin: 0; font-size: 20px; }
+  .lp-ty-wa { margin-top: 10px; display: inline-block; background: #4caf50; color: #fff; text-decoration: none; padding: 16px 30px; border-radius: 36px; font-size: 18px; font-weight: 600; }
+  @media (max-width: 767px) { .lp-ty h1 { font-size: 34px; } }
+</style>

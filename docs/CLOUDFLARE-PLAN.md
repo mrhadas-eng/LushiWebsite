@@ -17,6 +17,7 @@ CRM webhook URL secret on the free plan; every branch gets a preview URL.
 | C3 Lead endpoint → OfficeCRM | ✅ Done (code). ⏳ Live test lead pending (O3) | `POST /api/lead` translates to the OfficeCRM contract (Bearer auth, `name/phone/email/source/notes`) and succeeds only on `success: true`. `npm test`: 41 tests including a mock OfficeCRM server. Browser test on the local Cloudflare runtime with a mock OfficeCRM: 40/40 checks, desktop and mobile |
 | C4 Docs + tracking guard | ✅ Done | GTM loads only on `hagarlushi.com` hosts (verified: not requested on the local host) |
 | C5 Deploy pipeline | ⏳ Owner (dashboard) | See O3 below |
+| C6 Landing pages (`lp.`) rebuilt | ✅ Done (code). ⏳ Preview + acceptance (O6) and owner decisions D1–D8 | Second Worker `hagarlushi-lp` (`wrangler.lp.jsonc`, `dist-lp/`). All 7 WordPress pages at their exact URLs, same copy/images/layout, forms → `/api/lead`. `npm test` 59/59; browser 66/66 (desktop + mobile, mock OfficeCRM); `wrangler deploy -c wrangler.lp.jsonc --dry-run` valid (258 assets). Full URL list and decisions: **docs/LANDING-PAGE-INVENTORY.md** |
 
 ---
 
@@ -27,12 +28,24 @@ browser ──> www.hagarlushi.com (Cloudflare)
               ├─ POST /api/lead -> Worker (worker/index.js) -> CRM webhook (secret CRM_WEBHOOK_URL)
               └─ everything else -> static assets from ./dist (Astro build), _redirects, _headers
 hagarlushi.com -> 301 -> https://www.hagarlushi.com   (Cloudflare Redirect Rule)
-lp.hagarlushi.com -> unchanged WordPress/Elementor host (DNS record copied exactly from Wix)
+lp.hagarlushi.com -> today: WordPress (A 69.62.113.1, copied exactly at the nameserver switch)
+                     after acceptance (O6): Worker hagarlushi-lp
+              ├─ POST /api/lead -> the same worker/index.js -> OfficeCRM (its own copy of the two secrets)
+              └─ everything else -> static assets from ./dist-lp, lp-public/_redirects, _headers
+office.hagarlushi.com -> OfficeCRM, never changed
 ```
+
+One `npm run build` produces both sites: Astro builds `src/pages/**` (www) and `src/pages/lp/**`, then
+`scripts/split-lp.mjs` moves the landing pages to `dist-lp/` (at the root) with their images (`lp-media/`), so nothing
+from lp. is served on www and vice versa. In `npm run dev` the landing pages are at `http://localhost:4321/lp/…`.
 
 ### Files
 | File | Purpose |
 |---|---|
+| `wrangler.lp.jsonc` | Worker `hagarlushi-lp`: `assets.directory ./dist-lp`, `html_handling: force-trailing-slash` (keeps the WordPress URLs, e.g. `/architecture/`), same Worker code and 404 handling. No secrets |
+| `src/pages/lp/`, `src/components/lp/`, `src/layouts/LpBase.astro`, `src/data/lp.mjs` | The landing pages; all content in `lp.mjs` |
+| `lp-public/_redirects`, `lp-public/_headers` | WordPress-only URLs → 301; cache rules for lp |
+| `src/data/url-inventory.mjs` | Every old URL and its status (checked by `test/inventory.test.mjs` and `check-launch`) |
 | `wrangler.jsonc` | Worker name `hagarlushi`, `assets.directory ./dist`, `html_handling: drop-trailing-slash` (keeps Wix URLs), `not_found_handling: 404-page`, `run_worker_first: ["/api/*"]`. No secrets |
 | `worker/index.js` | `/api/lead`: validates, translates to OfficeCRM and forwards. Everything else goes straight to the static assets |
 | `src/lib/lead-client.js` | Browser side: send, and redirect / count only after confirmation |
@@ -48,15 +61,17 @@ lp.hagarlushi.com -> unchanged WordPress/Elementor host (DNS record copied exact
 | `npm test` | Worker unit tests + checks on the built site (run `npm run build` first) |
 | `npm run check-launch` | Repository launch checks + list of manual dashboard checks |
 | `npx wrangler deploy --dry-run` | Validates the Cloudflare config without uploading |
-| `npm run deploy` | Build + deploy to Cloudflare. **Only with the owner's approval** |
+| `npm run preview:cf:lp` | Same for the landing pages (`wrangler dev -c wrangler.lp.jsonc`) |
+| `npx wrangler deploy -c wrangler.lp.jsonc --dry-run` | Validates the landing-page Worker |
+| `npm run deploy` / `npm run deploy:lp` | Build + deploy www / lp. **Only with the owner's approval** |
 
 ### Lead endpoint (`POST /api/lead`) → OfficeCRM
 
 **Browser → Worker.** The forms send the website payload (docs/MIGRATION-REVIEW.md §7) to `/api/lead`. The Worker accepts
 only same-origin `POST` (`Origin` equals the Worker's own origin; `Sec-Fetch-Site` same-origin),
 `Content-Type: application/json`, body ≤ 10 KB. Validation: **name, phone and email required** (OfficeCRM requires them;
-both forms now require all three), email format, phone `[0-9+()-. ]{7,40}`, `form` is `home` or `contact`,
-length limit per field. If the honeypot field `website` is filled, the Worker replies `{ok:true}` and sends **nothing**.
+both forms now require all three), email format, phone `[0-9+()-. ]{7,40}`, `form` is `home`, `contact` or one of the `lp-*` forms,
+length limit per field. Landing-page forms (`form` = `lp-home`, `lp-architecture`, `lp-interior-design`, `lp-renovation`) must also send `consent: "yes"` (else 400 `missing_consent`); their `source` starts with `landing-page /` instead of `website /`. If the honeypot field `website` is filled, the Worker replies `{ok:true}` and sends **nothing**.
 
 **Worker → OfficeCRM** (the existing OfficeCRM leads webhook; OfficeCRM itself isn't changed):
 ```
@@ -91,7 +106,8 @@ or a non-https URL, give 503 (`not_configured`) and nothing is sent. The browser
 `generate_lead` **only** after `{ok:true}`. On failure it keeps the typed data and shows the phone / WhatsApp
 alternatives. Logs contain only a reason code or the `leadId`: never lead data, the URL or the key.
 
-### Secrets (Cloudflare → Workers → hagarlushi → Settings → Variables and Secrets)
+### Secrets (Cloudflare → Workers → hagarlushi **and** hagarlushi-lp → Settings → Variables and Secrets)
+Each Worker has its own secrets: set the same two values on both.
 | Name | Type | Value format |
 |---|---|---|
 | `CRM_WEBHOOK_URL` | **Secret** | The full OfficeCRM leads-webhook address: `https://<OfficeCRM host>/api/leads/webhook` |
@@ -158,6 +174,17 @@ Implemented exactly as specified by the owner (2026-10-11). Confirm during the O
    7. Delete the test leads in OfficeCRM.
 4. Click through the pages on the preview address, including a few old Wix URLs from docs/MIGRATION-REVIEW.md §5.
 
+### O3b. Deploy the landing pages to a preview address (WordPress stays live)
+1. Workers & Pages → Create → **Import a repository** → `mrhadas-eng/LushiWebsite` again, as a second project.
+   - Name: `hagarlushi-lp`. Build command: `npm run build`. Deploy command: `npx wrangler deploy -c wrangler.lp.jsonc`.
+   - Non-production branch deploy command: `npx wrangler versions upload -c wrangler.lp.jsonc`.
+2. Add the same two secrets to **hagarlushi-lp** (steps as in O3.2).
+3. On `https://hagarlushi-lp.<account>.workers.dev/architecture/?utm_source=test&utm_campaign=lp-migration`, send one
+   clearly marked test lead (name `בדיקה – דף נחיתה`), with the privacy box ticked. Expected: `/thankyou/` appears; in OfficeCRM
+   the source is `landing-page / test` and the notes say `טופס: דף נחיתה – אדריכלות`, the page and `אישור מדיניות פרטיות: כן`.
+   Repeat for `/`, `/interior-design/`, `/renovation/`. Delete the test leads.
+4. Compare each page side by side with the WordPress page on a phone and a computer.
+
 ### O4. Switch nameservers (zero downtime: records are identical, only the DNS provider changes)
 1. At the registrar, replace `ns14.wixdns.net` / `ns15.wixdns.net` with the two Cloudflare nameservers.
 2. Wait until Cloudflare shows the zone as **Active** (minutes to hours).
@@ -174,24 +201,21 @@ Implemented exactly as specified by the owner (2026-10-11). Confirm during the O
 
 ---
 
-## Landing pages (`lp.hagarlushi.com`): out of scope for this migration
+### O6. Move `lp.hagarlushi.com` to the new Worker (only after acceptance)
+Preconditions, all required: O3b passed for all 4 forms; decisions D1 (pop-up), D2 (WhatsApp number), D5 (privacy text)
+made (docs/LANDING-PAGE-INVENTORY.md §7); the WordPress form actions checked in WordPress admin (Elementor → Submissions /
+form "Actions After Submit"); the Google Ads conversion checked in GTM preview on the workers.dev address.
+1. Workers → hagarlushi-lp → Settings → Domains & Routes → **Add Custom Domain** → `lp.hagarlushi.com`.
+   This replaces the `lp` A record (69.62.113.1).
+2. Check the 7 URLs, send one real test lead, check the Ads conversion in Google Ads (it can take hours).
+3. Rollback: remove the custom domain and re-add `A lp 69.62.113.1` (DNS only). Keep WordPress running for at least a month.
 
-Nothing in this repository builds, replaces or redirects the landing page. It stays on its WordPress/Elementor
-host, and the only requirement here is to **copy its DNS record exactly** (O1, O2). Migrating it would be a
-separate project needing the owner's decision. What we know about it (checked 2026-10-08):
-
-- URLs: `https://lp.hagarlushi.com/` and the thank-you page `https://lp.hagarlushi.com/thankyou/`. The Google Ads
-  conversion (`AW-16872313549`, label `-2jHCIbIu50aEM2lrO0-`) fires **only** on that thank-you URL.
-- Lead capture: an Elementor form "תאמו שיחת ייעוץ" (name, phone, email, privacy-policy consent checkbox), and a
-  WhatsApp popup that asks for name and phone first. Where these leads go (email/CRM) is configured inside WordPress and
-  isn't visible from outside.
-- Tracking: the same GTM container; GA4 and Clarity are blocked there by a GTM rule, and the Meta Pixel fires.
-- It has its own privacy policy page.
-
-If it's ever migrated: rebuild it as an Astro page in this repo with the same form fields and consent, post to `/api/lead`
-with `form: "lp"`, keep the URL `lp.hagarlushi.com/thankyou/` (or update the Ads conversion trigger first), test on a
-preview address, and only then repoint the `lp` DNS record.
+## DNS: proposed changes (documentation only; nothing has been changed)
+See docs/LANDING-PAGE-INVENTORY.md §6 for the record-by-record table. In short: copy every record exactly at the
+nameserver switch (O4), including `lp` (A 69.62.113.1) and **`office` (A 35.219.200.106, never changed)**; then `www` and the
+apex move to Worker `hagarlushi` (O5); `lp` moves to Worker `hagarlushi-lp` only after O6's preconditions;
+`en`/`he` (Wix error pages today) are the owner's call (D7).
 
 ## Limits (free plan)
-- Static asset requests: free and unlimited. Worker requests (only `/api/lead`): 100,000/day.
+- Static asset requests: free and unlimited. Worker requests (only `/api/lead`, both Workers together): 100,000/day.
 - `_redirects`: 2,000 static + 100 dynamic rules. The site has about 1,420 deployed files; full-size originals in `originals/` are never deployed.

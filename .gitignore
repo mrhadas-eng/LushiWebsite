@@ -8,3 +8,4 @@ dist/
 # Local Cloudflare secrets for `wrangler dev` (never commit)
 .dev.vars
 .wrangler/
+dist-lp/

@@ -1,0 +1,79 @@
+---
+// Landing-page consultation form ("מעוניינים בשיחת ייעוץ?"): name, phone, email and the required
+// privacy-policy checkbox, as on the WordPress pages. Sends to /api/lead (same Worker contract as the
+// main site, form = lp-<page>) and goes to /thankyou/ ONLY after OfficeCRM confirmed the lead.
+import { lpShared } from '../../data/lp.mjs';
+import { lpHref } from '../../lib/lp-paths.mjs';
+interface Props { form: string }
+const { form } = Astro.props;
+const L = lpShared.formLabels;
+---
+<form class="lp-form" novalidate data-form={form} data-thanks={lpHref('/thankyou/')}>
+  <input type="text" name="website" class="visually-hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
+  <div class="lp-form-row">
+    <label class="lp-field"><input type="text" name="full_name" required autocomplete="name" placeholder=" " /><span>{L.name} <b aria-hidden="true">*</b></span></label>
+    <label class="lp-field"><input type="tel" name="phone" required autocomplete="tel" inputmode="tel" pattern="[0-9+()\-. ]{7,40}" placeholder=" " /><span>{L.phone} <b aria-hidden="true">*</b></span></label>
+    <label class="lp-field"><input type="email" name="email" required autocomplete="email" placeholder=" " /><span>{L.email} <b aria-hidden="true">*</b></span></label>
+    <button type="submit" class="lp-submit">{L.submit}</button>
+  </div>
+  <label class="lp-consent"><input type="checkbox" name="consent" value="yes" required /> <span>{lpShared.consentBefore}<a href={lpHref('/privacy/')} target="_blank" rel="noopener">{lpShared.consentLink}</a></span></label>
+  <p class="lp-form-error" role="alert" hidden>
+    השליחה נכשלה. אפשר לנסות שוב, או לכתוב לנו בוואטסאפ דרך הכפתור בפינת המסך.
+  </p>
+</form>
+
+<style is:global>
+  .lp-form { display: grid; gap: 14px; }
+  .lp-form-row { display: grid; grid-template-columns: repeat(3, 1fr) 25%; gap: 10px; align-items: stretch; }
+  .lp-field { position: relative; display: block; }
+  .lp-field input { width: 100%; height: 47px; border: 1px solid rgb(105, 114, 125); border-radius: 4px; background: #fff; padding: 16px 12px 4px; font: inherit; font-size: 16px; color: var(--lp-ink); }
+  .lp-field span { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); font-family: 'Noto Sans Hebrew', var(--lp-font); font-size: 17px; color: #111; pointer-events: none; transition: all .15s; }
+  .lp-field b { color: #c0392b; font-weight: 400; }
+  .lp-field input:focus + span, .lp-field input:not(:placeholder-shown) + span { top: 10px; font-size: 11px; }
+  .lp-field input:user-invalid { border-color: #c0392b; }
+  .lp-submit { height: 47px; border: 0; border-radius: 36px; background: var(--lp-ink); color: #fff; font-family: 'Noto Sans Hebrew', var(--lp-font); font-size: 18px; font-weight: 600; cursor: pointer; }
+  .lp-submit:hover { background: #333; }
+  .lp-submit[disabled] { opacity: .6; cursor: wait; }
+  .lp-consent { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+  .lp-consent input { width: 16px; height: 16px; margin: 0; }
+  .lp-consent a { text-decoration: underline; }
+  .lp-form-error { margin: 0; background: #fff; color: #b3261e; padding: 8px 12px; border-radius: 4px; font-size: 15px; }
+  @media (max-width: 767px) { .lp-form-row { grid-template-columns: 1fr; } }
+</style>
+
+<script>
+  import { sendLead, submitLead } from '../../lib/lead-client.js';
+  const ATTR = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid', 'referrer', 'landing_page'];
+  document.querySelectorAll<HTMLFormElement>('.lp-form').forEach((form) => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = form.querySelector<HTMLElement>('.lp-form-error')!;
+      err.hidden = true;
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+      const fd = new FormData(form);
+      let a: Record<string, string> = {};
+      try { a = JSON.parse(sessionStorage.getItem('hl_attribution') || '{}'); } catch {}
+      const lead: Record<string, string> = {
+        full_name: String(fd.get('full_name') || '').trim(),
+        phone: String(fd.get('phone') || '').trim(),
+        email: String(fd.get('email') || '').trim(),
+        consent: fd.get('consent') === 'yes' ? 'yes' : '',
+        form: form.dataset.form || '',
+        page_url: location.href.split('#')[0],
+        page_path: decodeURI(location.pathname),
+        submitted_at: new Date().toISOString(),
+        site: location.hostname,
+      };
+      for (const k of ATTR) if (a[k]) lead[k] = k === 'landing_page' ? decodeURI(a[k]) : a[k];
+      for (const k of Object.keys(lead)) if (!lead[k]) delete lead[k];
+      const btn = form.querySelector<HTMLButtonElement>('.lp-submit')!;
+      btn.disabled = true;
+      const result = await submitLead({
+        lead, honeypot: String(fd.get('website') || '').trim(), formLocation: form.dataset.form,
+        storage: sessionStorage, navigate: (p: string) => { location.href = p; },
+        thanksPath: form.dataset.thanks, send: (l: Record<string, string>) => sendLead(l),
+      });
+      if (result === 'failed') { err.hidden = false; btn.disabled = false; }
+    });
+  });
+</script>

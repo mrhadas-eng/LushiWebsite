@@ -1,0 +1,12 @@
+# lp.hagarlushi.com – WordPress-only URLs that have no page of their own anymore (301).
+# Every real landing page keeps its exact URL (see docs/LANDING-PAGE-INVENTORY.md).
+/wp-sitemap.xml /sitemap.xml 301
+/wp-sitemap-posts-page-1.xml /sitemap.xml 301
+/wp-sitemap-users-1.xml /sitemap.xml 301
+/sample-page/ / 301
+/sample-page / 301
+/feed/ / 301
+/comments/feed/ / 301
+# Author archives (WordPress artifacts listed in the old sitemap) – pending owner approval
+/author/gal/ / 301
+/author/roy/ / 301

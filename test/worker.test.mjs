@@ -253,3 +253,49 @@ test('round trip with a wrong key: OfficeCRM 401 → not confirmed', async () =>
   const res = await handleLead(req(SITE_LEAD), { CRM_WEBHOOK_URL: MOCK_URL, LEADS_WEBHOOK_API_KEY: 'wrong' });
   assert.equal(res.status, 502);
 });
+
+// ---------------------------------------------------------------- landing pages (lp.hagarlushi.com)
+
+const LP_ORIGIN = 'https://lp.hagarlushi.com';
+const LP_LEAD = {
+  full_name: 'ישראל ישראלי', email: 'test@example.com', phone: '050-1234567', consent: 'yes',
+  form: 'lp-architecture', page_url: `${LP_ORIGIN}/architecture/?utm_source=google&utm_medium=cpc&gclid=abc123`,
+  page_path: '/architecture/', landing_page: '/architecture/', utm_source: 'google', utm_medium: 'cpc',
+  utm_campaign: 'arch', gclid: 'abc123', site: 'lp.hagarlushi.com', submitted_at: '2026-10-11T09:00:00.000Z',
+};
+const lpReq = (body) => new Request(`${LP_ORIGIN}/api/lead`, {
+  method: 'POST', body: JSON.stringify(body),
+  headers: { Origin: LP_ORIGIN, 'Content-Type': 'application/json', 'Sec-Fetch-Site': 'same-origin' },
+});
+
+test('landing-page forms: accepted from lp.hagarlushi.com, source "landing-page / …", page and consent in the notes', async () => {
+  for (const form of ['lp-home', 'lp-architecture', 'lp-interior-design', 'lp-renovation']) {
+    const c = crm();
+    const res = await handleLead(lpReq({ ...LP_LEAD, form }), ENV, { fetchImpl: c.impl });
+    assert.equal(res.status, 200, form);
+    const sent = JSON.parse(c.calls[0].init.body);
+    assert.deepEqual(Object.keys(sent).sort(), ['email', 'name', 'notes', 'phone', 'source']);
+    assert.equal(sent.source, 'landing-page / google / cpc');
+    for (const s of ['דף נחיתה', 'נשלח מהדף: /architecture/', 'utm_campaign=arch', 'gclid: abc123', 'אתר: lp.hagarlushi.com', 'אישור מדיניות פרטיות: כן'])
+      assert.ok(sent.notes.includes(s), `${form}: notes missing ${s}`);
+  }
+});
+
+test('landing-page forms: the privacy-policy consent is required server-side', async () => {
+  for (const consent of [undefined, '', 'no']) {
+    const c = crm();
+    const res = await handleLead(lpReq({ ...LP_LEAD, consent }), ENV, { fetchImpl: c.impl });
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error, 'missing_consent');
+    assert.equal(c.calls.length, 0, 'nothing sent to the CRM without consent');
+  }
+  assert.equal(validateLead({ ...LP_LEAD, form: 'lp-unknown' }).error, 'invalid_form');
+});
+
+test('landing-page forms: CRM failure is not confirmed (no thank-you page)', async () => {
+  for (const c of [crm(500, '{}'), crm(200, JSON.stringify({ success: false }))]) {
+    const res = await handleLead(lpReq(LP_LEAD), ENV, { fetchImpl: c.impl });
+    assert.equal(res.status, 502);
+    assert.equal((await res.json()).ok, false);
+  }
+});
