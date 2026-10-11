@@ -30,8 +30,8 @@ npm run preview:cf   # build + local Cloudflare runtime with /api/lead (http://l
 npm test             # Worker tests + checks on the built site (run `npm run build` first)
 ```
 
-For `preview:cf`, create a git-ignored `.dev.vars` file with a test webhook, e.g.
-`CRM_WEBHOOK_URL=https://webhook.site/<your-id>`.
+For `preview:cf`, create a git-ignored `.dev.vars` file pointing at a **mock** server (never the real CRM key):
+`CRM_WEBHOOK_URL=http://127.0.0.1:8799/api/leads/webhook` and `LEADS_WEBHOOK_API_KEY=local-test-key`.
 
 ## Images
 
@@ -39,7 +39,7 @@ All images and the font are already copied from Wix into the repository (`public
 
 ## Leads and analytics
 
-- **Contact forms** POST each lead as JSON to `/api/lead` (`worker/index.js`). The Worker validates it and forwards it to the CRM webhook, whose URL is the Cloudflare secret `CRM_WEBHOOK_URL` (never in the repo). The visitor goes to `/thankyou` only when the CRM confirms; otherwise the form keeps the input and shows the phone / WhatsApp. Each lead includes the page it was sent from and the visit's source (utm tags, gclid, fbclid, referrer). Contract and payload: `docs/CLOUDFLARE-PLAN.md` and `docs/MIGRATION-REVIEW.md` §7.
+- **Contact forms** POST each lead as JSON to `/api/lead` (`worker/index.js`). The Worker validates it, maps it to the OfficeCRM leads-webhook contract (`name`, `phone`, `email`, `source`, `notes`) and sends it with `Authorization: Bearer`. The address and key are the Cloudflare secrets `CRM_WEBHOOK_URL` and `LEADS_WEBHOOK_API_KEY`, never in this public repo. The visitor goes to `/thankyou` only when OfficeCRM replies `success: true`; otherwise the form keeps the input and shows the phone / WhatsApp. Details: `docs/CLOUDFLARE-PLAN.md`.
 - **Analytics** use the Wix site's Google Tag Manager container (`gtmId`), so GA4, Google Ads, the Meta Pixel and Clarity carry over. GTM only loads on hagarlushi.com; add `?gtm=1` to a preview URL to test tags.
 - **Lead events** pushed to the dataLayer: `generate_lead`, `whatsapp_click`, `phone_click`, `email_click` (see `src/components/Tracking.astro`).
 - **WhatsApp** floating button: `site.whatsapp` in `src/data/content.mjs`.

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 const DIST = 'dist';
 const built = fs.existsSync(path.join(DIST, 'index.html'));
@@ -53,10 +54,26 @@ test('thank-you and 404 pages are noindex; canonical URLs use www and no trailin
   assert.equal(decodeURI(canon), 'https://www.hagarlushi.com/אודות');
 });
 
-test('no secrets or webhook URLs in the built site', { skip: !built && 'run npm run build first' }, () => {
-  const files = fs.readdirSync(DIST, { recursive: true }).filter((f) => /\.(html|js)$/.test(f));
+// Built from pieces so this file itself never contains the full address.
+const OFFICE_WEBHOOK = ['office', 'hagarlushi.com/api/leads'].join('.');
+
+test('no CRM address, key or auth header in the built site', { skip: !built && 'run npm run build first' }, () => {
+  const files = fs.readdirSync(DIST, { recursive: true }).filter((f) => /\.(html|js|css|xml|txt|json)$/.test(f));
+  assert.ok(files.length > 20);
   for (const f of files) {
     const s = fs.readFileSync(path.join(DIST, f), 'utf8');
-    assert.ok(!/CRM_WEBHOOK_URL|web3forms|hooks\.zapier|hook\.\w+\.make\.com/i.test(s), f);
+    assert.ok(!s.includes(OFFICE_WEBHOOK), `CRM address in ${f}`);
+    assert.ok(!/api\/leads\/webhook|LEADS_WEBHOOK_API_KEY|CRM_WEBHOOK_URL|Authorization|Bearer\s/i.test(s), `CRM config in ${f}`);
+    assert.ok(!/web3forms|hooks\.zapier|hook\.\w+\.make\.com/i.test(s), `old webhook in ${f}`);
   }
+});
+
+test('the CRM webhook address is not committed anywhere in the repository', () => {
+  const tracked = execSync('git ls-files', { encoding: 'utf8' }).split('\n')
+    .filter((f) => f && !/\.(png|jpe?g|webp|woff2?|gif|ico)$/i.test(f) && !f.startsWith('originals/') && !f.startsWith('public/media/'));
+  for (const f of tracked) {
+    if (!fs.existsSync(f)) continue;
+    assert.ok(!fs.readFileSync(f, 'utf8').includes(OFFICE_WEBHOOK), `CRM address committed in ${f}`);
+  }
+  assert.ok(!tracked.includes('.dev.vars'), '.dev.vars must stay git-ignored');
 });

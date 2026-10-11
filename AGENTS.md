@@ -16,7 +16,8 @@ Static Astro 5 site replacing the Wix site at https://www.hagarlushi.com (Hebrew
 
 ## Rules
 - Do not change page URLs (they match Wix for SEO), the GTM container ID (`GTM-KJRR2DNT`), or the Hebrew text without the owner's approval.
-- Never commit secrets. The CRM webhook URL goes in a Worker secret (`CRM_WEBHOOK_URL`), not in the repo.
+- Never commit secrets (the repo is public). OfficeCRM is reached through two Worker secrets: `CRM_WEBHOOK_URL` (webhook address) and `LEADS_WEBHOOK_API_KEY` (bare key; the Worker sends `Authorization: Bearer <key>`). Neither value may appear in the repo, the built site, docs or logs, and tests enforce this for the address. Tests use mocks only: never send test leads to the live CRM.
+- `office.hagarlushi.com` is OfficeCRM: keep its DNS record exactly as is.
 - `lp.hagarlushi.com` is a separate WordPress/Elementor site and is out of scope. Its DNS record must be preserved exactly in any DNS change. Don't replace or redirect it without an approved plan.
-- The CRM is out of scope: don't change it. Adapt only `forwardToCrm` in `worker/index.js` to its documented contract.
+- OfficeCRM is out of scope: don't change it. The contract (fields `name/phone/email/source`, optional `notes/referrerName`, success = HTTP 2xx + `success: true`) is documented in `docs/CLOUDFLARE-PLAN.md`; the mapping lives in `toCrmPayload` / `leadSource` / `leadNotes` in `worker/index.js`.
 - The owner communicates in Hebrew and English and isn't a developer: give step-by-step instructions for anything they must do in a dashboard.

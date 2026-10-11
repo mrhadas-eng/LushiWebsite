@@ -4,18 +4,25 @@
 // this code only runs for /api/*.
 //
 // POST /api/lead
-//   Receives a lead from the site's contact forms and forwards it to the CRM webhook.
-//   Replies { ok: true } ONLY when the CRM confirmed it (2xx and not an explicit failure body),
-//   so the site shows the thank-you page and counts a conversion only for delivered leads.
+//   Receives a lead from the site's contact forms, translates it to the OfficeCRM leads-webhook
+//   contract and forwards it. Replies { ok: true } ONLY when OfficeCRM answered HTTP 2xx with a
+//   JSON body containing success: true, so the site shows the thank-you page and counts a
+//   conversion only for leads OfficeCRM actually created.
 //
-// Configuration (Cloudflare dashboard → Workers → hagarlushi → Settings → Variables and Secrets):
-//   CRM_WEBHOOK_URL   secret, required. The CRM webhook address. Never commit it.
-//   CRM_AUTH_HEADER   secret, optional. A header the CRM requires, written as "Name: value",
-//                     e.g. "Authorization: Bearer abc123" or "X-Api-Key: abc123".
-//   CRM_FORMAT        var, "json" (default) or "form" (application/x-www-form-urlencoded).
+// OfficeCRM contract (POST, application/json, Authorization: Bearer <key>):
+//   required: name, phone, email, source     optional: referrerName, notes
+//   success:  HTTP 200, JSON { success: true, leadId: ... }
+//
+// Configuration: Cloudflare dashboard → Workers → hagarlushi → Settings → Variables and Secrets.
+// Both are type "Secret" and are never written in the repository, the site or the logs.
+//   CRM_WEBHOOK_URL         the OfficeCRM leads webhook address (https://…/api/leads/webhook)
+//   LEADS_WEBHOOK_API_KEY   the same value as OfficeCRM's LEADS_WEBHOOK_API_KEY, the bare key
+//                           (no "Bearer " prefix; the Worker adds it)
 
 const MAX_BODY_BYTES = 10_000;
+// Not exported: the Workers runtime only accepts functions and handlers as module exports.
 const CRM_TIMEOUT_MS = 10_000;
+const MAX_NOTES = 4000;
 
 // Fields accepted from the browser (anything else is dropped), with maximum lengths.
 const FIELDS = {
@@ -24,7 +31,7 @@ const FIELDS = {
   utm_source: 200, utm_medium: 200, utm_campaign: 200, utm_term: 200, utm_content: 200,
   gclid: 300, fbclid: 300, source_summary: 2500, submitted_at: 40, site: 200,
 };
-const FORMS = new Set(['home', 'contact']);
+const FORMS = { home: 'דף הבית', contact: 'דף יצירת קשר' };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const PHONE_RE = /^[0-9+()\-.\s]{7,40}$/;
 
@@ -43,7 +50,7 @@ export function isSameOrigin(request) {
   return !site || site === 'same-origin';
 }
 
-/** Validates and cleans a lead. Returns { lead } or { error }. */
+/** Validates and cleans the website payload. Returns { lead } or { error }. */
 export function validateLead(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'invalid_body' };
   const lead = {};
@@ -55,50 +62,106 @@ export function validateLead(input) {
     if (s.length > max) return { error: `too_long_${key}` };
     if (s) lead[key] = s;
   }
+  // OfficeCRM requires name, phone and email.
+  if (!lead.full_name) return { error: 'missing_name' };
+  if (!lead.phone || !PHONE_RE.test(lead.phone)) return { error: 'invalid_phone' };
   if (!lead.email || !EMAIL_RE.test(lead.email)) return { error: 'invalid_email' };
-  if (lead.phone && !PHONE_RE.test(lead.phone)) return { error: 'invalid_phone' };
-  if (!lead.full_name && !lead.phone) return { error: 'missing_name_or_phone' };
-  if (lead.form && !FORMS.has(lead.form)) return { error: 'invalid_form' };
+  if (lead.form && !FORMS[lead.form]) return { error: 'invalid_form' };
   return { lead };
 }
 
-function parseAuthHeader(value) {
-  if (!value) return null;
-  const i = value.indexOf(':');
-  if (i < 1) return null;
-  return [value.slice(0, i).trim(), value.slice(i + 1).trim()];
+function hostOf(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
 }
 
-/** Sends the lead to the CRM. Resolves true only when the CRM confirms success. */
-export async function forwardToCrm(lead, env, fetchImpl = fetch) {
-  const asForm = env.CRM_FORMAT === 'form';
-  const headers = {
-    'Content-Type': asForm ? 'application/x-www-form-urlencoded;charset=UTF-8' : 'application/json',
-    Accept: 'application/json, text/plain, */*',
+/**
+ * OfficeCRM "source": where the lead came from, always starting with "website".
+ * e.g. "website / google / cpc", "website / google-ads", "website / facebook", "website / instagram.com",
+ * "website / direct". Campaign details go in the notes.
+ */
+export function leadSource(lead) {
+  let channel = 'direct';
+  if (lead.utm_source) channel = [lead.utm_source, lead.utm_medium].filter(Boolean).join(' / ');
+  else if (lead.gclid) channel = 'google-ads';
+  else if (lead.fbclid) channel = 'facebook';
+  else {
+    const ref = hostOf(lead.referrer || '');
+    if (ref && !ref.endsWith('hagarlushi.com')) channel = ref;
+  }
+  return `website / ${channel}`.slice(0, 200);
+}
+
+/** OfficeCRM "notes": everything else useful to whoever calls the lead back (Hebrew labels). */
+export function leadNotes(lead) {
+  const lines = [];
+  if (lead.message) lines.push(`הודעה: ${lead.message}`, '');
+  lines.push(`טופס: ${FORMS[lead.form] || 'אתר'}`);
+  if (lead.page_path) lines.push(`נשלח מהדף: ${lead.page_path}`);
+  if (lead.landing_page && lead.landing_page !== lead.page_path) lines.push(`דף כניסה לאתר: ${lead.landing_page}`);
+  const utm = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content']
+    .filter((k) => lead[k]).map((k) => `${k}=${lead[k]}`);
+  if (utm.length) lines.push(`קמפיין: ${utm.join(', ')}`);
+  if (lead.gclid) lines.push(`Google Ads gclid: ${lead.gclid}`);
+  if (lead.fbclid) lines.push(`Facebook fbclid: ${lead.fbclid}`);
+  if (lead.referrer) lines.push(`הגיע מ: ${lead.referrer}`);
+  if (lead.submitted_at) lines.push(`נשלח: ${lead.submitted_at}`);
+  const notes = lines.join('\n');
+  return notes.length > MAX_NOTES ? `${notes.slice(0, MAX_NOTES - 1)}…` : notes;
+}
+
+/**
+ * The exact OfficeCRM payload. referrerName is left out: the website form has no
+ * "who referred you" field, and a referring website is not a person's name.
+ */
+export function toCrmPayload(lead) {
+  return {
+    name: lead.full_name,
+    phone: lead.phone,
+    email: lead.email,
+    source: leadSource(lead),
+    notes: leadNotes(lead),
   };
-  const auth = parseAuthHeader(env.CRM_AUTH_HEADER);
-  if (auth) headers[auth[0]] = auth[1];
-
-  const res = await fetchImpl(env.CRM_WEBHOOK_URL, {
-    method: 'POST',
-    headers,
-    body: asForm ? new URLSearchParams(lead).toString() : JSON.stringify(lead),
-    signal: AbortSignal.timeout(CRM_TIMEOUT_MS),
-  });
-  if (!res.ok) return { ok: false, status: res.status };
-
-  // Some webhooks answer 200 with an error body: treat an explicit failure flag as failure.
-  const text = await res.text().catch(() => '');
-  try {
-    const body = JSON.parse(text);
-    if (body && (body.success === false || body.ok === false || body.status === 'error')) {
-      return { ok: false, status: res.status };
-    }
-  } catch { /* non-JSON 2xx reply: accepted */ }
-  return { ok: true, status: res.status };
 }
 
-export async function handleLead(request, env, fetchImpl = fetch) {
+/** Configured only with both secrets, and only over https (plain http allowed for local tests). */
+export function crmConfig(env) {
+  const url = env.CRM_WEBHOOK_URL, key = env.LEADS_WEBHOOK_API_KEY;
+  if (!url || !key) return null;
+  let u;
+  try { u = new URL(url); } catch { return null; }
+  const local = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+  if (u.protocol !== 'https:' && !(local && u.protocol === 'http:')) return null;
+  return { url, key: key.replace(/^Bearer\s+/i, '').trim() };
+}
+
+/**
+ * Sends the lead to OfficeCRM. Resolves { ok: true, leadId } only for HTTP 2xx + JSON success:true;
+ * otherwise { ok: false, reason }. Never throws.
+ */
+export async function forwardToCrm(lead, cfg, { fetchImpl = fetch, timeoutMs = CRM_TIMEOUT_MS } = {}) {
+  let res;
+  try {
+    res = await fetchImpl(cfg.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${cfg.key}`,
+      },
+      body: JSON.stringify(toCrmPayload(lead)),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (e) {
+    return { ok: false, reason: e && (e.name === 'TimeoutError' || e.name === 'AbortError') ? 'timeout' : 'unreachable' };
+  }
+  if (!res.ok) return { ok: false, reason: `http_${res.status}` };
+  let body;
+  try { body = JSON.parse(await res.text()); } catch { return { ok: false, reason: 'invalid_json' }; }
+  if (!body || body.success !== true) return { ok: false, reason: 'not_confirmed' };
+  return { ok: true, leadId: body.leadId };
+}
+
+export async function handleLead(request, env, opts = {}) {
   if (request.method !== 'POST') return json(405, { ok: false, error: 'method_not_allowed' }, { Allow: 'POST' });
   if (!isSameOrigin(request)) return json(403, { ok: false, error: 'forbidden' });
   if (!(request.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) {
@@ -118,21 +181,21 @@ export async function handleLead(request, env, fetchImpl = fetch) {
   const { lead, error } = validateLead(input);
   if (error) return json(400, { ok: false, error });
 
-  if (!env.CRM_WEBHOOK_URL) {
-    console.error('lead: CRM_WEBHOOK_URL secret is not set');
+  const cfg = crmConfig(env);
+  if (!cfg) {
+    console.error('lead: CRM_WEBHOOK_URL / LEADS_WEBHOOK_API_KEY missing or invalid');
     return json(503, { ok: false, error: 'not_configured' });
   }
 
-  try {
-    const result = await forwardToCrm(lead, env, fetchImpl);
-    if (result.ok) return json(200, { ok: true });
-    // Log only the status code: no lead data, no webhook URL.
-    console.error(`lead: CRM rejected the lead (HTTP ${result.status})`);
-    return json(502, { ok: false, error: 'crm_rejected' });
-  } catch (e) {
-    console.error(`lead: CRM request failed (${e && e.name})`);
-    return json(502, { ok: false, error: 'crm_unreachable' });
+  const result = await forwardToCrm(lead, cfg, opts);
+  if (result.ok) {
+    // The leadId is OfficeCRM's record number, not lead data: logged so a test lead can be traced.
+    console.log(`lead: created in OfficeCRM (leadId ${result.leadId ?? 'not returned'})`);
+    return json(200, { ok: true });
   }
+  // Only the reason code is logged: no lead data, no URL, no key.
+  console.error(`lead: OfficeCRM did not confirm the lead (${result.reason})`);
+  return json(502, { ok: false, error: result.reason === 'timeout' || result.reason === 'unreachable' ? 'crm_unreachable' : 'crm_rejected' });
 }
 
 export default {

@@ -112,7 +112,7 @@
 | 26 דפים (בית, אודות, 2 קטגוריות, 18 פרויקטים, עיתונות, יצירת קשר, נגישות) | כל הדפים, אותן כתובות | ✅ |
 | תפריט עם תתי-תפריטים | `Header.astro`, תפריט המבורגר במובייל | ✅ |
 | מצגת תמונות בדף הבית, גלריה נגללת, גלריות פרויקטים ותצוגת תמונה מוגדלת | `Slideshow.astro`, `Gallery.astro`, `src/lib/lightbox.js` | ✅ |
-| טפסי Wix | שליחה ל-`/api/lead` (Cloudflare Worker) שמעביר ל-CRM, ומעבר ל-`/thankyou` רק אחרי אישור ה-CRM | ✅ קוד ונבדק מול CRM מדומה. ⏳ חסרים פרטי ה-CRM האמיתי |
+| טפסי Wix | שליחה ל-`/api/lead` (Cloudflare Worker) שמתרגם ושולח ל-OfficeCRM, ומעבר ל-`/thankyou` רק אחרי `success: true` | ✅ קוד ונבדק מול OfficeCRM מדומה. ⏳ ליד בדיקה מול OfficeCRM האמיתי (O3) |
 | Wix Chat | כפתור וואטסאפ צף, `wa.me/972505788634` | ✅ (לאשר מספר והודעה) |
 | GTM: GA4, Ads, Meta, Clarity | אותו קונטיינר, נטען רק בדומיין האמיתי | ✅ |
 | מעקב לידים מהאתר הראשי | לא היה | ✅ אירועים קיימים. ⏳ צריך להגדיר טריגרים ב-GTM |
@@ -166,62 +166,50 @@
 
 ---
 
-## 7. לידים ושליחה ל-CRM
+## 7. לידים ושליחה ל-OfficeCRM
 
-**הארכיטקטורה (הושלם ב-2026-10-11):** הטופס שולח JSON לכתובת באותו אתר, `POST /api/lead`. שם Cloudflare Worker (`worker/index.js`) בודק את הבקשה ומעביר אותה ל-webhook של ה-CRM. **כתובת ה-webhook לא נמצאת בקוד האתר:** היא סוד ב-Cloudflare בשם `CRM_WEBHOOK_URL`.
+**הארכיטקטורה:** הטופס שולח JSON לכתובת באותו אתר, `POST /api/lead`. שם Cloudflare Worker (`worker/index.js`) בודק את הבקשה, מתרגם אותה למבנה ש-OfficeCRM מצפה לו, ושולח אותה ל-webhook הקיים של OfficeCRM. OfficeCRM עצמו לא שונה.
 
-| הגדרה | איפה | ערכים |
-|---|---|---|
-| `CRM_WEBHOOK_URL` | Secret ב-Cloudflare (מקומית: `.dev.vars`, לא נשמר ב-git) | כתובת ה-webhook. חובה |
-| `CRM_AUTH_HEADER` | Secret ב-Cloudflare, אופציונלי | כותרת אימות בפורמט `"Name: value"`, למשל `X-Api-Key: …` |
-| `CRM_FORMAT` | `vars` ב-`wrangler.jsonc` | `json` (ברירת מחדל) או `form` |
+**סודות ב-Cloudflare** (Workers ← hagarlushi ← Settings ← Variables and Secrets, סוג **Secret**):
 
-**כללי ה-Worker:**
-- מקבל רק `POST` מאותו מקור (`Origin` של האתר עצמו), מסוג `application/json`, בגודל עד 10KB.
-- בודק שדות: אימייל חובה ותקין, שם או טלפון חובה, ומגבלות אורך. מעביר רק שדות מוכרים.
-- מלכודת ספאם (`website` מולא): עונה `ok` ולא מעביר כלום.
-- עונה `{ok:true}` **רק** אם ה-CRM החזיר 2xx בלי גוף שמסמן כישלון (`success:false`, `ok:false`, `status:"error"`). אחרת מחזיר 502 (או 503 אם הסוד לא הוגדר).
-- לא רושם ליומן נתוני ליד או את כתובת ה-webhook, רק קודי סטטוס.
+| שם | ערך |
+|---|---|
+| `CRM_WEBHOOK_URL` | הכתובת המלאה של ה-webhook ב-OfficeCRM: `https://<כתובת OfficeCRM>/api/leads/webhook` |
+| `LEADS_WEBHOOK_API_KEY` | אותו ערך כמו `LEADS_WEBHOOK_API_KEY` ב-OfficeCRM: המפתח בלבד, בלי `Bearer` |
 
-**בדפדפן:** הגולש עובר ל-`/thankyou` (ושם נספר `generate_lead` פעם אחת) רק אחרי `{ok:true}`. בכישלון: נשאר בדף, כל מה שהקליד נשמר, ומוצגת הודעה עם הטלפון והוואטסאפ, כך שליד לא הולך לאיבוד בשקט.
+שני הערכים לא נמצאים במאגר (שהוא ציבורי), לא בקוד האתר ולא ביומנים. `npm test` נכשל אם כתובת ה-webhook מופיעה בקובץ כלשהו במאגר או באתר הבנוי.
 
-**מבנה הנתונים שה-CRM מקבל** (מפתחות באנגלית; ערכים ריקים לא נשלחים):
-```json
-{
-  "full_name": "ישראל ישראלי",
-  "email": "test@example.com",
-  "phone": "050-1234567",
-  "message": "מעוניין בתכנון מטבח",
-  "form": "home",
-  "page_url": "https://www.hagarlushi.com/?utm_source=facebook&utm_campaign=autumn&fbclid=xyz",
-  "page_path": "/",
-  "source_summary": "utm_source=facebook | utm_campaign=autumn | Facebook / Instagram (fbclid) | landing: /",
-  "submitted_at": "2026-10-09T09:09:00.796Z",
-  "site": "www.hagarlushi.com",
-  "utm_source": "facebook",
-  "utm_campaign": "autumn",
-  "fbclid": "xyz",
-  "landing_page": "/"
-}
-```
+**הבקשה ל-OfficeCRM:** `POST`, `Content-Type: application/json`, `Authorization: Bearer <מפתח>`.
 
-**נבדק (מקומית, 2026-10-11):**
-- 12 בדיקות יחידה של ה-Worker (`npm test`).
-- `wrangler dev` (סביבת Cloudflare המקומית) מול CRM מדומה: מקור זר נדחה (403), בקשה בלי Origin נדחתה (403), אימייל לא תקין נדחה (400), בוט לא הועבר, CRM 500 ו-CRM 200 עם `success:false` החזירו 502, וכותרת האימות הגיעה ל-CRM.
-- דפדפן (מחשב ומובייל): הצלחה מובילה לדף תודה עם המרה אחת, כולל מקור ההגעה. בכישלון מוצגת שגיאה, הנתונים נשמרים, ואין המרה. בוט: אין שליחה ואין המרה.
+| שדה ב-OfficeCRM | מאיפה |
+|---|---|
+| `name` (חובה) | השם מהטופס |
+| `phone` (חובה) | הטלפון מהטופס |
+| `email` (חובה) | האימייל מהטופס |
+| `source` (חובה) | ערוץ ההגעה, תמיד מתחיל ב-`website`: `website / google / cpc` (לפי utm), `website / google-ads` (gclid), `website / facebook` (fbclid), `website / instagram.com` (אתר מפנה), או `website / direct` |
+| `notes` | ההודעה של הגולש, איזה טופס, מאיזה דף נשלח, דף הכניסה, כל תגי ה-utm, gclid/fbclid, האתר המפנה והשעה |
+| `referrerName` | **לא נשלח.** באתר אין שדה "מי המליץ", ולא ממציאים ערך |
 
-**לא נבדק (דורש פרטי CRM):** שליחה אמיתית ל-CRM. צריך: כתובת webhook, פורמט ושמות שדות, שיטת אימות, ומה ה-CRM מחזיר בהצלחה ובכישלון (`docs/CLOUDFLARE-PLAN.md`).
+שם, טלפון ואימייל הם חובה ב-OfficeCRM, ולכן **שני הטפסים מחייבים עכשיו את שלושתם**. בעבר בדף יצירת קשר רק האימייל היה חובה.
+
+**מתי ליד נחשב הצלחה:** רק אם OfficeCRM החזיר HTTP 2xx עם JSON שבו `success: true` (צפוי: 200 עם `leadId`). כל תשובה אחרת נחשבת כישלון: `success: false`, בלי `success`, JSON שבור או ריק, 4xx/5xx, timeout של 10 שניות או שגיאת רשת. בכישלון הגולש נשאר בדף, מה שהקליד נשמר, ומוצגת הודעה עם הטלפון והוואטסאפ. **אין מעבר לדף תודה ואין `generate_lead`.** ביומן נרשם רק קוד הסיבה, או ה-`leadId` בהצלחה.
+
+**נבדק (2026-10-11, בלי לגעת ב-OfficeCRM האמיתי):**
+- `npm test`: 41 בדיקות, כולל שרת מדומה שמתנהג כמו ה-webhook של OfficeCRM. הן מכסות: כתובת, Bearer, JSON, מיפוי שדות, `success:true` עם `leadId`, `success:false`, בלי `success`, JSON שבור, 401/400/500, timeout, שגיאת רשת, סודות חסרים, מקור זר, honeypot, קלט לא תקין, אין redirect ואין `generate_lead` בכישלון, ואין כתובת או מפתח באתר ובמאגר.
+- סביבת Cloudflare מקומית (`wrangler dev`) עם OfficeCRM מדומה, בדפדפן במחשב ובמובייל: 40/40 בדיקות. הבדיקה הזו גם מצאה ותיקנה באג שהיה מפיל את ה-Worker ב-Cloudflare.
+
+**לא נבדק:** OfficeCRM האמיתי. הקוד של OfficeCRM לא היה זמין לבדיקה, ולכן החוזה מומש כפי שנמסר. מאמתים אותו בליד בדיקה אחרי הפריסה (`docs/CLOUDFLARE-PLAN.md`, שלב O3). שם גם רשומות 4 נקודות לבדיקה: ערכי `source`, אורך `notes`, כפילויות, וחסימת רשת.
 
 ---
 
 ## 8. תוכנית DNS ומעבר
 
 **לפני כל שינוי:**
-1. בממשק Wix (Domains ← hagarlushi.com ← Manage DNS Records) לייצא או לצלם את **כל** הרשומות: A, AAAA, CNAME (`www`, **`lp`**), MX, TXT (כולל `google-site-verification`, SPF, DKIM, DMARC אם קיימים).
+1. בממשק Wix (Domains ← hagarlushi.com ← Manage DNS Records) לייצא או לצלם את **כל** הרשומות: A, AAAA, CNAME (`www`, **`lp`**, **`office`**), MX, TXT (כולל `google-site-verification`, SPF, DKIM, DMARC אם קיימים). **`office` הוא OfficeCRM:** אם הרשומה שלו תאבד, ה-CRM ושליחת הלידים מהאתר יפסיקו לעבוד.
 2. לבדוק איפה הדומיין רשום (registrar): ב-Wix או במקום אחר. זה קובע אם מעבירים את הדומיין או רק משנים שרתי שמות.
 
 **סדר מומלץ:**
-1. **O2:** להוסיף את `hagarlushi.com` לחשבון Cloudflare, ולוודא שכל הרשומות מ-Wix הועתקו. רשומות MX, מייל ו-`lp` מגדירים "DNS only" (ענן אפור). `www` והדומיין הראשי ממשיכים בשלב הזה להצביע ל-Wix.
+1. **O2:** להוסיף את `hagarlushi.com` לחשבון Cloudflare, ולוודא שכל הרשומות מ-Wix הועתקו. רשומות MX, מייל, `lp` ו-`office` מגדירים "DNS only" (ענן אפור). `www` והדומיין הראשי ממשיכים בשלב הזה להצביע ל-Wix.
 2. **O3:** לחבר את GitHub ל-Cloudflare, להגדיר את הסוד `CRM_WEBHOOK_URL`, ולבדוק את האתר בכתובת `*.workers.dev`, כולל ליד בדיקה מכל טופס שמגיע ל-CRM. **לפני כל שינוי DNS.**
 3. **O4:** להחליף את שרתי השמות ל-Cloudflare ולחכות שהאזור יהיה Active. אין השבתה, כי הרשומות זהות.
 4. **O5:** לחבר את `www.hagarlushi.com` ל-Worker (Custom Domain) ולהגדיר Redirect Rule מ-`hagarlushi.com` ל-`www`.
@@ -235,6 +223,7 @@ dig +short NS hagarlushi.com       # שרתי השמות של Cloudflare
 dig +short www.hagarlushi.com      # כתובות Cloudflare
 dig +short hagarlushi.com          # כתובות Cloudflare
 dig +short lp.hagarlushi.com       # אותו יעד כמו לפני המעבר
+dig +short office.hagarlushi.com   # אותו יעד כמו לפני המעבר (OfficeCRM)
 dig +short MX hagarlushi.com       # זהה לרשומות שהיו ב-Wix
 dig +short TXT hagarlushi.com      # כולל google-site-verification
 curl -sI https://hagarlushi.com | grep -i location   # הפניה ל-https://www.hagarlushi.com
@@ -261,7 +250,8 @@ curl -s https://www.hagarlushi.com/sitemap.xml | grep -c "<url>"   # 25
 | ~~הגדרת Cloudflare בקוד: Worker, `_redirects`, `/api/lead` (C1–C4)~~ | Claude | הושלם |
 | חיבור GitHub ל-Cloudflare ופריסה ל-`workers.dev` (C5/O3) | בעל האתר, בהדרכת Claude | כן |
 | חשבון Cloudflare, העברת DNS וחיבור הדומיין (O1, O2, O4, O5) | בעל האתר, בהדרכת Claude | כן |
-| פרטי ה-CRM: פורמט, שמות שדות, אימות, תשובת הצלחה/כישלון | בעל האתר | כן |
+| הגדרת הסודות `CRM_WEBHOOK_URL` ו-`LEADS_WEBHOOK_API_KEY` ב-Cloudflare, וליד בדיקה מכל טופס (O3) | בעל האתר | כן |
+| אימות 4 נקודות החוזה מול OfficeCRM (`source`, `notes`, כפילויות, חסימת רשת) | בעל האתר | כן, בזמן ליד הבדיקה |
 | דף הנחיתה lp.hagarlushi.com: האם להעביר אותו (כרגע מחוץ לתחום, נשאר ב-WordPress) | בעל האתר | לא, כל עוד רשומת ה-DNS שלו נשמרת |
 | מדיניות פרטיות ובאנר עוגיות | בעל האתר | החלטה |
 | ייצוא אנשי קשר, פניות וצ'אטים מ-Wix | בעל האתר | לפני ביטול Wix |

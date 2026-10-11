@@ -32,7 +32,9 @@ check(wr?.assets?.html_handling === 'drop-trailing-slash', 'URLs keep the Wix fo
 check(wr?.assets?.not_found_handling === '404-page', 'Unknown URLs get the 404 page (not_found_handling)', 'Set assets.not_found_handling to "404-page"');
 check((wr?.assets?.run_worker_first || []).includes('/api/*') && fs.existsSync(wr?.main || ''), 'Lead endpoint Worker is wired up (/api/* → worker/index.js)',
   'Set "main": "worker/index.js" and assets.run_worker_first: ["/api/*"]');
-check(['json', 'form'].includes(wr?.vars?.CRM_FORMAT), 'CRM body format is set (vars.CRM_FORMAT = json | form)', 'Set vars.CRM_FORMAT in wrangler.jsonc');
+const wrText = fs.existsSync('wrangler.jsonc') ? fs.readFileSync('wrangler.jsonc', 'utf8') : '';
+check(!/https?:\/\/[^\s"]*\/api\/leads|Bearer\s+\w/i.test(wrText) && !wr?.vars?.CRM_WEBHOOK_URL && !wr?.vars?.LEADS_WEBHOOK_API_KEY,
+  'No CRM address or key in wrangler.jsonc (they must be Worker secrets)', 'Remove them from wrangler.jsonc and set them as secrets');
 
 // --- URLs
 const redirects = fs.existsSync('public/_redirects')
@@ -63,9 +65,9 @@ for (const r of results) {
 
 console.log(`
 Manual checks (cannot be verified from the repository):
-  ☐ Cloudflare secret CRM_WEBHOOK_URL is set on the hagarlushi Worker (and CRM_AUTH_HEADER if the CRM needs one)
-  ☐ A test lead sent from the workers.dev preview arrived in the CRM
-  ☐ DNS: every Wix record copied to Cloudflare, including lp.hagarlushi.com, MX, SPF/DKIM/DMARC
+  ☐ Worker secrets set on hagarlushi: CRM_WEBHOOK_URL (OfficeCRM leads webhook) and LEADS_WEBHOOK_API_KEY (bare key)
+  ☐ A test lead from each form on the workers.dev preview was created in OfficeCRM (and deleted afterwards)
+  ☐ DNS: every Wix record copied to Cloudflare, including lp. and office. (OfficeCRM), MX, SPF/DKIM/DMARC
   ☐ GTM: triggers for generate_lead / whatsapp_click / phone_click / email_click published
 See LAUNCH.md and docs/CLOUDFLARE-PLAN.md.`);
 console.log(failed ? `\n${failed} repository item(s) to fix before launch.` : '\nRepository checks passed.');

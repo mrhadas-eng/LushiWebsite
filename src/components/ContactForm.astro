@@ -1,13 +1,14 @@
 ---
 // Contact form (home page + contact page). Each lead is POSTed as JSON to the site's own
-// endpoint /api/lead (worker/index.js), which forwards it to the CRM webhook. Only when the
-// Worker answers { ok: true } (the CRM confirmed the lead) is the visitor sent to /thankyou,
+// endpoint /api/lead (worker/index.js), which translates it and forwards it to OfficeCRM. Only when
+// the Worker answers { ok: true } (OfficeCRM replied success: true) is the visitor sent to /thankyou,
 // where the lead is counted for analytics (generate_lead). On any failure the form keeps
 // what the visitor typed and shows the phone / WhatsApp alternatives.
 //
 // Under `npm run dev` there is no Worker, so sending fails by design; use `npm run preview:cf`.
 //
-// Payload (English keys, empty values omitted):
+// Website payload sent to /api/lead (English keys, empty values omitted; the Worker maps it to
+// OfficeCRM's name / phone / email / source / notes, see docs/CLOUDFLARE-PLAN.md):
 //   full_name, email, phone, message, form ("home" | "contact"),
 //   page_url, page_path, landing_page, referrer,
 //   utm_source, utm_medium, utm_campaign, utm_term, utm_content, gclid, fbclid,
@@ -17,7 +18,8 @@ interface Props { variant?: 'home' | 'page' }
 const { variant = 'home' } = Astro.props;
 const f = variant === 'home'
   ? { name: 'שם מלא', email: 'אימייל', phone: 'טלפון', msg: 'במה אוכל לעזור?', nameReq: true, phoneReq: true }
-  : { name: 'שם', email: 'דוא"ל', phone: 'טלפון', msg: 'הודעה', nameReq: false, phoneReq: false };
+  // OfficeCRM requires name, phone and email, so both forms require all three.
+  : { name: 'שם', email: 'דוא"ל', phone: 'טלפון', msg: 'הודעה', nameReq: true, phoneReq: true };
 const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` : null;
 ---
 <form class="contact-form" novalidate
@@ -70,6 +72,8 @@ const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` :
 </style>
 
 <script>
+  import { sendLead, submitLead } from '../lib/lead-client.js';
+
   const ATTR_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid', 'referrer', 'landing_page'];
 
   function attribution() {
@@ -88,12 +92,6 @@ const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` :
     ].filter(Boolean).join(' | ') || 'direct';
   }
 
-  // countLead=false for spam: the bot sees the normal thank-you page, but no conversion is counted
-  function goToThanks(form: HTMLFormElement, countLead = true) {
-    if (countLead) { try { sessionStorage.setItem('hl_lead', form.dataset.location || ''); } catch {} }
-    location.href = form.dataset.thanks || '/thankyou';
-  }
-
   document.querySelectorAll<HTMLFormElement>('.contact-form').forEach((form) => {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -102,8 +100,6 @@ const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` :
       if (!form.checkValidity()) { form.reportValidity(); return; }
 
       const fd = new FormData(form);
-      // Bots fill the hidden field: act normally but send nothing
-      if (fd.get('website')) { goToThanks(form, false); return; }
 
       const a = attribution();
       const lead: Record<string, string> = {
@@ -123,18 +119,17 @@ const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` :
 
       const btn = form.querySelector<HTMLButtonElement>('.send')!;
       btn.disabled = true;
-      try {
-        const res = await fetch(form.dataset.endpoint || '/api/lead', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify(lead),
-        });
-        const reply = await res.json().catch(() => ({}));
-        // Success only when the Worker confirms the CRM accepted the lead
-        if (!res.ok || reply.ok !== true) throw new Error(`lead not delivered (${res.status})`);
-        goToThanks(form);
-      } catch {
-        // Keep everything the visitor typed, and offer the phone / WhatsApp instead
+      const result = await submitLead({
+        lead,
+        honeypot: String(fd.get('website') || '').trim(),
+        formLocation: form.dataset.location,
+        storage: sessionStorage,
+        navigate: (path: string) => { location.href = path; },
+        thanksPath: form.dataset.thanks,
+        send: (l: Record<string, string>) => sendLead(l, { endpoint: form.dataset.endpoint }),
+      });
+      if (result === 'failed') {
+        // Not confirmed by OfficeCRM: keep everything the visitor typed, offer phone / WhatsApp
         status.hidden = false;
         btn.disabled = false;
       }
