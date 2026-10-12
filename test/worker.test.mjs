@@ -299,3 +299,16 @@ test('landing-page forms: CRM failure is not confirmed (no thank-you page)', asy
     assert.equal((await res.json()).ok, false);
   }
 });
+
+test('invalid requests: 400 names the field so the form can show the message next to it; nothing sent', async () => {
+  for (const [patch, error, field] of [
+    [{ full_name: '' }, 'missing_name', 'full_name'], [{ phone: '123' }, 'invalid_phone', 'phone'],
+    [{ email: 'x@' }, 'invalid_email', 'email'], [{ consent: '' }, 'missing_consent', 'consent'],
+  ]) {
+    const c = crm();
+    const res = await handleLead(lpReq({ ...LP_LEAD, ...patch }), ENV, { fetchImpl: c.impl });
+    assert.equal(res.status, 400);
+    assert.deepEqual(await res.json(), { ok: false, error, field });
+    assert.equal(c.calls.length, 0);
+  }
+});

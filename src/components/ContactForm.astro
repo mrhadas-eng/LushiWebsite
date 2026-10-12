@@ -2,8 +2,12 @@
 // Contact form (home page + contact page). Each lead is POSTed as JSON to the site's own
 // endpoint /api/lead (worker/index.js), which translates it and forwards it to OfficeCRM. Only when
 // the Worker answers { ok: true } (OfficeCRM replied success: true) is the visitor sent to /thankyou,
-// where the lead is counted for analytics (generate_lead). On any failure the form keeps
-// what the visitor typed and shows the phone / WhatsApp alternatives.
+// where the lead is counted for analytics (generate_lead).
+//
+// Validation (src/lib/lead-rules.js, the same rules the Worker applies): each missing or invalid
+// required field gets its own Hebrew message next to it, the first one is focused and nothing is sent.
+// The separate delivery-failure message (with this site's phone / WhatsApp) is shown only when a valid
+// lead could not be delivered; what the visitor typed is always kept.
 //
 // Under `npm run dev` there is no Worker, so sending fails by design; use `npm run preview:cf`.
 //
@@ -14,13 +18,18 @@
 //   utm_source, utm_medium, utm_campaign, utm_term, utm_content, gclid, fbclid,
 //   source_summary (one readable line), submitted_at (ISO time), site
 import { site } from '../data/content.mjs';
+import { DELIVERY_FAILED_TEXT } from '../lib/lead-rules.js';
 interface Props { variant?: 'home' | 'page' }
 const { variant = 'home' } = Astro.props;
 const f = variant === 'home'
-  ? { name: 'שם מלא', email: 'אימייל', phone: 'טלפון', msg: 'במה אוכל לעזור?', nameReq: true, phoneReq: true }
+  ? { name: 'שם מלא', email: 'אימייל', phone: 'טלפון', msg: 'במה אוכל לעזור?' }
   // OfficeCRM requires name, phone and email, so both forms require all three.
-  : { name: 'שם', email: 'דוא"ל', phone: 'טלפון', msg: 'הודעה', nameReq: true, phoneReq: true };
-const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` : null;
+  : { name: 'שם', email: 'דוא"ל', phone: 'טלפון', msg: 'הודעה' };
+const waHref = `https://wa.me/${site.whatsapp.number}?text=${encodeURIComponent(site.whatsapp.message)}`;
+const uid = variant === 'home' ? 'home' : 'contact';
+const id = (field: string) => `${uid}-${field}-err`;
+const [failBefore, failAfter] = DELIVERY_FAILED_TEXT.split('בטלפון או בוואטסאפ');
+const REQ = ' *';
 ---
 <form class="contact-form" novalidate
   data-endpoint={site.leadEndpoint} data-thanks={site.thankYouPath}
@@ -28,27 +37,35 @@ const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` :
   <!-- Spam trap: hidden from people, bots fill it in -->
   <input type="text" name="website" class="visually-hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
 
-  <label class="field">
-    <span class="visually-hidden">{f.name}</span>
-    <input type="text" name="full_name" placeholder={f.name} autocomplete="name" required={f.nameReq} />
-  </label>
-  <label class="field">
-    <span class="visually-hidden">{f.email}</span>
-    <input type="email" name="email" placeholder={f.email} autocomplete="email" required />
-  </label>
-  <label class="field">
-    <span class="visually-hidden">{f.phone}</span>
-    <input type="tel" name="phone" placeholder={f.phone} autocomplete="tel" required={f.phoneReq} />
-  </label>
+  <div class="field-wrap" data-field>
+    <label class="field">
+      <span class="visually-hidden">{f.name} (שדה חובה)</span>
+      <input type="text" name="full_name" placeholder={f.name + REQ} autocomplete="name" required aria-required="true" aria-describedby={id('full_name')} />
+    </label>
+    <p class="field-error" id={id('full_name')} data-error-for="full_name" hidden></p>
+  </div>
+  <div class="field-wrap" data-field>
+    <label class="field">
+      <span class="visually-hidden">{f.email} (שדה חובה)</span>
+      <input type="email" name="email" placeholder={f.email + REQ} autocomplete="email" required aria-required="true" aria-describedby={id('email')} />
+    </label>
+    <p class="field-error" id={id('email')} data-error-for="email" hidden></p>
+  </div>
+  <div class="field-wrap" data-field>
+    <label class="field">
+      <span class="visually-hidden">{f.phone} (שדה חובה)</span>
+      <input type="tel" name="phone" placeholder={f.phone + REQ} autocomplete="tel" inputmode="tel" required aria-required="true" aria-describedby={id('phone')} />
+    </label>
+    <p class="field-error" id={id('phone')} data-error-for="phone" hidden></p>
+  </div>
   <label class="field">
     <span class="visually-hidden">{f.msg}</span>
     <textarea name="message" rows="4" placeholder={f.msg}></textarea>
   </label>
 
   <button type="submit" class="send">שליחה</button>
-  <p class="status" role="status" aria-live="polite" hidden>
-    השליחה נכשלה. אפשר לנסות שוב, להתקשר ל-<a href={site.phoneHref} dir="ltr">{site.phone}</a>
-    {waHref && <>או <a href={waHref} target="_blank" rel="noopener">לכתוב בוואטסאפ</a></>}.
+  <p class="status" role="alert" hidden>
+    {failBefore}<a href={site.phoneHref}>בטלפון</a> או <a href={waHref} target="_blank" rel="noopener" data-track="form_error">בוואטסאפ</a>{failAfter}
   </p>
 </form>
 
@@ -60,7 +77,10 @@ const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` :
   }
   .field textarea { resize: vertical; border: 1px solid var(--muted); padding: 10px; margin-top: 6px; }
   .field input:focus, .field textarea:focus { outline: none; border-color: var(--ink); }
-  .field :user-invalid { border-color: #b3261e; }
+  .field [aria-invalid="true"] { border-color: #b3261e; border-bottom-width: 2px; }
+  .field input[aria-invalid="true"]:focus { border-color: #b3261e; }
+  .field-error { margin: 4px 2px 0; color: #b3261e; font-size: 14px; font-weight: 400; }
+  .field-error::before { content: '⚠ '; }
   .send {
     justify-self: start; background: var(--dark); color: #fff; border: 0; cursor: pointer;
     font-size: 20px; line-height: 28px; padding: 8px 48px; transition: background .2s;
@@ -73,6 +93,7 @@ const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` :
 
 <script>
   import { sendLead, submitLead } from '../lib/lead-client.js';
+  import { validateForm, showServerFieldError, liveRevalidate } from '../lib/form-ui.js';
 
   const ATTR_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid', 'referrer', 'landing_page'];
 
@@ -93,11 +114,14 @@ const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` :
   }
 
   document.querySelectorAll<HTMLFormElement>('.contact-form').forEach((form) => {
+    liveRevalidate(form);
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const status = form.querySelector<HTMLElement>('.status')!;
+      const btn = form.querySelector<HTMLButtonElement>('.send')!;
+      if (btn.disabled) return;                       // a request is already in progress
       status.hidden = true;
-      if (!form.checkValidity()) { form.reportValidity(); return; }
+      if (!validateForm(form)) return;                // nothing sent, nothing counted
 
       const fd = new FormData(form);
 
@@ -117,8 +141,8 @@ const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` :
       for (const k of ATTR_KEYS) if (a[k]) lead[k] = k === 'landing_page' ? decodeURI(a[k]) : a[k];
       for (const k of Object.keys(lead)) if (!lead[k]) delete lead[k];
 
-      const btn = form.querySelector<HTMLButtonElement>('.send')!;
       btn.disabled = true;
+      btn.setAttribute('aria-busy', 'true');
       const result = await submitLead({
         lead,
         honeypot: String(fd.get('website') || '').trim(),
@@ -127,12 +151,11 @@ const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` :
         navigate: (path: string) => { location.href = path; },
         thanksPath: form.dataset.thanks,
         send: (l: Record<string, string>) => sendLead(l, { endpoint: form.dataset.endpoint }),
+        onFieldError: (field: string) => { if (!showServerFieldError(form, field)) status.hidden = false; },
       });
-      if (result === 'failed') {
-        // Not confirmed by OfficeCRM: keep everything the visitor typed, offer phone / WhatsApp
-        status.hidden = false;
-        btn.disabled = false;
-      }
+      // Not confirmed by OfficeCRM: keep everything the visitor typed, offer phone / WhatsApp
+      if (result === 'failed') status.hidden = false;
+      if (result === 'failed' || result === 'invalid') { btn.disabled = false; btn.removeAttribute('aria-busy'); }
     });
   });
 </script>

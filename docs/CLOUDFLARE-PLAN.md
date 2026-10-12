@@ -17,7 +17,7 @@ CRM webhook URL secret on the free plan; every branch gets a preview URL.
 | C3 Lead endpoint → OfficeCRM | ✅ Done (code). ⏳ Live test lead pending (O3) | `POST /api/lead` translates to the OfficeCRM contract (Bearer auth, `name/phone/email/source/notes`) and succeeds only on `success: true`. `npm test`: 41 tests including a mock OfficeCRM server. Browser test on the local Cloudflare runtime with a mock OfficeCRM: 40/40 checks, desktop and mobile |
 | C4 Docs + tracking guard | ✅ Done | GTM loads only on `hagarlushi.com` hosts (verified: not requested on the local host) |
 | C5 Deploy pipeline | ⏳ Owner (dashboard) | See O3 below |
-| C6 Landing pages (`lp.`) rebuilt | ✅ Done (code). ⏳ Preview + acceptance (O6) and owner decisions D1–D8 | Second Worker `hagarlushi-lp` (`wrangler.lp.jsonc`, `dist-lp/`). All 7 WordPress pages at their exact URLs, same copy/images/layout, forms → `/api/lead`. `npm test` 59/59; browser 66/66 (desktop + mobile, mock OfficeCRM); `wrangler deploy -c wrangler.lp.jsonc --dry-run` valid (258 assets). Full URL list and decisions: **docs/LANDING-PAGE-INVENTORY.md** |
+| C6 Landing pages (`lp.`) rebuilt | ✅ Done (code). ⏳ Preview + acceptance (O6); open: D4 (2 lp redirects), D5 (privacy legal review), D8 (text approval) | Second Worker `hagarlushi-lp` (`wrangler.lp.jsonc`, `dist-lp/`). All 7 WordPress pages at their exact URLs, same copy/images/layout, forms → `/api/lead`. `npm test` 59/59; browser 66/66 (desktop + mobile, mock OfficeCRM); `wrangler deploy -c wrangler.lp.jsonc --dry-run` valid (258 assets). Full URL list and decisions: **docs/LANDING-PAGE-INVENTORY.md** |
 
 ---
 
@@ -145,9 +145,10 @@ Implemented exactly as specified by the owner (2026-10-11). Confirm during the O
 ### O2. Create the Cloudflare zone (no risk: nothing changes until the nameservers change)
 1. Create a free Cloudflare account → Add a domain → `hagarlushi.com` → Free plan.
 2. Cloudflare imports records automatically. **Compare every row with the O1 export** and add anything missing.
-3. Set these to **DNS only (grey cloud)**: MX targets, mail-related records, `lp` and `office`. Proxying them can break
+3. **Delete the imported `en` and `he` records** (unused; Wix error pages). Keep `office` exactly as exported.
+4. Set these to **DNS only (grey cloud)**: MX targets, mail-related records, `lp` and `office`. Proxying them can break
    their hosts' SSL, so only proxy them later, after testing.
-4. Leave `www` and the apex pointing at Wix for now, so the live site doesn't change.
+5. Leave `www` and the apex pointing at Wix for now, so the live site doesn't change.
 
 ### O3. Deploy and verify the new site on Cloudflare's preview address (before touching DNS)
 1. Workers & Pages → Create → **Import a repository** → GitHub → `mrhadas-eng/LushiWebsite`.
@@ -202,8 +203,7 @@ Implemented exactly as specified by the owner (2026-10-11). Confirm during the O
 ---
 
 ### O6. Move `lp.hagarlushi.com` to the new Worker (only after acceptance)
-Preconditions, all required: O3b passed for all 4 forms; decisions D1 (pop-up), D2 (WhatsApp number), D5 (privacy text)
-made (docs/LANDING-PAGE-INVENTORY.md §7); the WordPress form actions checked in WordPress admin (Elementor → Submissions /
+Preconditions, all required: O3b passed for all 4 forms; the lp `/author/*` redirects approved (D4) and the privacy text reviewed (D5) (docs/LANDING-PAGE-INVENTORY.md §7); the WordPress form actions checked in WordPress admin (Elementor → Submissions /
 form "Actions After Submit"); the Google Ads conversion checked in GTM preview on the workers.dev address.
 1. Workers → hagarlushi-lp → Settings → Domains & Routes → **Add Custom Domain** → `lp.hagarlushi.com`.
    This replaces the `lp` A record (69.62.113.1).
@@ -214,7 +214,7 @@ form "Actions After Submit"); the Google Ads conversion checked in GTM preview o
 See docs/LANDING-PAGE-INVENTORY.md §6 for the record-by-record table. In short: copy every record exactly at the
 nameserver switch (O4), including `lp` (A 69.62.113.1) and **`office` (A 35.219.200.106, never changed)**; then `www` and the
 apex move to Worker `hagarlushi` (O5); `lp` moves to Worker `hagarlushi-lp` only after O6's preconditions;
-`en`/`he` (Wix error pages today) are the owner's call (D7).
+`en`/`he` are unused (owner confirmed): **don't copy them into Cloudflare** (or delete them after the import). Nothing changes in live DNS until the cutover.
 
 ## Limits (free plan)
 - Static asset requests: free and unlimited. Worker requests (only `/api/lead`, both Workers together): 100,000/day.

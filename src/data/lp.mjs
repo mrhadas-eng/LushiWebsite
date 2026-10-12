@@ -9,14 +9,17 @@ export const lpSite = {
   siteName: 'Hagar Lushi | Architecture & Interior Design',
   // Google tag added by WordPress' Site Kit plugin (in addition to GTM-KJRR2DNT); preserved as-is.
   siteKitTagId: 'GT-TQKZV73G',
-  // WhatsApp used by the landing pages (differs from the main site's 050-578-8634; owner to confirm).
+  // Landing-page contact number (owner, 2026-10-11): 052-431-7164. The main site keeps 050-578-8634.
+  // The WordPress thank-you page linked to 972544317164; the owner corrected it.
+  phone: '052-431-7164',
+  phoneHref: 'tel:+972524317164',
+  // A WhatsApp click is not a lead (owner decision D1): the button opens the chat with this message,
+  // is tracked as whatsapp_click only, and never sends anything to OfficeCRM or counts generate_lead.
+  // (WordPress showed a name/phone pop-up first; it is not recreated because its data was not used.)
   whatsapp: {
-    number: '972544317164',
+    number: '972524317164',
     message: 'היי הגר! יש לי פרוייקט שאני רוצה להתייעץ לגביו.',
   },
-  // The WhatsApp pop-up collects name + phone only. OfficeCRM requires an email, so pop-up leads are
-  // NOT sent to the CRM until the owner decides (add an email field, or OfficeCRM accepts no email).
-  popupSendsToCrm: false,
   footer: { rights: 'כל הזכויות שמורות להגר לושי' },
 };
 
@@ -52,7 +55,6 @@ export const lpShared = {
   consentLink: 'מדיניות הפרטיות',
   galleryHeading: 'פרויקטים אחרונים',
   galleryCaption: 'פרוייקט...',
-  popupTitle: "לפתיחת צ'אט וואטסאפ, נא להשאיר שם וטלפון",
 };
 
 // ---------------------------------------------------------------- the four landing pages
@@ -139,3 +141,7 @@ export function lpUsedMedia() {
   for (const p of lpPages) { p.hero.slides.forEach((x) => s.add(x)); s.add(p.about.image); p.gallery.forEach((x) => s.add(x)); }
   return [...s];
 }
+
+/** The landing pages' WhatsApp chat link, with the prescribed opening message. */
+export const lpWhatsAppUrl = () =>
+  `https://api.whatsapp.com/send/?phone=${lpSite.whatsapp.number}&text=${encodeURIComponent(lpSite.whatsapp.message)}&type=phone_number&app_absent=0`;

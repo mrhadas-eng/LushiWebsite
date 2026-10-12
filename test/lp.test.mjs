@@ -37,26 +37,49 @@ test('landing pages: form with name, phone, email and the required privacy conse
     const form = h.match(/<form class="lp-form"[\s\S]*?<\/form>/)?.[0];
     assert.ok(form, `${pg.path}: no lead form`);
     assert.ok(form.includes(`data-form="${pg.form}"`), `${pg.path}: form id`);
-    for (const f of ['full_name', 'phone', 'email']) assert.match(form, new RegExp(`name="${f}" required`), `${pg.path}: ${f}`);
-    assert.match(form, /type="checkbox" name="consent" value="yes" required/, `${pg.path}: consent`);
+    assert.match(form, / novalidate/, `${pg.path}: browser bubbles replaced by inline messages`);
+    for (const f of ['full_name', 'phone', 'email', 'consent']) {
+      const input = form.match(new RegExp(`<input[^>]*name="${f}"[^>]*>`))?.[0] || '';
+      const errId = `${pg.form}-${f}-err`;
+      assert.match(input, /required aria-required="true"/, `${pg.path}: ${f} marked required`);
+      assert.ok(input.includes(`aria-describedby="${errId}"`), `${pg.path}: ${f} linked to its message`);
+      assert.match(form, new RegExp(`id="${errId}" data-error-for="${f}" hidden`), `${pg.path}: ${f} message element`);
+    }
     assert.ok(form.includes('קראתי ומאשר/ת את') && form.includes('href="/privacy/"'), `${pg.path}: consent wording/link`);
     assert.ok(form.includes('data-thanks="/thankyou/"'), `${pg.path}: thank-you path`);
     assert.ok(form.includes('name="website"'), `${pg.path}: honeypot`);
+    const fail = form.match(/<p class="lp-form-error"[\s\S]*?<\/p>/)[0].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    assert.equal(fail, 'לא הצלחנו לשלוח את הפרטים כרגע. אפשר לנסות שוב או ליצור קשר בטלפון או בוואטסאפ.', `${pg.path}: delivery-failure text`);
   }
 });
 
-test('WhatsApp pop-up: name, phone and consent; never reports a lead or calls the CRM', { skip }, () => {
-  const h = html('/architecture/');
-  const dlg = h.match(/<dialog id="lp-wa-dialog"[\s\S]*?<\/dialog>/)?.[0];
-  assert.ok(dlg);
-  assert.match(dlg, /name="full_name" required/);
-  assert.match(dlg, /name="phone" required/);
-  assert.match(dlg, /name="consent" value="yes" required/);
-  assert.doesNotMatch(dlg, /name="email"/);
-  assert.ok(dlg.includes(`phone=${lpSite.whatsapp.number}`));
-  const src = fs.readFileSync('src/components/lp/LpWhatsApp.astro', 'utf8').split('<script>')[1];
-  assert.doesNotMatch(src.replace(/\/\/.*$/gm, ''), /generate_lead|\/api\/lead|sendLead|submitLead/);
-  assert.equal(lpSite.popupSendsToCrm, false, 'change only after the owner decided (inventory: popup email)');
+test('WhatsApp: correct landing-page number and message on every lp page; a link, never a lead', { skip }, () => {
+  assert.equal(lpSite.whatsapp.number, '972524317164');
+  const msg = encodeURIComponent(lpSite.whatsapp.message);
+  for (const p of [...PAGES]) {
+    const h = html(p);
+    const links = [...h.matchAll(/href="(https:\/\/api\.whatsapp\.com[^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, '&'));
+    assert.ok(links.length >= 1, `${p}: WhatsApp link`);
+    for (const l of links) {
+      assert.ok(l.startsWith('https://api.whatsapp.com/send/?phone=972524317164&'), `${p}: number ${l}`);
+      assert.ok(l.includes(`text=${msg}`), `${p}: prescribed message`);
+    }
+    assert.ok(!/972544317164|054-431-7164|972505788634|050-578-8634/.test(h), `${p}: wrong number on a landing page`);
+    assert.match(h, /class="lp-wa" href="https:\/\/api\.whatsapp\.com/, `${p}: floating button is a plain link`);
+    assert.doesNotMatch(h, /lp-wa-dialog/, `${p}: no pop-up form`);
+  }
+  const src = fs.readFileSync('src/components/lp/LpWhatsApp.astro', 'utf8').replace(/\/\/.*$/gm, '');
+  assert.doesNotMatch(src, /<script|generate_lead|\/api\/lead|sendLead|submitLead/);
+});
+
+test('main site keeps its own number (050-578-8634), never the landing-page one', { skip }, () => {
+  for (const f of ['dist/index.html', 'dist/יצירת-קשר/index.html']) {
+    const h = fs.readFileSync(f, 'utf8');
+    assert.ok(h.includes('972505788634'), `${f}: main WhatsApp`);
+    assert.ok(!/972524317164|052-431-7164/.test(h), `${f}: landing-page number on the main site`);
+    const fail = h.match(/<p class="status"[\s\S]*?<\/p>/)[0];
+    assert.ok(fail.includes('tel:+972505788634') && fail.includes('wa.me/972505788634'), `${f}: failure message contact links`);
+  }
 });
 
 test('thank-you page records the conversion only after a confirmed lead', { skip }, () => {

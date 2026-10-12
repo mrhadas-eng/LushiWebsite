@@ -10,14 +10,31 @@ function memoryStorage() {
 }
 const reply = (status, body) => async () => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status });
 
-test('sendLead: true only for HTTP 2xx with { ok: true }', async () => {
-  assert.equal(await sendLead({}, { fetchImpl: reply(200, { ok: true }) }), true);
-  assert.equal(await sendLead({}, { fetchImpl: reply(200, { ok: false }) }), false);
-  assert.equal(await sendLead({}, { fetchImpl: reply(200, {}) }), false);
-  assert.equal(await sendLead({}, { fetchImpl: reply(200, 'not json') }), false);
-  assert.equal(await sendLead({}, { fetchImpl: reply(502, { ok: false, error: 'crm_rejected' }) }), false);
-  assert.equal(await sendLead({}, { fetchImpl: reply(503, { ok: false, error: 'not_configured' }) }), false);
-  assert.equal(await sendLead({}, { fetchImpl: async () => { throw new TypeError('offline'); } }), false);
+test('sendLead: ok only for HTTP 2xx with { ok: true }', async () => {
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(200, { ok: true }) }), { ok: true });
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(200, { ok: false }) }), { ok: false, error: 'http_200' });
+  assert.equal((await sendLead({}, { fetchImpl: reply(200, {}) })).ok, false);
+  assert.equal((await sendLead({}, { fetchImpl: reply(200, 'not json') })).ok, false);
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(502, { ok: false, error: 'crm_rejected' }) }), { ok: false, error: 'crm_rejected' });
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(502, { ok: false, error: 'crm_unreachable' }) }), { ok: false, error: 'crm_unreachable' });
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(503, { ok: false, error: 'not_configured' }) }), { ok: false, error: 'not_configured' });
+  assert.deepEqual(await sendLead({}, { fetchImpl: async () => { throw new TypeError('offline'); } }), { ok: false, error: 'network' });
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(400, { ok: false, error: 'invalid_phone', field: 'phone' }) }),
+    { ok: false, error: 'invalid_phone', field: 'phone' });
+});
+
+test('server field rejection: field reported, no redirect, no conversion', async () => {
+  const storage = memoryStorage();
+  const navigations = [], flagged = [];
+  const result = await submitLead({
+    lead: { full_name: 'x' }, honeypot: '', formLocation: 'lp-home', storage, navigate: (p) => navigations.push(p),
+    send: (l) => sendLead(l, { fetchImpl: reply(400, { ok: false, error: 'missing_consent', field: 'consent' }) }),
+    onFieldError: (f) => flagged.push(f),
+  });
+  assert.equal(result, 'invalid');
+  assert.deepEqual(flagged, ['consent']);
+  assert.deepEqual(navigations, []);
+  assert.equal(recordLeadConversion(storage, []), false);
 });
 
 test('sendLead posts JSON to /api/lead', async () => {
@@ -32,6 +49,7 @@ test('sendLead posts JSON to /api/lead', async () => {
 for (const [label, fetchImpl] of [
   ['OfficeCRM rejected (502)', reply(502, { ok: false, error: 'crm_rejected' })],
   ['not configured (503)', reply(503, { ok: false, error: 'not_configured' })],
+  ['OfficeCRM timeout / unreachable (502)', reply(502, { ok: false, error: 'crm_unreachable' })],
   ['network error', async () => { throw new TypeError('offline'); }],
 ]) {
   test(`delivery failed (${label}): no redirect, no conversion`, async () => {

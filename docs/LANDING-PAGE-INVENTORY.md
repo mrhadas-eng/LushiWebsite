@@ -1,7 +1,14 @@
-# Landing pages and subdomains: URL inventory (discovered 2026-10-11)
+# Landing pages and subdomains: URL inventory (discovered 2026-10-11, scope agreed 2026-10-11)
+
+**Agreed scope (owner, 2026-10-11):**
+- The landing pages being migrated are the **seven WordPress pages on `lp.hagarlushi.com`**. They are recreated at the same URLs.
+- The three old Wix landing pages and the other obsolete Wix pages under `www.hagarlushi.com` are **not recreated** and are **not launch blockers**. Their proposed redirects are listed for approval in `docs/REDIRECT-APPROVALS.md`.
+- The main site and the landing pages stay separate, as two Cloudflare Workers.
+- `office.hagarlushi.com` is preserved.
+- `en.` and `he.` are unused; their DNS records are deleted at cutover.
 
 Every URL found on `hagarlushi.com`, `www.`, `lp.`, `en.`, `he.` and `office.`, and what the new site does with each one.
-The machine-readable copy is `src/data/url-inventory.mjs`. `test/inventory.test.mjs` fails if a page or redirect rule exists in the build but isn't listed there, or if a listed URL is neither served nor redirected. `npm run check-launch` fails while any redirect is still waiting for the owner's approval.
+The machine-readable copy is `src/data/url-inventory.mjs`. `test/inventory.test.mjs` fails if a page or redirect rule exists in the build but isn't listed there, or if a listed URL is neither served nor redirected. `npm run check-launch` fails while an in-scope content redirect (lp `/author/*`) or the privacy-policy legal review is open. Out-of-scope Wix redirects are listed there as non-blocking. Analytics events: `docs/ANALYTICS-EVENTS.md`.
 
 **Evidence labels:**
 - **Confirmed**: seen directly on the live site, through public HTML, the WordPress REST API, the sitemaps or DNS lookups.
@@ -12,10 +19,10 @@ The machine-readable copy is `src/data/url-inventory.mjs`. `test/inventory.test.
 
 | Host | Today | New | Status |
 |---|---|---|---|
-| `www.hagarlushi.com` | Wix | Worker `hagarlushi` (`dist/`) | 26 pages recreated at the same URLs. 9 old copies or placeholders redirect (owner approval pending). 3 live Wix landing pages need a decision (§3). |
+| `www.hagarlushi.com` | Wix | Worker `hagarlushi` (`dist/`) | 26 pages recreated at the same URLs. 9 obsolete copies or placeholders and 3 old Wix landing pages are out of scope and not recreated; their redirects await approval but don't block launch (§3). |
 | `hagarlushi.com` (apex) | 3 A records → Wix, redirects to www | Cloudflare Redirect Rule → www | Planned (CLOUDFLARE-PLAN O5) |
 | `lp.hagarlushi.com` | WordPress 7.1.3 + Elementor Pro 4.0.5 on 69.62.113.1 | Worker `hagarlushi-lp` (`dist-lp/`) | All 7 published pages recreated at the same URLs and tested. The WordPress site stays live until cutover is approved. |
-| `en.` / `he.` | CNAME → Wix, showing the Wix "ConnectYourDomain Error" page | No change | Inactive. DNS decision only (§6). |
+| `en.` / `he.` | CNAME → Wix, showing the Wix "ConnectYourDomain Error" page | **Delete both records at cutover** | Unused (owner confirmed). Live DNS not changed yet (§6). |
 | `office.hagarlushi.com` | OfficeCRM, A 35.219.200.106 | **Untouched** | Keep the record exactly as it is. |
 
 How the URLs were found:
@@ -36,7 +43,7 @@ Shared by all 4 landing pages (confirmed):
   6. Green "מעוניינים בשיחת ייעוץ?" form.
   7. "פרויקטים אחרונים" gallery (3 columns, lightbox).
   8. Black footer with links to the accessibility statement and privacy policy.
-  9. A floating WhatsApp button, which opens a pop-up.
+  9. A floating WhatsApp button that opens the chat directly.
 - **Design:** Open Sans and Noto Sans Hebrew. Headings 50px/500, body text 19px. Form section `rgb(63,100,75)`.
 - **Mobile:** sections stack, the form fields stack and the gallery drops to 2 columns. Checked at 375px with no horizontal scroll.
 - **SEO:** a self-referencing canonical with a trailing slash. `robots: max-image-preview:large`. Pages are indexable, as they are on WordPress.
@@ -47,10 +54,12 @@ Shared by all 4 landing pages (confirmed):
   - Fields: name\*, phone\*, email\*.
   - Required checkbox: **"קראתי ומאשר/ת את מדיניות הפרטיות"**, linking to `/privacy/` (opens in a new tab).
   - Submit button: "שליחה".
-- **WhatsApp pop-up** (Elementor popup 444, form `ecfe932`):
-  - Title: "לפתיחת צ'אט וואטסאפ, נא להשאיר שם וטלפון".
-  - Fields: name\*, phone\*, plus the same consent checkbox. **No email.**
-  - WhatsApp number on lp: **972544317164**, with the message "היי הגר! יש לי פרוייקט שאני רוצה להתייעץ לגביו."
+- **WhatsApp** (decision D1, 2026-10-11: a WhatsApp click is not a lead):
+  - The button opens the chat with **052-431-7164** (`972524317164`) and the prescribed message "היי הגר! יש לי פרוייקט שאני רוצה להתייעץ לגביו."
+  - It is tracked as `whatsapp_click` only: nothing goes to OfficeCRM, there's no thank-you page and no `generate_lead`.
+  - The WordPress pop-up (popup 444, form `ecfe932`: "לפתיחת צ'אט וואטסאפ, נא להשאיר שם וטלפון", name, phone, consent, no email) is **not recreated**, because the details it asked for are no longer used.
+  - The WordPress thank-you page linked to 054-431-7164 (`972544317164`). The owner corrected this to 052-431-7164, which is now used on every lp page.
+- **Main-site contact details stay separate:** phone and WhatsApp 050-578-8634. The tests check that neither site shows the other site's number.
 
 | URL (kept exactly) | Title / purpose | Hero | Form id → OfficeCRM notes | WP id | Status |
 |---|---|---|---|---|---|
@@ -63,7 +72,7 @@ Shared by all 4 landing pages (confirmed):
 | `/accessibility-statement/` | Accessibility statement | none | none | 9 | Implemented: text copied unchanged |
 | `/sitemap.xml`, `/robots.txt` | Technical | none | none | none | Implemented: the 7 URLs above |
 
-Copy, images and layout come from the WordPress REST export (`src/data/lp/wp-pages.json`) and the media library (85 files, converted to local WebP by the `fetch-lp-media` GitHub Action). Hebrew copy is unchanged, including the original spelling ("אדרכלות", "בעברה"). **The only new text** is the form error message "השליחה נכשלה. אפשר לנסות שוב, או לכתוב לנו בוואטסאפ דרך הכפתור בפינת המסך." WordPress showed Elementor's generic error, so this needs the owner's approval.
+Copy, images and layout come from the WordPress REST export (`src/data/lp/wp-pages.json`) and the media library (85 files, converted to local WebP by the `fetch-lp-media` GitHub Action). Hebrew copy is unchanged, including the original spelling ("אדרכלות", "בעברה"). **New text** (validation and failure messages, the same on both sites) is listed for approval in §7, D8.
 
 **Query parameters:**
 - `?utm_*`, `gclid`, `fbclid` and any other parameter are kept.
@@ -104,24 +113,40 @@ Live Wix pages that are copies or placeholders (content checked 2026-10-11) **re
 | `/coming-soon` | "האתר בשיפוצים...נשוב בקרוב!" | `/` |
 | `/portfolio-collections/*` (6 items), old `*-sitemap.xml` | Wix template demo items / sitemaps | `/portfolio`, `/sitemap.xml` (technical) |
 
-**Live Wix landing pages: decision D3.** These are real landing pages, not drafts as first assumed. They redirect for now, which is **not approved**:
+**Old Wix landing pages: out of scope, not recreated (owner, 2026-10-11).** These are live Wix pages with real content. Their proposed redirects stay pending until the owner has checked that no active campaign uses them. That check is not a launch blocker (REDIRECT-APPROVALS group D):
 
-| URL | Content | Form | Redirect to |
+| URL | Content | Form | Proposed redirect |
 |---|---|---|---|
 | `/דף-נחיתה-פרטיים` | "מתכננים עבורכם!" landing page for private clients | Yes (Wix form, submits to Wix) | `/לקוחות-פרטיים` |
 | `/דף-נחיתה-פרטי` | "משולחן השרטוט - עד לבית מעוצב…" | No (call and email buttons) | `/לקוחות-פרטיים` |
-| `/דףנחיתה2` | Landing page, mostly Wix widgets; content not fully captured | Yes | `/` |
+| `/דףנחיתה2` | Landing page, mostly Wix widgets | Yes | `/` |
 
-To decide: if Google Ads, Meta or any printed material still links to them, recreate them (copy plus the `/api/lead` form) before cutover. Otherwise approve the redirects. The ad accounts must be checked (inaccessible here).
+To check: Google Ads final URLs and Meta ad website URLs (steps in `docs/REDIRECT-APPROVALS.md`). If an active ad uses one of these pages, change the ad to an lp. page before the main site moves.
 
 ## 4. Forms → OfficeCRM
 
 | Form | Where | Fields | Sends to | Status |
 |---|---|---|---|---|
-| Main site contact | `/`, `/יצירת-קשר` | name\*, phone\*, email\*, message | `/api/lead` → OfficeCRM | Done (earlier phase) |
+| Main site contact | `/`, `/יצירת-קשר` | name\*, phone\*, email\*, message | `/api/lead` → OfficeCRM | Done and tested with a mock CRM |
 | lp consultation form | 4 lp pages | name\*, phone\*, email\*, consent\* | `/api/lead` → OfficeCRM (the same Worker code, deployed as `hagarlushi-lp`) | Done and tested with a mock CRM |
-| lp WhatsApp pop-up | All lp pages | name\*, phone\*, consent\* | **Not sent to the CRM.** It opens WhatsApp and pushes `whatsapp_click`. | **Decision D1** |
-| Wix landing-page forms | §3 | Wix forms | Wix | Decision D3 |
+| WhatsApp (both sites) | Floating button, thank-you pages, failure message | none | Opens WhatsApp only; `whatsapp_click` | Not a lead (D1) |
+| Wix landing-page forms | §3 | Wix forms | Wix | Out of scope; not recreated |
+
+**Validation** is the same on both sites. The rules in `src/lib/lead-rules.js` are shared by the forms and the Worker.
+- Required fields are marked with \*.
+- Each missing or invalid field gets its own Hebrew message next to it, and the field is set to `aria-invalid` and linked to the message with `aria-describedby`:
+  - Name: "יש להזין שם מלא".
+  - Phone, 9–15 digits: "יש להזין מספר טלפון".
+  - Email: "נא להזין כתובת אימייל תקינה".
+  - Privacy consent, lp only: "יש לאשר את מדיניות הפרטיות".
+- The first invalid field is focused, nothing is sent and the typed values are kept. Each message clears as soon as its field is corrected.
+- The Worker applies the same rules. If the browser check is bypassed, it answers 400 with the field name, and the form shows that field's message (not a generic error).
+
+**Delivery:**
+- While sending, the button is disabled, so a double click sends one lead.
+- The thank-you page and `generate_lead` follow only after OfficeCRM confirms the lead.
+- If OfficeCRM rejects the lead, times out (10 s) or is unreachable, or the visitor's connection fails, the values are kept and a separate message appears: "לא הצלחנו לשלוח את הפרטים כרגע. אפשר לנסות שוב או ליצור קשר בטלפון או בוואטסאפ."
+  - "בטלפון" and "בוואטסאפ" link to the site's own number: www 050-578-8634, lp 052-431-7164.
 
 What an lp lead carries (`worker/index.js`; no new CRM integration):
 - **The OfficeCRM fields:** `name`, `phone`, `email`, `source`, `notes`.
@@ -132,7 +157,7 @@ What an lp lead carries (`worker/index.js`; no new CRM integration):
 - **Consent:** required in the browser and again in the Worker (`missing_consent` → 400, nothing sent).
 - **Success:** only on HTTP 2xx with `success: true`. Only then does the browser go to `/thankyou/` and push `generate_lead`.
 
-**Inaccessible (WordPress admin needed):** what the Elementor forms did on submit (email notification, webhook, Zapier or CRM, redirect). If they post to a different service (e.g. a Zapier, Make or WhatsApp-bot webhook), that dependency must be recorded and approved before WordPress is switched off (brief rule). The redirect to `/thankyou/` after the main form is assumed, because that page exists and the Ads conversion is attached to it.
+**Inaccessible (WordPress admin needed):** what the main Elementor form did on submit (email notification, webhook, Zapier or CRM, redirect). If they post to a different service (e.g. a Zapier, Make or WhatsApp-bot webhook), that dependency must be recorded and approved before WordPress is switched off (brief rule). The redirect to `/thankyou/` after the main form is assumed, because that page exists and the Ads conversion is attached to it.
 
 ## 5. Tracking (GTM container `GTM-KJRR2DNT`, version 9, read from the public container JS)
 
@@ -144,9 +169,9 @@ What an lp lead carries (`worker/index.js`; no new CRM integration):
 | Microsoft Clarity `qc82doh8lz` | All pages; blocked on lp | None |
 | Site Kit `GT-TQKZV73G` (gtag, lp only) | All lp pages | Kept as an inline tag with the same ID and linker setting |
 
-New dataLayer events on lp:
-- `generate_lead`: once, on `/thankyou/`, only after OfficeCRM confirmed the lead.
-- `whatsapp_click`: from the pop-up, `link_location: lp_popup`.
+Event details, including which events are implemented, which need GTM configuration and which are optional: **`docs/ANALYTICS-EVENTS.md`**.
+- `generate_lead`: once, on the thank-you page, only after OfficeCRM confirmed the lead.
+- `whatsapp_click`: every WhatsApp link. Not a conversion.
 
 Live conversion firing can't be verified without the GTM, Google Ads or Meta dashboards; it is verified only locally (tags are not loaded off-domain).
 
@@ -158,46 +183,69 @@ Live conversion firing can't be verified without the GTM, Google Ads or Meta das
 | `www` | CNAME → Wix | Custom domain on Worker `hagarlushi` | O3 passed |
 | `lp` | A 69.62.113.1 (WordPress) | **Copied unchanged** at the nameserver switch. Later, a custom domain on Worker `hagarlushi-lp`. | All 7 lp pages and forms accepted on the workers.dev preview; D1, D2, D5 decided; WordPress form actions checked |
 | `office` | A 35.219.200.106 (OfficeCRM) | **Copied exactly, never changed** | none |
-| `en`, `he` | CNAME → Wix (error page) | Decision **D7**: copy as is, or delete them (no site behind them) | Owner |
+| `en`, `he` | CNAME → Wix (error page) | **Delete both records** at the nameserver switch (don't copy them into Cloudflare, or delete them there). Owner confirmed they're unused (D7, 2026-10-11). | Not done yet: cutover checklist |
 | MX, SPF, DKIM, DMARC, verification TXT | Per the zone export | Copied exactly | O1 export |
 
 Rollback for lp: point `lp` back to `A 69.62.113.1` (WordPress is not touched until acceptance).
 
-## 7. Decisions required (owner)
+## 7. Decisions
 
-| # | Decision | Options | Default in code |
-|---|---|---|---|
-| D1 | WhatsApp pop-up has no email field, but OfficeCRM requires email | (a) add an email field (changes the form); (b) allow leads without email in OfficeCRM (out of scope here); (c) WhatsApp only, no CRM lead | (c): `popupSendsToCrm: false` |
-| D2 | Two WhatsApp numbers: lp uses 054-431-7164, the main site 050-578-8634 | Keep both, or unify | Both kept as they are |
-| D3 | Live Wix landing pages (§3) | Recreate, or approve the redirects | Redirect (not approved) |
-| D4 | Duplicate/placeholder redirects (§3) and `/author/*` on lp | Approve | Redirect (not approved) |
-| D5 | `/privacy/` text: starts with a duplicated accessibility statement, then a generic template (SEQ Legal / Website Planet credit), with outdated wording | Legal review; text changes need the owner's approval | Copied unchanged |
-| D6 | Google Ads conversion trigger (lp `/thankyou/` page view) | Keep, or move to `generate_lead` | Unchanged |
-| D7 | `en.` / `he.` DNS records | Keep or delete | Unchanged |
-| D8 | New form error message (§2) | Approve or edit | Shown on failure |
+| # | Topic | Status |
+|---|---|---|
+| D1 | WhatsApp pop-up / WhatsApp leads | **Decided:** a WhatsApp click is not a lead; it opens the chat directly and is tracked as `whatsapp_click` only. Implemented. |
+| D2 | WhatsApp numbers | **Decided:** lp 052-431-7164, main site 050-578-8634. Implemented. **To confirm:** lp's delivery-failure message also links "בטלפון" to 052-431-7164. If calls should go to 050-578-8634, say so. |
+| D3 | Old Wix landing pages | **Decided:** out of scope, not recreated. **Open (not blocking):** check active campaigns, then approve the redirects (REDIRECT-APPROVALS group D). |
+| D4 | Redirect approvals | **Open:** lp `/author/gal/` and `/author/roy/` (group B, **blocks lp cutover**); main-site obsolete pages (group C, not blocking). |
+| D5 | lp `/privacy/` text: starts with a duplicated accessibility statement, then a generic template (SEQ Legal / Website Planet credit) | **Open, blocks lp cutover:** legal review. Copied unchanged until then (`legalReview` flag in the inventory). |
+| D6 | Google Ads conversion trigger (lp `/thankyou/` page view) | **Open (recommendation):** move it in GTM to `generate_lead`. |
+| D7 | `en.` / `he.` | **Decided:** unused; delete both DNS records at cutover. |
+| D8 | New Hebrew form text | **Open, owner approval:** see the list below. |
+| D9 | Contact email on the legal pages: the lp privacy policy and accessibility statement, and the main site's accessibility statement, list `mr.hadas@gmail.com` (copied unchanged), while the main site shows `hagarlushi@gmail.com` | **To confirm.** No change made. |
 
-## 8. Acceptance (what was tested, 2026-10-11)
+**D8: exact Hebrew text for approval.** All of it is new; the messages are the ones proposed by the owner.
 
-- `npm test`: **59/59 pass**. Covers:
-  - Worker tests, including lp forms, consent and CRM failure.
-  - Inventory coverage both ways.
-  - Redirect targets, no chains or loops, query strings kept.
-  - lp canonicals, robots, tags, form fields and consent.
-  - WhatsApp pop-up never reports a lead.
-  - Sitemap; images all local; no CRM address or key in `dist/` or `dist-lp/`.
-- **Browser, lp, 66/66 pass** (Playwright, desktop 1366px and mobile 375px, local `wrangler dev` with a mock OfficeCRM):
-  - All 4 forms: lead sent with the correct source and notes → `/thankyou/` → `generate_lead` once; no second conversion on refresh.
-  - CRM `success:false` or 500 → error message, no redirect, no conversion.
-  - Consent missing → blocked in the browser and by the API.
-  - Pop-up → opens WhatsApp (972544317164), no CRM call, no `generate_lead`.
-  - Gallery lightbox, testimonials carousel, no horizontal scroll, no broken images, no JS errors, no tags off-domain.
-- **Browser, main site:** 40/40 pass (unchanged).
-- `npm run check-launch`: all repository checks pass except the open owner decisions (14 unapproved redirects and D1), which fail **by design** until decided.
-- `wrangler deploy --dry-run`:
-  - `hagarlushi`: 1,430 asset files. `hagarlushi-lp`: 258 asset files.
+| Where | Text |
+|---|---|
+| Field required marker | `*` after each required field (in the main site's placeholders, e.g. "שם מלא *") |
+| Name missing | יש להזין שם מלא |
+| Phone missing or invalid | יש להזין מספר טלפון |
+| Email missing or invalid | נא להזין כתובת אימייל תקינה |
+| Privacy box not ticked (lp) | יש לאשר את מדיניות הפרטיות |
+| Delivery failure (both sites; replaces "השליחה נכשלה…") | לא הצלחנו לשלוח את הפרטים כרגע. אפשר לנסות שוב או ליצור קשר בטלפון או בוואטסאפ. ("בטלפון" and "בוואטסאפ" are links to the site's own number) |
+| Screen readers only (main site) | "(שדה חובה)" after each required field's label |
+
+## 8. Acceptance (re-run 2026-10-11 after the owner's decisions)
+
+- **`npm test`: 69/69 pass.** Covers:
+  - The shared validation rules and the exact Hebrew messages.
+  - The Worker applying the same rules, with 400 + field and nothing sent.
+  - Lead client: a field rejection, CRM rejection, timeout and network failure produce no redirect and no conversion.
+  - The OfficeCRM contract with a mock.
+  - Inventory coverage both ways; scope (only lp `/author/*` blocks); en./he. planned for removal; the redirect approval list up to date.
+  - lp canonicals, tags and form markup (required, `aria-describedby`, messages).
+  - WhatsApp: 052-431-7164 plus the message on every lp page, the main site's 050-578-8634, never mixed; no pop-up form.
+  - Sitemap; images all local; no CRM address or key in either build.
+- **Browser, both sites: 148/148 pass** (`test/e2e/forms.e2e.mjs`, desktop 1366px and mobile 375px, local `wrangler dev`, mock OfficeCRM). Covers:
+  - An empty form flags every required field; each field missing or invalid on its own; consent unchecked.
+  - The first invalid field is focused, `aria-invalid` is set and no request is sent.
+  - Values are kept, and messages clear when corrected.
+  - The server rejects an invalid lead (400 with the field); a server field rejection is shown next to the field.
+  - Success on all 6 forms: the button is disabled while sending, a double click sends exactly one OfficeCRM request, then `/thankyou` and one `generate_lead`; no second conversion on refresh.
+  - Delivery failures (`success:false`, HTTP 500, timeout, dropped CRM connection, visitor offline): the separate message appears with this site's phone and WhatsApp links, values are kept, there's no redirect and no conversion, and the visitor can retry.
+  - WhatsApp: the correct number and message, `whatsapp_click` once, no CRM request, no thank-you page, no `generate_lead`. The lp number is checked on all 7 lp pages.
+  - No horizontal scroll and no JS errors.
+- **Browser, main-site OfficeCRM round trip:** 40/40 pass (`test/e2e/main-site.e2e.mjs`).
+- **`npm run check-launch`:** every repository check passes except two, which fail **by design** until the owner acts:
+  - The lp `/author/*` redirect approval.
+  - The `/privacy/` legal review.
+  - The 12 out-of-scope Wix redirects are listed as not blocking.
+- **`wrangler deploy --dry-run`:**
+  - `hagarlushi`: 1,431 asset files. `hagarlushi-lp`: 259 asset files.
   - Both valid. Nothing was deployed.
 - **Not yet done** (needs dashboards):
   - Deploy to workers.dev.
   - A real test lead into OfficeCRM per form, deleted afterwards.
-  - GTM preview of the Ads conversion on the preview host.
-  - Check the WordPress form actions.
+  - GTM triggers and preview.
+  - Check the WordPress main-form action.
+  - The ad campaign URL check.
+  - DNS changes, including deleting `en`/`he`, at cutover.

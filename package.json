@@ -13,7 +13,8 @@
     "test": "node --test test/*.test.mjs",
     "preview:cf:lp": "npm run build && wrangler dev -c wrangler.lp.jsonc",
     "deploy:lp": "npm run build && wrangler deploy -c wrangler.lp.jsonc",
-    "fetch-lp-media": "node scripts/fetch-lp-media.mjs"
+    "fetch-lp-media": "node scripts/fetch-lp-media.mjs",
+    "redirect-list": "node scripts/redirect-list.mjs"
   },
   "dependencies": {
     "astro": "^5.0.0"

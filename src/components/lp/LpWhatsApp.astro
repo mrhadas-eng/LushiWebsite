@@ -1,71 +1,20 @@
 ---
-// Floating WhatsApp button + pop-up, as on the WordPress landing pages: the button opens a pop-up
-// ("לפתיחת צ'אט וואטסאפ, נא להשאיר שם וטלפון") with name, phone and the required privacy consent;
-// submitting opens the WhatsApp chat with the landing pages' number and opening message.
-//
-// CRM: the pop-up has no email field and OfficeCRM requires one, so pop-up details are not sent to
-// OfficeCRM while lpSite.popupSendsToCrm is false (owner decision, docs/LANDING-PAGE-INVENTORY.md).
-// What the WordPress pop-up did after submit (email / webhook / redirect) is configured server-side
-// in Elementor and could not be inspected; opening WhatsApp is inferred from the pop-up's wording.
-import { lpSite, lpShared } from '../../data/lp.mjs';
-import { lpHref } from '../../lib/lp-paths.mjs';
-const wa = lpSite.whatsapp;
-const waUrl = `https://api.whatsapp.com/send/?phone=${wa.number}&text=${encodeURIComponent(wa.message)}&type=phone_number&app_absent=0`;
+// Floating WhatsApp button on every landing page. A WhatsApp click is not a lead (owner decision D1,
+// 2026-10-11): it opens the chat with the landing pages' number and prescribed message, and is tracked
+// as whatsapp_click only (src/components/Tracking.astro, link_location "lp_float"). Nothing is sent to
+// OfficeCRM, there is no thank-you page and no generate_lead.
+import { lpWhatsAppUrl } from '../../data/lp.mjs';
 ---
-<button class="lp-wa" type="button" aria-haspopup="dialog" aria-controls="lp-wa-dialog" aria-label="פתיחת צ'אט וואטסאפ">
+<a class="lp-wa" href={lpWhatsAppUrl()} target="_blank" rel="noopener" data-track="lp_float" aria-label="פתיחת צ'אט וואטסאפ">
   <svg viewBox="0 0 32 32" width="59" height="59" aria-hidden="true">
     <circle cx="16" cy="16" r="16" fill="#4CAF50" />
     <path fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" d="M16 6.8c-5.2 0-9.3 4-9.3 9 0 1.8.5 3.4 1.4 4.8L7.2 25l4.6-1.3c1.3.7 2.7 1.1 4.2 1.1 5.2 0 9.3-4 9.3-9s-4.1-9-9.3-9z"/>
     <path fill="#fff" d="M13.1 11.4c.3 0 .5 0 .7.5l.8 1.9c.1.3 0 .5-.1.7l-.6.7c-.2.2-.2.4 0 .7.4.7 1 1.4 1.6 2 .6.5 1.2.9 1.9 1.2.3.1.5.1.7-.2l.6-.8c.2-.2.4-.3.7-.2l1.9.9c.3.1.4.3.3.6-.2 1-1.1 1.8-2.1 1.8-3.1-.2-6.4-3.2-6.9-6.2-.2-1 .5-2.1 1.4-2.5.3-.1.5-.1.8-.1z"/>
   </svg>
-</button>
-
-<dialog id="lp-wa-dialog" class="lp-wa-dialog" aria-labelledby="lp-wa-title" data-wa={waUrl} data-crm={String(lpSite.popupSendsToCrm)}>
-  <button class="lp-wa-close" type="button" aria-label="סגירה">&times;</button>
-  <p id="lp-wa-title" class="lp-wa-title">{lpShared.popupTitle}</p>
-  <form class="lp-wa-form" novalidate>
-    <input type="text" name="website" class="visually-hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
-    <label class="lp-field"><input type="text" name="full_name" required autocomplete="name" placeholder=" " /><span>{lpShared.formLabels.name} <b aria-hidden="true">*</b></span></label>
-    <label class="lp-field"><input type="tel" name="phone" required autocomplete="tel" inputmode="tel" pattern="[0-9+()\-. ]{7,40}" placeholder=" " /><span>{lpShared.formLabels.phone} <b aria-hidden="true">*</b></span></label>
-    <label class="lp-consent"><input type="checkbox" name="consent" value="yes" required /> <span>{lpShared.consentBefore}<a href={lpHref('/privacy/')} target="_blank" rel="noopener">{lpShared.consentLink}</a></span></label>
-    <button type="submit" class="lp-submit">{lpShared.formLabels.submit}</button>
-  </form>
-</dialog>
+</a>
 
 <style>
-  .lp-wa { position: fixed; right: 30px; bottom: 30px; z-index: 60; width: 59px; height: 59px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+  .lp-wa { position: fixed; right: 30px; bottom: 30px; z-index: 60; width: 59px; height: 59px; border-radius: 50%; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
   .lp-wa svg { display: block; }
-  .lp-wa-dialog { border: 0; padding: 34px 28px 28px; width: min(420px, calc(100vw - 32px)); direction: rtl; font-family: var(--lp-font); color: var(--lp-ink); }
-  .lp-wa-dialog::backdrop { background: rgba(0, 0, 0, .55); }
-  .lp-wa-close { position: absolute; top: 6px; left: 10px; border: 0; background: none; font-size: 30px; line-height: 1; cursor: pointer; color: #555; }
-  .lp-wa-title { margin: 0 0 18px; font-size: 18px; font-weight: 600; text-align: center; }
-  .lp-wa-form { display: grid; gap: 12px; }
   @media (max-width: 767px) { .lp-wa { right: 16px; bottom: 16px; } }
 </style>
-
-<script>
-  const btn = document.querySelector<HTMLButtonElement>('.lp-wa');
-  const dlg = document.querySelector<HTMLDialogElement>('#lp-wa-dialog');
-  if (btn && dlg) {
-    btn.addEventListener('click', () => dlg.showModal());
-    dlg.querySelector('.lp-wa-close')?.addEventListener('click', () => dlg.close());
-    dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
-    const form = dlg.querySelector<HTMLFormElement>('form')!;
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (!form.checkValidity()) { form.reportValidity(); return; }
-      const fd = new FormData(form);
-      window.dataLayer = window.dataLayer || [];
-      if (!fd.get('website')) {
-        // Not a CRM lead (no email); measured as a WhatsApp click, never as generate_lead.
-        window.dataLayer.push({ event: 'whatsapp_click', link_url: dlg.dataset.wa, link_location: 'lp_popup', page_path: location.pathname });
-      }
-      dlg.close();
-      form.reset();
-      // window.open(…, 'noopener') always returns null, so open normally and cut the opener instead;
-      // fall back to the same tab only when a pop-up blocker refused the new tab.
-      const w = window.open(dlg.dataset.wa, '_blank');
-      if (w) w.opener = null; else location.href = dlg.dataset.wa!;
-    });
-  }
-</script>

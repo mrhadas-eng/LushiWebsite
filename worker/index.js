@@ -19,6 +19,8 @@
 //   LEADS_WEBHOOK_API_KEY   the same value as OfficeCRM's LEADS_WEBHOOK_API_KEY, the bare key
 //                           (no "Bearer " prefix; the Worker adds it)
 
+import { EMAIL_RE, isValidPhone, ERROR_FIELD } from '../src/lib/lead-rules.js';
+
 const MAX_BODY_BYTES = 10_000;
 // Not exported: the Workers runtime only accepts functions and handlers as module exports.
 const CRM_TIMEOUT_MS = 10_000;
@@ -38,8 +40,6 @@ const FORMS = {
   'lp-interior-design': 'דף נחיתה – עיצוב פנים', 'lp-renovation': 'דף נחיתה – שיפוץ',
 };
 const isLandingForm = (form) => typeof form === 'string' && form.startsWith('lp-');
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const PHONE_RE = /^[0-9+()\-.\s]{7,40}$/;
 
 function json(status, body, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
@@ -68,9 +68,9 @@ export function validateLead(input) {
     if (s.length > max) return { error: `too_long_${key}` };
     if (s) lead[key] = s;
   }
-  // OfficeCRM requires name, phone and email.
+  // OfficeCRM requires name, phone and email. Same rules as the browser forms (src/lib/lead-rules.js).
   if (!lead.full_name) return { error: 'missing_name' };
-  if (!lead.phone || !PHONE_RE.test(lead.phone)) return { error: 'invalid_phone' };
+  if (!isValidPhone(lead.phone)) return { error: 'invalid_phone' };
   if (!lead.email || !EMAIL_RE.test(lead.email)) return { error: 'invalid_email' };
   if (lead.form && !FORMS[lead.form]) return { error: 'invalid_form' };
   // The landing-page forms have a required privacy-policy checkbox; enforce it server-side too.
@@ -189,7 +189,7 @@ export async function handleLead(request, env, opts = {}) {
   }
 
   const { lead, error } = validateLead(input);
-  if (error) return json(400, { ok: false, error });
+  if (error) return json(400, ERROR_FIELD[error] ? { ok: false, error, field: ERROR_FIELD[error] } : { ok: false, error });
 
   const cfg = crmConfig(env);
   if (!cfg) {

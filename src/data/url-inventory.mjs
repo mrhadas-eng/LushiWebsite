@@ -6,8 +6,13 @@
 //   implemented – the new site serves this exact URL
 //   redirect    – 301 to `to`. approved:true only for technical URLs or after the owner approved it;
 //                 approved:false redirects are DECISIONS REQUIRED before cutover (check-launch fails)
-//   inactive    – the host shows no site today (nothing to migrate); DNS decision only
+//   remove-dns  – unused subdomain (owner confirmed 2026-10-11): delete its DNS record at cutover
 //   external    – not part of this website (keep as is)
+// Redirect kinds: technical:true – no visitor content is lost (sitemaps, feeds, WordPress slugs,
+//                 template demo items, apex → www); content – a page with visible content is retired.
+// scope: 'out' – an obsolete Wix page outside the agreed landing-page migration scope (owner,
+//                 2026-10-11): not recreated; its redirect awaits approval but does NOT block launch.
+// legalReview:true – content copied unchanged that the owner must have reviewed (blocks lp cutover).
 // host: www (www.hagarlushi.com), lp (lp.hagarlushi.com), apex, en, he, office
 
 const www = (url, extra = {}) => ({ host: 'www', url, ...extra });
@@ -23,22 +28,25 @@ export const inventory = [
   www('/thankyou', { status: 'implemented', noindex: true, note: 'Wix thank-you page (text: "תודה אני אחזור אליכם בהקדם האפשרי…"); new page at the same URL, final text pending' }),
 
   // ------------------------------------------------ www – duplicates / near-empty Wix pages (content verified 2026-10-11)
-  www('/copy-of-להיות-יפה', { status: 'redirect', to: '/דירה-להשכיר', approved: false, reason: 'Duplicate of the "דירה להשכיר" project page' }),
-  www('/להיות-יפה', { status: 'redirect', to: '/להיות-יפה-שירלי', approved: false, reason: 'Older copy of the "להיות יפה" project page' }),
-  www('/redesign', { status: 'redirect', to: '/עיצוב-מחדש', approved: false, reason: 'Duplicate of the "עיצוב מחדש" project page' }),
-  www('/go-on-vacation', { status: 'redirect', to: '/צאו-לחופשה', approved: false, reason: 'Duplicate of the "צאו לחופשה" project page' }),
-  www('/הבן-של-הנגר3', { status: 'redirect', to: '/הבן-של-הנגר', approved: false, reason: 'Duplicate of the "הבן של הנגר" project page' }),
-  www('/bio', { status: 'redirect', to: '/אודות', approved: false, reason: 'Older version of the About text' }),
-  www('/home', { status: 'redirect', to: '/', approved: false, reason: 'Empty Wix page' }),
-  www('/פרוייקטים', { status: 'redirect', to: '/לקוחות-פרטיים', approved: false, reason: 'Near-empty index ("הפרוייקטים שלי")' }),
-  www('/coming-soon', { status: 'redirect', to: '/', approved: false, reason: '"האתר בשיפוצים...נשוב בקרוב!" placeholder' }),
+  // Out of scope (owner, 2026-10-11): not migrated. Redirects proposed so the old addresses don't 404.
+  www('/copy-of-להיות-יפה', { scope: 'out', status: 'redirect', to: '/דירה-להשכיר', approved: false, reason: 'Duplicate of the "דירה להשכיר" project page' }),
+  www('/להיות-יפה', { scope: 'out', status: 'redirect', to: '/להיות-יפה-שירלי', approved: false, reason: 'Older copy of the "להיות יפה" project page' }),
+  www('/redesign', { scope: 'out', status: 'redirect', to: '/עיצוב-מחדש', approved: false, reason: 'Duplicate of the "עיצוב מחדש" project page' }),
+  www('/go-on-vacation', { scope: 'out', status: 'redirect', to: '/צאו-לחופשה', approved: false, reason: 'Duplicate of the "צאו לחופשה" project page' }),
+  www('/הבן-של-הנגר3', { scope: 'out', status: 'redirect', to: '/הבן-של-הנגר', approved: false, reason: 'Duplicate of the "הבן של הנגר" project page' }),
+  www('/bio', { scope: 'out', status: 'redirect', to: '/אודות', approved: false, reason: 'Older version of the About text' }),
+  www('/home', { scope: 'out', status: 'redirect', to: '/', approved: false, reason: 'Empty Wix page' }),
+  www('/פרוייקטים', { scope: 'out', status: 'redirect', to: '/לקוחות-פרטיים', approved: false, reason: 'Near-empty index ("הפרוייקטים שלי")' }),
+  www('/coming-soon', { scope: 'out', status: 'redirect', to: '/', approved: false, reason: '"האתר בשיפוצים...נשוב בקרוב!" placeholder' }),
 
-  // ------------------------------------------------ www – Wix landing pages (LIVE, real content) – DECISION REQUIRED
-  www('/דף-נחיתה-פרטיים', { status: 'redirect', to: '/לקוחות-פרטיים', approved: false, decision: true,
-    reason: 'Live Wix landing page with a contact form ("מתכננים עבורכם!"). Recreate or redirect depends on whether ads still send traffic here' }),
-  www('/דף-נחיתה-פרטי', { status: 'redirect', to: '/לקוחות-פרטיים', approved: false, decision: true,
+  // ------------------------------------------------ www – old Wix landing pages (live today, real content)
+  // Out of scope (owner, 2026-10-11): NOT recreated. The redirect stays a pending decision until the owner
+  // has checked that no active campaign (Google Ads / Meta final URLs, printed material) still uses them.
+  www('/דף-נחיתה-פרטיים', { scope: 'out', campaignCheck: true, status: 'redirect', to: '/לקוחות-פרטיים', approved: false,
+    reason: 'Live Wix landing page with a Wix contact form ("מתכננים עבורכם!")' }),
+  www('/דף-נחיתה-פרטי', { scope: 'out', campaignCheck: true, status: 'redirect', to: '/לקוחות-פרטיים', approved: false,
     reason: 'Live Wix landing page ("משולחן השרטוט - עד לבית מעוצב…", call/mail buttons, no form)' }),
-  www('/דףנחיתה2', { status: 'redirect', to: '/', approved: false, decision: true,
+  www('/דףנחיתה2', { scope: 'out', campaignCheck: true, status: 'redirect', to: '/', approved: false,
     reason: 'Live Wix landing page with a form (content not fully captured: mostly Wix widgets)' }),
 
   // ------------------------------------------------ www – technical
@@ -55,7 +63,7 @@ export const inventory = [
   lp('/interior-design/', { status: 'implemented', wpId: 321 }),
   lp('/renovation/', { status: 'implemented', wpId: 406 }),
   lp('/thankyou/', { status: 'implemented', wpId: 244, note: 'Google Ads conversion fires on this page view (GTM)' }),
-  lp('/privacy/', { status: 'implemented', wpId: 378, note: 'Text exported unchanged; owner/legal review required' }),
+  lp('/privacy/', { status: 'implemented', wpId: 378, legalReview: true, note: 'Text exported unchanged; legal review required before lp cutover (D5)' }),
   lp('/accessibility-statement/', { status: 'implemented', wpId: 9 }),
   lp('/sitemap.xml', { status: 'implemented', technical: true }),
   lp('/robots.txt', { status: 'implemented', technical: true }),
@@ -73,10 +81,16 @@ export const inventory = [
 
   // ------------------------------------------------ other hosts
   { host: 'apex', url: '/', status: 'redirect', to: 'https://www.hagarlushi.com/', approved: true, technical: true, where: 'Cloudflare Redirect Rule (docs/CLOUDFLARE-PLAN.md, O5)', reason: 'hagarlushi.com redirects to www today (Wix)' },
-  { host: 'en', url: '/', status: 'inactive', reason: 'CNAME to Wix; shows the Wix "ConnectYourDomain Error" page — no site' },
-  { host: 'he', url: '/', status: 'inactive', reason: 'CNAME to Wix; shows the Wix "ConnectYourDomain Error" page — no site' },
+  { host: 'en', url: '/', status: 'remove-dns', reason: 'CNAME to Wix showing the Wix "ConnectYourDomain Error" page; owner confirmed unused (2026-10-11): delete the record at cutover' },
+  { host: 'he', url: '/', status: 'remove-dns', reason: 'CNAME to Wix showing the Wix "ConnectYourDomain Error" page; owner confirmed unused (2026-10-11): delete the record at cutover' },
   { host: 'office', url: '/', status: 'external', reason: 'OfficeCRM (A 35.219.200.106) — keep the DNS record exactly' },
 ];
 
-/** Redirects that still need the owner's approval (they block cutover). */
-export const pendingDecisions = () => inventory.filter((e) => e.status === 'redirect' && !e.approved);
+/** Redirects still awaiting the owner's approval. */
+export const unapprovedRedirects = () => inventory.filter((e) => e.status === 'redirect' && !e.approved);
+/** Unapproved redirects that block launch (in scope). */
+export const pendingDecisions = () => unapprovedRedirects().filter((e) => e.scope !== 'out');
+/** Unapproved redirects of out-of-scope Wix pages: listed for approval, not blocking. */
+export const outOfScopePending = () => unapprovedRedirects().filter((e) => e.scope === 'out');
+/** Content that needs a legal review before cutover. */
+export const legalReviewPending = () => inventory.filter((e) => e.legalReview);

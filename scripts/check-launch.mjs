@@ -4,7 +4,8 @@
 import fs from 'node:fs';
 import { site } from '../src/data/content.mjs';
 import { lpSite, lpUsedMedia, lpImg } from '../src/data/lp.mjs';
-import { pendingDecisions } from '../src/data/url-inventory.mjs';
+import { pendingDecisions, outOfScopePending, legalReviewPending } from '../src/data/url-inventory.mjs';
+import { render as redirectList } from './redirect-list.mjs';
 
 const results = [];
 const check = (ok, label, fix) => results.push({ ok, label, fix });
@@ -78,28 +79,40 @@ check(missingMedia.length === 0, `Landing-page images stored locally (${lpUsedMe
   'Run the "Copy landing-page images" GitHub Action (fetch-lp-media.yml)');
 check(lpSite.siteKitTagId === 'GT-TQKZV73G', 'Landing-page Google tag unchanged (GT-TQKZV73G, from Site Kit)', 'lpSite.siteKitTagId must stay GT-TQKZV73G unless the owner approves');
 
-// --- Owner decisions (docs/LANDING-PAGE-INVENTORY.md)
+// --- Owner decisions (docs/REDIRECT-APPROVALS.md, docs/LANDING-PAGE-INVENTORY.md §7)
 const open = pendingDecisions();
-check(open.length === 0, `Every redirect of an old URL is approved by the owner (${open.length} open)`,
-  `Owner decision needed, then set approved: true in src/data/url-inventory.mjs (or recreate the page):\n${open.map((e) => `      - ${e.host} ${e.url} → ${e.to}: ${e.reason}`).join('\n')}`);
-check(lpSite.popupSendsToCrm === true || lpSite.popupDecision === 'whatsapp-only',
-  'WhatsApp pop-up lead handling decided (send to OfficeCRM, or WhatsApp only)', 'Owner decision: the pop-up has no email field but OfficeCRM requires one (inventory, decision D1)');
+check(open.length === 0, `In-scope content redirects approved by the owner (${open.length} open)`,
+  `Owner approval needed (docs/REDIRECT-APPROVALS.md, group B), then set approved: true in src/data/url-inventory.mjs:\n${open.map((e) => `      - ${e.host} ${e.url} → ${e.to}: ${e.reason}`).join('\n')}`);
+const legal = legalReviewPending();
+check(legal.length === 0, `Legal review done for copied legal text (${legal.length} open)`,
+  `Have the text reviewed, then remove legalReview from the entry in src/data/url-inventory.mjs:\n${legal.map((e) => `      - ${e.host} ${e.url}: ${e.note}`).join('\n')}`);
+check(fs.existsSync('docs/REDIRECT-APPROVALS.md') && fs.readFileSync('docs/REDIRECT-APPROVALS.md', 'utf8') === redirectList(),
+  'Redirect approval list is up to date (docs/REDIRECT-APPROVALS.md)', 'Run npm run redirect-list');
+check(lpSite.whatsapp.number === '972524317164' && site.whatsapp.number === '972505788634',
+  'WhatsApp numbers: landing pages 052-431-7164, main site 050-578-8634', 'Fix lpSite.whatsapp / site.whatsapp');
+const outPending = outOfScopePending();
 
 let failed = 0;
 for (const r of results) {
   console.log(`${r.ok ? '✔' : '✘'} ${r.label}`);
   if (!r.ok) { failed++; console.log(`    → ${r.fix}`); }
 }
+if (outPending.length) {
+  console.log(`\nNot blocking: ${outPending.length} redirects of out-of-scope Wix pages await approval (docs/REDIRECT-APPROVALS.md, groups C–D):`);
+  for (const e of outPending) console.log(`  · ${e.url} → ${e.to}${e.campaignCheck ? '   [check active campaigns first]' : ''}`);
+}
 
 console.log(`
 Manual checks (cannot be verified from the repository):
   ☐ Worker secrets set on hagarlushi AND hagarlushi-lp: CRM_WEBHOOK_URL (OfficeCRM leads webhook) and LEADS_WEBHOOK_API_KEY (bare key)
-  ☐ WordPress admin checked: what the Elementor forms/pop-up did on submit (email, webhook, redirect) — inventory section 4
+  ☐ WordPress admin checked: what the Elementor form did on submit (email, webhook, redirect) — inventory section 4
   ☐ A test lead from each form on the workers.dev preview was created in OfficeCRM (and deleted afterwards)
   ☐ DNS: every Wix record copied to Cloudflare, including lp. and office. (OfficeCRM), MX, SPF/DKIM/DMARC
   ☐ GTM: triggers for generate_lead / whatsapp_click / phone_click / email_click published
   ☐ GTM: Google Ads conversion on lp still fires (lp /thankyou/ page view, or moved to generate_lead)
-  ☐ Google Ads / Meta final URLs checked against the inventory (Wix landing pages /דף-נחיתה-*, /דףנחיתה2)
+  ☐ Google Ads / Meta final URLs checked: no active ad uses /דף-נחיתה-פרטיים, /דף-נחיתה-פרטי, /דףנחיתה2 (REDIRECT-APPROVALS D)
+  ☐ GTM: whatsapp_click is NOT a conversion (not linked to Google Ads / Meta Lead) — docs/ANALYTICS-EVENTS.md
+  ☐ DNS cutover: delete the en and he records (unused); keep office exactly
 See LAUNCH.md and docs/CLOUDFLARE-PLAN.md.`);
 console.log(failed ? `\n${failed} repository item(s) to fix before launch.` : '\nRepository checks passed.');
 process.exit(failed ? 1 : 0);

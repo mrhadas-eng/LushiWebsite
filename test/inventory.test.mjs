@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { inventory, pendingDecisions } from '../src/data/url-inventory.mjs';
+import { inventory, pendingDecisions, outOfScopePending } from '../src/data/url-inventory.mjs';
 
 const built = fs.existsSync('dist/index.html') && fs.existsSync('dist-lp/index.html');
 const skip = !built && 'run npm run build first';
@@ -38,9 +38,9 @@ test('inventory entries are well-formed and unique', () => {
     const key = `${e.host} ${e.url}`;
     assert.ok(!seen.has(key), `duplicate ${key}`); seen.add(key);
     assert.ok(['www', 'lp', 'apex', 'en', 'he', 'office'].includes(e.host), key);
-    assert.ok(['implemented', 'redirect', 'inactive', 'external'].includes(e.status), key);
+    assert.ok(['implemented', 'redirect', 'remove-dns', 'external'].includes(e.status), key);
     if (e.status === 'redirect') { assert.ok(e.to, `${key}: redirect without target`); assert.equal(typeof e.approved, 'boolean', key); }
-    if (e.status === 'inactive' || e.status === 'external' || e.decision || (e.status === 'redirect' && !e.technical)) assert.ok(e.reason, `${key}: reason required`);
+    if (e.status === 'remove-dns' || e.status === 'external' || e.campaignCheck || (e.status === 'redirect' && !e.technical)) assert.ok(e.reason, `${key}: reason required`);
   }
 });
 
@@ -97,8 +97,22 @@ test('no landing-page URL is redirected to a homepage silently', () => {
     assert.equal(inventory.find((e) => e.host === 'lp' && e.url === u)?.status, 'implemented', u);
 });
 
-test('decisions still open are listed (they block cutover; check-launch reports them)', () => {
-  const open = pendingDecisions();
-  for (const e of open) assert.ok(e.reason, `${e.host} ${e.url}`);
-  assert.ok(open.some((e) => e.decision), 'the live Wix landing pages are flagged as decisions');
+test('scope: lp author archives block launch until approved; out-of-scope Wix pages are listed but do not block', () => {
+  const blocking = pendingDecisions().map((e) => `${e.host} ${e.url}`).sort();
+  assert.deepEqual(blocking, ['lp /author/gal/', 'lp /author/roy/']);
+  const out = outOfScopePending();
+  assert.equal(out.length, 12);
+  assert.ok(out.every((e) => e.host === 'www' && !e.technical && e.reason));
+  assert.equal(out.filter((e) => e.campaignCheck).length, 3, 'the 3 old Wix landing pages wait for the campaign check');
+  for (const e of inventory.filter((x) => x.technical && x.status === 'redirect')) assert.equal(e.approved, true, `${e.host} ${e.url}`);
+});
+
+test('en. and he. are unused and planned for DNS removal; office. is untouched', () => {
+  for (const h of ['en', 'he']) assert.equal(inventory.find((e) => e.host === h).status, 'remove-dns');
+  assert.equal(inventory.find((e) => e.host === 'office').status, 'external');
+});
+
+test('the redirect approval list is up to date (npm run redirect-list)', async () => {
+  const { render } = await import('../scripts/redirect-list.mjs');
+  assert.equal(fs.readFileSync('docs/REDIRECT-APPROVALS.md', 'utf8'), render());
 });
