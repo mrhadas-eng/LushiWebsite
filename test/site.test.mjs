@@ -54,6 +54,17 @@ test('thank-you and 404 pages are noindex; canonical URLs use www and no trailin
   assert.equal(decodeURI(canon), 'https://www.hagarlushi.com/אודות');
 });
 
+test('accessibility statement (/הצהרתנגישות): contact email is lushi.office@gmail.com as a mailto link; old address gone; wording unchanged', { skip: !built && 'run npm run build first' }, () => {
+  const h = fs.readFileSync(page('/הצהרתנגישות'), 'utf8');
+  assert.match(h, /דואר אלקטרוני: <a href="mailto:lushi\.office@gmail\.com"[^>]*>lushi\.office@gmail\.com<\/a>/);
+  assert.doesNotMatch(h, /mr\.hadas@gmail\.com/);
+  for (const m of h.matchAll(/href="mailto:([^"?]+)/g)) assert.equal(m[1], 'lushi.office@gmail.com');
+  // Only the address changed in the page source (owner, 2026-10-12): nothing else in the statement differs.
+  const src = fs.readFileSync('src/pages/הצהרתנגישות.astro', 'utf8');
+  assert.equal(src.match(/lushi\.office@gmail\.com/g).length, 2);
+  assert.doesNotMatch(src, /mr\.hadas@gmail\.com|hagarlushi@gmail\.com/);
+});
+
 // Built from pieces so this file itself never contains the full address.
 const OFFICE_WEBHOOK = ['office', 'hagarlushi.com/api/leads'].join('.');
 

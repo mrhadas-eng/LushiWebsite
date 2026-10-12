@@ -205,7 +205,7 @@ Rollback for lp: point `lp` back to `A 69.62.113.1` (WordPress is not touched un
 | D6 | Google Ads conversion trigger (lp `/thankyou/` page view) | **Open (recommendation):** move it in GTM to `generate_lead`. |
 | D7 | `en.` / `he.` | **Decided:** unused; delete both DNS records at cutover. |
 | D8 | New Hebrew form text | **Open, owner approval:** see the list below. |
-| D9 | Contact email on the legal pages | **Decided (2026-10-12):** the lp privacy policy and accessibility statement show `lushi.office@gmail.com` as a `mailto:` link. WordPress had `mr.hadas@gmail.com` as plain text. The address is swapped when the page is built (`src/lib/lp-legal.mjs`); the policy wording is unchanged and still awaits legal review (D5). **Open (not blocking lp):** the main site's accessibility statement (`/הצהרתנגישות`, www) still shows `mr.hadas@gmail.com`; tell us whether to change it too. |
+| D9 | Contact email on the legal pages | **Decided (2026-10-12):** the lp privacy policy and accessibility statement show `lushi.office@gmail.com` as a `mailto:` link. WordPress had `mr.hadas@gmail.com` as plain text. The address is swapped when the page is built (`src/lib/lp-legal.mjs`); the policy wording is unchanged and still awaits legal review (D5). **Main site, also decided (2026-10-12):** the accessibility statement at `/הצהרתנגישות` (www) now shows `lushi.office@gmail.com`. It was already a `mailto:` link; only the address changed, and the rest of the statement is untouched. |
 
 **D8: exact Hebrew text.** The field messages were given by the owner (phone missing/invalid split on 2026-10-12).
 
@@ -222,7 +222,7 @@ Rollback for lp: point `lp` back to `A 69.62.113.1` (WordPress is not touched un
 
 ## 8. Acceptance (re-run 2026-10-12)
 
-- **`npm test`: 72/72 pass.** Covers:
+- **`npm test`: 73/73 pass.** Covers:
   - The shared validation rules and the exact Hebrew messages; 26 valid phone formats accepted, 22 invalid numbers rejected; empty vs invalid phone.
   - The Worker applying the same rules, with 400 + field and nothing sent.
   - Lead client: a field rejection, CRM rejection, timeout and network failure produce no redirect and no conversion.
@@ -230,6 +230,7 @@ Rollback for lp: point `lp` back to `A 69.62.113.1` (WordPress is not touched un
   - Inventory coverage both ways; scope (only lp `/author/*` blocks); en./he. planned for removal; the redirect approval list up to date.
   - lp canonicals, tags and form markup (required, `aria-describedby`, messages).
   - WhatsApp: 052-431-7164 plus the message on every lp page, the main site's 050-578-8634, never mixed; no pop-up form.
+  - Main-site accessibility statement: `lushi.office@gmail.com` as a `mailto:` link, no `mr.hadas@gmail.com`.
   - lp legal pages: `lushi.office@gmail.com` as text and `mailto:` link, no old address, wording otherwise identical to the WordPress export.
   - lp delivery-failure links: `tel:+972524317164` and WhatsApp `972524317164` on all 4 forms; main site `tel:+972505788634`.
   - Sitemap; images all local; no CRM address or key in either build.
