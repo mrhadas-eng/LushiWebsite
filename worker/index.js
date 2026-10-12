@@ -70,6 +70,7 @@ export function validateLead(input) {
   }
   // OfficeCRM requires name, phone and email. Same rules as the browser forms (src/lib/lead-rules.js).
   if (!lead.full_name) return { error: 'missing_name' };
+  if (!lead.phone) return { error: 'missing_phone' };
   if (!isValidPhone(lead.phone)) return { error: 'invalid_phone' };
   if (!lead.email || !EMAIL_RE.test(lead.email)) return { error: 'invalid_email' };
   if (lead.form && !FORMS[lead.form]) return { error: 'invalid_form' };

@@ -4,7 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { lpPages, lpSite } from '../src/data/lp.mjs';
+import { lpPages, lpSite, lpWpPages } from '../src/data/lp.mjs';
+import { legalHtml } from '../src/lib/lp-legal.mjs';
 
 const DIR = 'dist-lp';
 const built = fs.existsSync(path.join(DIR, 'index.html'));
@@ -70,6 +71,32 @@ test('WhatsApp: correct landing-page number and message on every lp page; a link
   }
   const src = fs.readFileSync('src/components/lp/LpWhatsApp.astro', 'utf8').replace(/\/\/.*$/gm, '');
   assert.doesNotMatch(src, /<script|generate_lead|\/api\/lead|sendLead|submitLead/);
+});
+
+test('landing-page phone fallback: calls go to 052-431-7164 (tel:+972524317164) in every lp form failure message', { skip }, () => {
+  assert.equal(lpSite.phone, '052-431-7164');
+  assert.equal(lpSite.phoneHref, 'tel:+972524317164');
+  for (const pg of lpPages) {
+    const fail = html(pg.path).match(/<p class="lp-form-error"[\s\S]*?<\/p>/)?.[0] || '';
+    assert.ok(fail.includes('href="tel:+972524317164"'), `${pg.path}: phone link`);
+    assert.match(fail, /href="https:\/\/api\.whatsapp\.com\/send\/\?phone=972524317164&(amp;)?text=/, `${pg.path}: WhatsApp link`);
+    assert.doesNotMatch(fail, /tel:\+972505788634|tel:\+972544317164/, `${pg.path}: another site's number`);
+  }
+});
+
+test('legal pages: contact email is lushi.office@gmail.com (text and mailto link); old addresses gone; wording otherwise unchanged', { skip }, () => {
+  assert.equal(lpSite.legalEmail, 'lushi.office@gmail.com');
+  for (const p of ['/privacy/', '/accessibility-statement/']) {
+    const h = html(p);
+    assert.ok(h.includes('<a href="mailto:lushi.office@gmail.com" dir="ltr">lushi.office@gmail.com</a>'), `${p}: email link`);
+    assert.doesNotMatch(h, /mr\.hadas@gmail\.com|hagarlushi@gmail\.com/i, `${p}: old address`);
+    for (const m of h.matchAll(/href="mailto:([^"?]+)/g)) assert.equal(m[1], 'lushi.office@gmail.com', `${p}: mailto`);
+  }
+  // Only the address changed: the exported text with the address swapped is otherwise identical.
+  for (const id of [9, 378]) {
+    const strip = (x) => x.replace(/<[^>]+>/g, '').replace(/mr\.hadas@gmail\.com|lushi\.office@gmail\.com/g, 'EMAIL');
+    assert.equal(strip(legalHtml(id)), strip(lpWpPages.find((x) => x.id === id).html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, '')), `wp ${id}`);
+  }
 });
 
 test('main site keeps its own number (050-578-8634), never the landing-page one', { skip }, () => {

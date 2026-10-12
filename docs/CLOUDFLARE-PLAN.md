@@ -70,7 +70,7 @@ from lp. is served on www and vice versa. In `npm run dev` the landing pages are
 **Browser → Worker.** The forms send the website payload (docs/MIGRATION-REVIEW.md §7) to `/api/lead`. The Worker accepts
 only same-origin `POST` (`Origin` equals the Worker's own origin; `Sec-Fetch-Site` same-origin),
 `Content-Type: application/json`, body ≤ 10 KB. Validation: **name, phone and email required** (OfficeCRM requires them;
-both forms now require all three), email format, phone `[0-9+()-. ]{7,40}`, `form` is `home`, `contact` or one of the `lp-*` forms,
+both forms now require all three), email format, phone: a valid Israeli number (or +country code from abroad), formatting ignored (`isValidPhone` in `src/lib/lead-rules.js`); empty and invalid phone are separate errors (`missing_phone`, `invalid_phone`), `form` is `home`, `contact` or one of the `lp-*` forms,
 length limit per field. Landing-page forms (`form` = `lp-home`, `lp-architecture`, `lp-interior-design`, `lp-renovation`) must also send `consent: "yes"` (else 400 `missing_consent`); their `source` starts with `landing-page /` instead of `website /`. If the honeypot field `website` is filled, the Worker replies `{ok:true}` and sends **nothing**.
 
 **Worker → OfficeCRM** (the existing OfficeCRM leads webhook; OfficeCRM itself isn't changed):

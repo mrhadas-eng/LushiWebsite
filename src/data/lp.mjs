@@ -20,6 +20,9 @@ export const lpSite = {
     number: '972524317164',
     message: 'היי הגר! יש לי פרוייקט שאני רוצה להתייעץ לגביו.',
   },
+  // Contact email shown on the landing pages' legal pages (owner, 2026-10-12). It replaces the addresses
+  // in the WordPress text (src/lib/lp-legal.mjs); the policy wording itself is unchanged (legal review pending).
+  legalEmail: 'lushi.office@gmail.com',
   footer: { rights: 'כל הזכויות שמורות להגר לושי' },
 };
 

@@ -100,7 +100,7 @@ const [failBefore, failAfter] = DELIVERY_FAILED_TEXT.split('בטלפון או ב
         lead, honeypot: String(fd.get('website') || '').trim(), formLocation: form.dataset.form,
         storage: sessionStorage, navigate: (p: string) => { location.href = p; },
         thanksPath: form.dataset.thanks, send: (l: Record<string, string>) => sendLead(l),
-        onFieldError: (field: string) => { if (!showServerFieldError(form, field)) err.hidden = false; },
+        onFieldError: (field: string, code: string) => { if (!showServerFieldError(form, field, code)) err.hidden = false; },
       });
       if (result === 'failed') err.hidden = false;   // valid lead, delivery not confirmed: values kept
       if (result === 'failed' || result === 'invalid') { btn.disabled = false; btn.removeAttribute('aria-busy'); }

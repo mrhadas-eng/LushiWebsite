@@ -178,7 +178,7 @@ test('validation: name, phone and email are required (OfficeCRM contract)', asyn
   const lead = { full_name: 'דנה', phone: '050-1234567', email: 'a@b.co' };
   assert.ok(validateLead(lead).lead);
   assert.equal(validateLead({ ...lead, full_name: '' }).error, 'missing_name');
-  assert.equal(validateLead({ ...lead, phone: '' }).error, 'invalid_phone');
+  assert.equal(validateLead({ ...lead, phone: '' }).error, 'missing_phone');
   assert.equal(validateLead({ ...lead, phone: 'call me' }).error, 'invalid_phone');
   assert.equal(validateLead({ ...lead, email: '' }).error, 'invalid_email');
   assert.equal(validateLead({ ...lead, email: 'not-an-email' }).error, 'invalid_email');
@@ -302,7 +302,7 @@ test('landing-page forms: CRM failure is not confirmed (no thank-you page)', asy
 
 test('invalid requests: 400 names the field so the form can show the message next to it; nothing sent', async () => {
   for (const [patch, error, field] of [
-    [{ full_name: '' }, 'missing_name', 'full_name'], [{ phone: '123' }, 'invalid_phone', 'phone'],
+    [{ full_name: '' }, 'missing_name', 'full_name'], [{ phone: '' }, 'missing_phone', 'phone'], [{ phone: '123' }, 'invalid_phone', 'phone'],
     [{ email: 'x@' }, 'invalid_email', 'email'], [{ consent: '' }, 'missing_consent', 'consent'],
   ]) {
     const c = crm();

@@ -136,11 +136,16 @@ To check: Google Ads final URLs and Meta ad website URLs (steps in `docs/REDIREC
 - Required fields are marked with \*.
 - Each missing or invalid field gets its own Hebrew message next to it, and the field is set to `aria-invalid` and linked to the message with `aria-describedby`:
   - Name: "יש להזין שם מלא".
-  - Phone, 9–15 digits: "יש להזין מספר טלפון".
+  - Phone: empty → "יש להזין מספר טלפון"; filled but not a valid number → "יש להזין מספר טלפון תקין". Formatting never causes a rejection: spaces, hyphens, dots and parentheses are ignored. Accepted:
+    - Israeli mobile or VoIP numbers: 05X or 07X plus 7 digits, e.g. 052-431-7164, 077 123 4567.
+    - Israeli landlines: 02, 03, 04, 08 or 09 plus 7 digits, e.g. (03) 123-4567.
+    - The same with +972, 972 or 00972 instead of the leading 0, including "+972 (0)52…".
+    - Numbers from abroad: starting with + or 00, 8–15 digits.
+  - Rejected: too short or too long, a prefix that doesn't exist (01, 06), letters.
   - Email: "נא להזין כתובת אימייל תקינה".
   - Privacy consent, lp only: "יש לאשר את מדיניות הפרטיות".
-- The first invalid field is focused, nothing is sent and the typed values are kept. Each message clears as soon as its field is corrected.
-- The Worker applies the same rules. If the browser check is bypassed, it answers 400 with the field name, and the form shows that field's message (not a generic error).
+- The first invalid field is focused, nothing is sent and the typed values are kept. While the visitor edits a flagged field, its message updates (e.g. from "תקין" to empty) and clears as soon as the field is correct.
+- The Worker applies the same rules. If the browser check is bypassed, it answers 400 with the error code and field (`missing_phone` and `invalid_phone` separately), and the form shows that field's message (not a generic error).
 
 **Delivery:**
 - While sending, the button is disabled, so a double click sends one lead.
@@ -193,43 +198,49 @@ Rollback for lp: point `lp` back to `A 69.62.113.1` (WordPress is not touched un
 | # | Topic | Status |
 |---|---|---|
 | D1 | WhatsApp pop-up / WhatsApp leads | **Decided:** a WhatsApp click is not a lead; it opens the chat directly and is tracked as `whatsapp_click` only. Implemented. |
-| D2 | WhatsApp numbers | **Decided:** lp 052-431-7164, main site 050-578-8634. Implemented. **To confirm:** lp's delivery-failure message also links "בטלפון" to 052-431-7164. If calls should go to 050-578-8634, say so. |
+| D2 | WhatsApp numbers | **Decided:** landing pages use 052-431-7164 for calls (`tel:+972524317164`) and WhatsApp (`972524317164`), including the delivery-failure message. The main site keeps 050-578-8634. Implemented. |
 | D3 | Old Wix landing pages | **Decided:** out of scope, not recreated. **Open (not blocking):** check active campaigns, then approve the redirects (REDIRECT-APPROVALS group D). |
 | D4 | Redirect approvals | **Open:** lp `/author/gal/` and `/author/roy/` (group B, **blocks lp cutover**); main-site obsolete pages (group C, not blocking). |
 | D5 | lp `/privacy/` text: starts with a duplicated accessibility statement, then a generic template (SEQ Legal / Website Planet credit) | **Open, blocks lp cutover:** legal review. Copied unchanged until then (`legalReview` flag in the inventory). |
 | D6 | Google Ads conversion trigger (lp `/thankyou/` page view) | **Open (recommendation):** move it in GTM to `generate_lead`. |
 | D7 | `en.` / `he.` | **Decided:** unused; delete both DNS records at cutover. |
 | D8 | New Hebrew form text | **Open, owner approval:** see the list below. |
-| D9 | Contact email on the legal pages: the lp privacy policy and accessibility statement, and the main site's accessibility statement, list `mr.hadas@gmail.com` (copied unchanged), while the main site shows `hagarlushi@gmail.com` | **To confirm.** No change made. |
+| D9 | Contact email on the legal pages | **Decided (2026-10-12):** the lp privacy policy and accessibility statement show `lushi.office@gmail.com` as a `mailto:` link. WordPress had `mr.hadas@gmail.com` as plain text. The address is swapped when the page is built (`src/lib/lp-legal.mjs`); the policy wording is unchanged and still awaits legal review (D5). **Open (not blocking lp):** the main site's accessibility statement (`/הצהרתנגישות`, www) still shows `mr.hadas@gmail.com`; tell us whether to change it too. |
 
-**D8: exact Hebrew text for approval.** All of it is new; the messages are the ones proposed by the owner.
+**D8: exact Hebrew text.** The field messages were given by the owner (phone missing/invalid split on 2026-10-12).
 
 | Where | Text |
 |---|---|
 | Field required marker | `*` after each required field (in the main site's placeholders, e.g. "שם מלא *") |
 | Name missing | יש להזין שם מלא |
-| Phone missing or invalid | יש להזין מספר טלפון |
+| Phone empty | יש להזין מספר טלפון |
+| Phone not a valid number | יש להזין מספר טלפון תקין |
 | Email missing or invalid | נא להזין כתובת אימייל תקינה |
 | Privacy box not ticked (lp) | יש לאשר את מדיניות הפרטיות |
 | Delivery failure (both sites; replaces "השליחה נכשלה…") | לא הצלחנו לשלוח את הפרטים כרגע. אפשר לנסות שוב או ליצור קשר בטלפון או בוואטסאפ. ("בטלפון" and "בוואטסאפ" are links to the site's own number) |
 | Screen readers only (main site) | "(שדה חובה)" after each required field's label |
 
-## 8. Acceptance (re-run 2026-10-11 after the owner's decisions)
+## 8. Acceptance (re-run 2026-10-12)
 
-- **`npm test`: 69/69 pass.** Covers:
-  - The shared validation rules and the exact Hebrew messages.
+- **`npm test`: 72/72 pass.** Covers:
+  - The shared validation rules and the exact Hebrew messages; 26 valid phone formats accepted, 22 invalid numbers rejected; empty vs invalid phone.
   - The Worker applying the same rules, with 400 + field and nothing sent.
   - Lead client: a field rejection, CRM rejection, timeout and network failure produce no redirect and no conversion.
   - The OfficeCRM contract with a mock.
   - Inventory coverage both ways; scope (only lp `/author/*` blocks); en./he. planned for removal; the redirect approval list up to date.
   - lp canonicals, tags and form markup (required, `aria-describedby`, messages).
   - WhatsApp: 052-431-7164 plus the message on every lp page, the main site's 050-578-8634, never mixed; no pop-up form.
+  - lp legal pages: `lushi.office@gmail.com` as text and `mailto:` link, no old address, wording otherwise identical to the WordPress export.
+  - lp delivery-failure links: `tel:+972524317164` and WhatsApp `972524317164` on all 4 forms; main site `tel:+972505788634`.
   - Sitemap; images all local; no CRM address or key in either build.
-- **Browser, both sites: 148/148 pass** (`test/e2e/forms.e2e.mjs`, desktop 1366px and mobile 375px, local `wrangler dev`, mock OfficeCRM). Covers:
+- **Browser, both sites: 188/188 pass** (`test/e2e/forms.e2e.mjs`, desktop 1366px and mobile 375px, local `wrangler dev`, mock OfficeCRM). Covers:
   - An empty form flags every required field; each field missing or invalid on its own; consent unchecked.
   - The first invalid field is focused, `aria-invalid` is set and no request is sent.
+  - Phone: empty, spaces only → "יש להזין מספר טלפון"; `12345`, `052-431-716`, `06-1234567`, `abc` → "יש להזין מספר טלפון תקין". The message switches while editing.
+  - `052 431 7164`, `+972-52-431-7164`, `(03) 123-4567` and `0524317164` are accepted and delivered as typed.
   - Values are kept, and messages clear when corrected.
-  - The server rejects an invalid lead (400 with the field); a server field rejection is shown next to the field.
+  - The server rejects a missing and an invalid phone separately (400 `missing_phone` / `invalid_phone`). A server field rejection is shown next to the field, which gets focus.
+  - The lp privacy and accessibility pages show the `lushi.office@gmail.com` link and no old address.
   - Success on all 6 forms: the button is disabled while sending, a double click sends exactly one OfficeCRM request, then `/thankyou` and one `generate_lead`; no second conversion on refresh.
   - Delivery failures (`success:false`, HTTP 500, timeout, dropped CRM connection, visitor offline): the separate message appears with this site's phone and WhatsApp links, values are kept, there's no redirect and no conversion, and the visitor can retry.
   - WhatsApp: the correct number and message, `whatsapp_click` once, no CRM request, no thank-you page, no `generate_lead`. The lp number is checked on all 7 lp pages.

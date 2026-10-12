@@ -31,7 +31,7 @@ export async function sendLead(lead, { endpoint = '/api/lead', fetchImpl = fetch
  * Runs a form submission end to end.
  *  - spam (honeypot filled): go to the thank-you page, but send nothing and count nothing
  *  - delivered: mark the lead for counting, then go to the thank-you page
- *  - invalid: the server rejected a field → onFieldError(field); stay on the page (no navigation, no mark)
+ *  - invalid: the server rejected a field → onFieldError(field, error); stay on the page (no navigation, no mark)
  *  - failed: delivery not confirmed → stay on the page (no navigation, no mark)
  * Returns 'spam' | 'delivered' | 'invalid' | 'failed'.
  */
@@ -40,7 +40,7 @@ export async function submitLead({ lead, honeypot, formLocation, storage, naviga
   const sent = await send(lead);
   const res = typeof sent === 'boolean' ? { ok: sent } : (sent || { ok: false });
   if (!res.ok) {
-    if (res.field && onFieldError) { onFieldError(res.field); return 'invalid'; }
+    if (res.field && onFieldError) { onFieldError(res.field, res.error); return 'invalid'; }
     return 'failed';
   }
   try { storage.setItem(LEAD_FLAG, formLocation || ''); } catch { /* storage blocked: lead still delivered */ }

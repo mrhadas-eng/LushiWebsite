@@ -151,7 +151,7 @@ const REQ = ' *';
         navigate: (path: string) => { location.href = path; },
         thanksPath: form.dataset.thanks,
         send: (l: Record<string, string>) => sendLead(l, { endpoint: form.dataset.endpoint }),
-        onFieldError: (field: string) => { if (!showServerFieldError(form, field)) status.hidden = false; },
+        onFieldError: (field: string, code: string) => { if (!showServerFieldError(form, field, code)) status.hidden = false; },
       });
       // Not confirmed by OfficeCRM: keep everything the visitor typed, offer phone / WhatsApp
       if (result === 'failed') status.hidden = false;

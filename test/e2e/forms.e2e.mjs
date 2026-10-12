@@ -7,7 +7,8 @@ const crmLast = async () => (await (await fetch(`${M}/last`)).json()).last;
 const out = [];
 const check = (ok, label, detail = '') => out.push(`${ok ? '✔' : '✘'} ${label}${detail ? `  [${detail}]` : ''}`);
 const ev = (p, n) => p.evaluate((n) => (window.dataLayer || []).filter((e) => e.event === n).length, n).catch(() => -1);
-const MSG = { full_name: 'יש להזין שם מלא', phone: 'יש להזין מספר טלפון', email: 'נא להזין כתובת אימייל תקינה', consent: 'יש לאשר את מדיניות הפרטיות' };
+const PHONE_MISSING = 'יש להזין מספר טלפון', PHONE_INVALID = 'יש להזין מספר טלפון תקין';
+const MSG = { full_name: 'יש להזין שם מלא', phone: PHONE_MISSING, email: 'נא להזין כתובת אימייל תקינה', consent: 'יש לאשר את מדיניות הפרטיות' };
 const FAIL = 'לא הצלחנו לשלוח את הפרטים כרגע. אפשר לנסות שוב או ליצור קשר בטלפון או בוואטסאפ.';
 const VALID = { full_name: 'בדיקה טופס', phone: '050-1234567', email: 'test@example.com' };
 
@@ -50,12 +51,13 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
     check(apiCalls === 0 && (await crmCount()) === c0 && !(await p.isVisible(F(S.fail))), t('empty form: no request, no delivery-failure message'));
 
     // 2. each field missing / invalid on its own
-    const bad = [['full_name', ''], ['phone', ''], ['phone', '12345'], ['email', ''], ['email', 'not-an-email']];
-    for (const [f, v] of bad) {
+    const bad = [['full_name', ''], ['phone', '', PHONE_MISSING], ['phone', '   ', PHONE_MISSING], ['phone', '12345', PHONE_INVALID],
+      ['phone', '052-431-716', PHONE_INVALID], ['phone', '06-1234567', PHONE_INVALID], ['phone', 'abc', PHONE_INVALID], ['email', ''], ['email', 'not-an-email']];
+    for (const [f, v, msg = MSG[f]] of bad) {
       await go(path0); await fill({ ...VALID, [f]: v });
       await p.click(F(S.submit)); await p.waitForTimeout(250);
       const e = await shown();
-      check(JSON.stringify(e) === JSON.stringify({ [f]: MSG[f] }) && (await focused()) === f && apiCalls === 0,
+      check(JSON.stringify(e) === JSON.stringify({ [f]: msg }) && (await focused()) === f && apiCalls === 0,
         t(`${f} = "${v}": only that message, focused, nothing sent`), JSON.stringify(e));
     }
     if (S.consent) {
@@ -68,13 +70,32 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
     await go(path0); await fill({ ...VALID, phone: '12' });
     await p.click(F(S.submit)); await p.waitForTimeout(250);
     const kept = await p.inputValue(F('[name=full_name]')) === VALID.full_name && await p.inputValue(F('[name=email]')) === VALID.email && await p.inputValue(F('[name=phone]')) === '12';
+    const wasInvalid = (await shown()).phone === PHONE_INVALID;
+    await p.fill(F('[name=phone]'), ''); await p.waitForTimeout(150);
+    const nowMissing = (await shown()).phone === PHONE_MISSING;
     await p.fill(F('[name=phone]'), VALID.phone); await p.waitForTimeout(150);
-    check(kept && !('phone' in await shown()), t('values kept after validation; message clears once corrected'));
+    check(kept && wasInvalid && nowMissing && !('phone' in await shown()), t('values kept; phone message switches invalid → missing while editing, clears once corrected'));
+
+    // 3b. valid Israeli formats are accepted and sent as typed (no rejection because of formatting)
+    for (const ph of ['052 431 7164', '+972-52-431-7164', '(03) 123-4567', '0524317164']) {
+      await mode('ok'); await go(path0); await fill({ ...VALID, phone: ph }); const c = await crmCount();
+      await p.click(F(S.submit)); await p.waitForURL(`**${S.thanks}`, { timeout: 15000 }).catch(() => {});
+      const sent = JSON.parse((await crmLast())?.body || '{}');
+      check(p.url().endsWith(S.thanks) && (await crmCount()) === c + 1 && sent.phone === ph, t(`phone "${ph}" accepted and delivered as typed`));
+    }
 
     // 4. server-side rejection: browser check bypassed → Worker 400 names the field, form shows it, nothing sent
     const before = await crmCount();
     const api = await p.evaluate(async () => { const r = await fetch('/api/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name: 'x', phone: '123', email: 'a@b.co', form: document.querySelector('form[data-form],form[data-location]')?.dataset.form || 'home' }) }); return [r.status, await r.json()]; });
-    check(api[0] === 400 && api[1].field === 'phone' && (await crmCount()) === before, t('server rejects an invalid lead (400, field=phone), nothing sent to OfficeCRM'));
+    const api2 = await p.evaluate(async () => { const r = await fetch('/api/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name: 'x', phone: '', email: 'a@b.co', form: document.querySelector('form[data-form],form[data-location]')?.dataset.form || 'home' }) }); return [r.status, await r.json()]; });
+    check(api[0] === 400 && api[1].error === 'invalid_phone' && api[1].field === 'phone' && api2[0] === 400 && api2[1].error === 'missing_phone' && (await crmCount()) === before,
+      t('server rejects missing / invalid phone separately (400 missing_phone / invalid_phone), nothing sent to OfficeCRM'));
+    await p.route('**/api/lead', (r) => r.fulfill({ status: 400, contentType: 'application/json', body: '{"ok":false,"error":"invalid_phone","field":"phone"}' }));
+    await go(path0); await fill();
+    await p.click(F(S.submit)); await p.waitForTimeout(400);
+    check(JSON.stringify(await shown()) === JSON.stringify({ phone: PHONE_INVALID }) && (await focused()) === 'phone' && !(await p.isVisible(F(S.fail))),
+      t('server invalid_phone shown as "מספר טלפון תקין" next to the phone field, focused'));
+    await p.unroute('**/api/lead');
     await p.route('**/api/lead', (r) => r.fulfill({ status: 400, contentType: 'application/json', body: '{"ok":false,"error":"invalid_email","field":"email"}' }));
     await go(path0); await fill();
     await p.click(F(S.submit)); await p.waitForTimeout(400);
@@ -108,7 +129,7 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
       const links = await p.$$eval(`${S.form} ${S.fail} a`, (as) => as.map((a) => a.getAttribute('href')));
       check(txt === FAIL && keptAll && Object.keys(await shown()).length === 0 && !p.url().includes('thankyou') && (await ev(p, 'generate_lead')) === 0
         && !(await p.$eval(F(S.submit), (el) => el.disabled)), t(`delivery ${m}: distinct message, values kept, no redirect, no conversion, can retry`), txt.slice(0, 30));
-      check(links.some((h) => h.includes(S.wa.number.slice(3))) && links.some((h) => h.includes(S.wa.number)), t(`delivery ${m}: phone/WhatsApp links use this site's number`), links.join(' '));
+      check(links.includes(`tel:+${S.wa.number}`) && links.some((h) => /whatsapp|wa\.me/.test(h) && h.includes(S.wa.number)) && links.length === 2, t(`delivery ${m}: phone/WhatsApp links use this site's number`), links.join(' '));
       if (m === 'browser-offline') await p.unroute('**/api/lead');
       if (m !== 'success-false') { /* only check one non-timeout variant per site for speed */ }
     }
@@ -128,6 +149,12 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
         await p.goto(`${S.base}${path}`);
         const hrefs = await p.$$eval('a[href*="api.whatsapp.com"], a[href*="wa.me"]', (as) => as.map((a) => a.href));
         check(hrefs.length > 0 && hrefs.every((h) => h.includes('phone=972524317164') && h.includes('text=')), t(`${path}: WhatsApp links use 052-431-7164`), String(hrefs.length));
+        if (path === '/privacy/' || path === '/accessibility-statement/') {
+          const mails = await p.$$eval('a[href^="mailto:"]', (as) => as.map((a) => [a.getAttribute('href'), a.textContent.trim()]));
+          const body = await p.textContent('main, body');
+          check(mails.length >= 1 && mails.every(([h, x]) => h === 'mailto:lushi.office@gmail.com' && x === 'lushi.office@gmail.com') && !/mr\.hadas@|hagarlushi@/.test(body),
+            t(`${path}: legal contact email lushi.office@gmail.com (link), old addresses gone`), JSON.stringify(mails));
+        }
       }
     }
     const overflow = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
