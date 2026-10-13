@@ -5,13 +5,13 @@ Every redirect (HTTP 301) on the main site (`www.hagarlushi.com`, rules in `publ
 `lp.hagarlushi.com` (rules in `lp-public/_redirects`). Campaign parameters (`utm_*`, `gclid`, `fbclid`) are kept
 on every redirect. Unknown URLs get the 404 page. Every real landing page keeps its exact URL and is not listed here.
 
-**How to approve:** reply with the numbers you approve (e.g. "C: approve 1–9", "B: approve 1–2") or the ones to change.
+**How to approve:** reply with the numbers you approve (e.g. "C: approve 1–9") or the ones to change.
 Claude then sets `approved: true` in the inventory.
 
 | Group | Rules | Blocks launch? |
 |---|---|---|
 | A. Technical: no visitor content is lost | 12 | No (pre-approved; tell us if you object) |
-| B. Content, lp.hagarlushi.com | 2 | **Yes, the lp. cutover** (`npm run check-launch` fails until approved) |
+| B. Content, lp.hagarlushi.com | 0 | No (none left) |
 | C. Content, main site: obsolete Wix pages (out of migration scope) | 9 | No. Without approval, the redirect proposed here goes live with the main site |
 | D. Main site: old Wix landing pages (out of scope, not recreated) | 3 | No, but **check active campaigns first** (below) |
 
@@ -32,12 +32,9 @@ Claude then sets `approved: true` in the inventory.
 | 11 | lp.hagarlushi.com | `/comments/feed/` | `/` | Empty comments feed |
 | 12 | hagarlushi.com | `/` | `https://www.hagarlushi.com/` | hagarlushi.com redirects to www today (Wix) |
 
-## B. Content redirects: lp.hagarlushi.com (approval required)
+## B. Content redirects: lp.hagarlushi.com
 
-| # | Site | Old URL | Redirects to (301) | Why | Approved |
-|---|---|---|---|---|---|
-| 1 | lp.hagarlushi.com | `/author/gal/` | `/` | WordPress author archive (listed in the old sitemap), no content | ☐ pending |
-| 2 | lp.hagarlushi.com | `/author/roy/` | `/` | WordPress author archive (via the public users API), no content | ☐ pending |
+None. The WordPress author archives are not redirected (see "No redirect" below).
 
 ## C. Content redirects: main site, obsolete Wix pages (approval requested, not blocking)
 
@@ -67,3 +64,12 @@ If none does, approve the redirect. If one does, change the ad's URL to an lp. p
 | 1 | www.hagarlushi.com | `/דף-נחיתה-פרטיים` | `/לקוחות-פרטיים` | Live Wix landing page with a Wix contact form ("מתכננים עבורכם!") | ☐ pending |
 | 2 | www.hagarlushi.com | `/דף-נחיתה-פרטי` | `/לקוחות-פרטיים` | Live Wix landing page ("משולחן השרטוט - עד לבית מעוצב…", call/mail buttons, no form) | ☐ pending |
 | 3 | www.hagarlushi.com | `/דףנחיתה2` | `/` | Live Wix landing page with a form (content not fully captured: mostly Wix widgets) | ☐ pending |
+
+## No redirect: these URLs return the 404 page
+
+Owner decision: no redirect needed, and the pages are not recreated. The 404 page is `noindex`, so search engines drop these URLs.
+
+| # | Site | Old URL | Why |
+|---|---|---|---|
+| 1 | lp.hagarlushi.com | `/author/gal/` | WordPress author archive (listed in the old sitemap), no content. No redirect needed (owner, 2026-10-13): 404 |
+| 2 | lp.hagarlushi.com | `/author/roy/` | WordPress author archive (via the public users API), no content. No redirect needed (owner, 2026-10-13): 404 |

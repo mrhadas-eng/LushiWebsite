@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import { site } from '../src/data/content.mjs';
 import { lpSite, lpUsedMedia, lpImg } from '../src/data/lp.mjs';
-import { pendingDecisions, outOfScopePending, legalReviewPending } from '../src/data/url-inventory.mjs';
+import { pendingDecisions, outOfScopePending, ownerReviewPending } from '../src/data/url-inventory.mjs';
 import { render as redirectList } from './redirect-list.mjs';
 
 const results = [];
@@ -83,9 +83,9 @@ check(lpSite.siteKitTagId === 'GT-TQKZV73G', 'Landing-page Google tag unchanged 
 const open = pendingDecisions();
 check(open.length === 0, `In-scope content redirects approved by the owner (${open.length} open)`,
   `Owner approval needed (docs/REDIRECT-APPROVALS.md, group B), then set approved: true in src/data/url-inventory.mjs:\n${open.map((e) => `      - ${e.host} ${e.url} → ${e.to}: ${e.reason}`).join('\n')}`);
-const legal = legalReviewPending();
-check(legal.length === 0, `Legal review done for copied legal text (${legal.length} open)`,
-  `Have the text reviewed, then remove legalReview from the entry in src/data/url-inventory.mjs:\n${legal.map((e) => `      - ${e.host} ${e.url}: ${e.note}`).join('\n')}`);
+const review = ownerReviewPending();
+check(review.length === 0, `Owner review of copied legal text (${review.length} pending)`,
+  `Pending the owner's review on the preview site (not done yet). After the owner confirms, remove ownerReview from the entry in src/data/url-inventory.mjs:\n${review.map((e) => `      - ${e.host} ${e.url}: ${e.note}`).join('\n')}`);
 check(fs.existsSync('docs/REDIRECT-APPROVALS.md') && fs.readFileSync('docs/REDIRECT-APPROVALS.md', 'utf8') === redirectList(),
   'Redirect approval list is up to date (docs/REDIRECT-APPROVALS.md)', 'Run npm run redirect-list');
 check(lpSite.whatsapp.number === '972524317164' && site.whatsapp.number === '972505788634',

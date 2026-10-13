@@ -8,7 +8,7 @@
 - `en.` and `he.` are unused; their DNS records are deleted at cutover.
 
 Every URL found on `hagarlushi.com`, `www.`, `lp.`, `en.`, `he.` and `office.`, and what the new site does with each one.
-The machine-readable copy is `src/data/url-inventory.mjs`. `test/inventory.test.mjs` fails if a page or redirect rule exists in the build but isn't listed there, or if a listed URL is neither served nor redirected. `npm run check-launch` fails while an in-scope content redirect (lp `/author/*`) or the privacy-policy legal review is open. Out-of-scope Wix redirects are listed there as non-blocking. Analytics events: `docs/ANALYTICS-EVENTS.md`.
+The machine-readable copy is `src/data/url-inventory.mjs`. `test/inventory.test.mjs` fails if a page or redirect rule exists in the build but isn't listed there, or if a listed URL is neither served, redirected nor deliberately retired (404). `npm run check-launch` fails while the privacy policy is still pending the owner's review. Out-of-scope Wix redirects are listed there as non-blocking. Analytics events: `docs/ANALYTICS-EVENTS.md`.
 
 **Evidence labels:**
 - **Confirmed**: seen directly on the live site, through public HTML, the WordPress REST API, the sitemaps or DNS lookups.
@@ -68,7 +68,7 @@ Shared by all 4 landing pages (confirmed):
 | `/interior-design/` | Interior-design campaign | Heading and button | `lp-interior-design` → "דף נחיתה – עיצוב פנים" | 321 | Implemented and tested |
 | `/renovation/` | Renovation campaign (shorter intro) | Heading and button | `lp-renovation` → "דף נחיתה – שיפוץ" | 406 | Implemented and tested |
 | `/thankyou/` | "תודה שיצרת קשר" | Check icon, text and a WhatsApp button | none (conversion page) | 244 | Implemented. **The Google Ads conversion fires on this page view** (§5). |
-| `/privacy/` | Privacy policy | none | none | 378 | Implemented: text copied unchanged from the WordPress export. **Needs legal review** (§7). |
+| `/privacy/` | Privacy policy | none | none | 378 | Implemented: text copied unchanged from the WordPress export (contact email updated, D9). **Pending the owner's review** on the preview site (D5, §7). |
 | `/accessibility-statement/` | Accessibility statement | none | none | 9 | Implemented: text copied unchanged |
 | `/sitemap.xml`, `/robots.txt` | Technical | none | none | none | Implemented: the 7 URLs above |
 
@@ -86,7 +86,7 @@ Copy, images and layout come from the WordPress REST export (`src/data/lp/wp-pag
 | `/sample-page/`, `/sample-page` | WordPress slug of the front page | 301 → `/` | Technical |
 | `/wp-sitemap.xml`, `/wp-sitemap-posts-page-1.xml`, `/wp-sitemap-users-1.xml` | WordPress sitemaps | 301 → `/sitemap.xml` | Technical |
 | `/feed/`, `/comments/feed/` | Empty RSS feeds (no posts) | 301 → `/` | Technical |
-| `/author/gal/`, `/author/roy/` | Author archives (`gal` is in the old sitemap) | 301 → `/` | **Owner approval** |
+| `/author/gal/`, `/author/roy/` | Author archives (`gal` is in the old sitemap) | **No redirect, not recreated: 404 page** (noindex) | Owner decision 2026-10-13 |
 | `/wp-admin/`, `/wp-login.php`, `/wp-json/…` | WordPress admin and API | 404 | Not content |
 | anything else | none | 404 page (noindex) | none |
 
@@ -200,12 +200,12 @@ Rollback for lp: point `lp` back to `A 69.62.113.1` (WordPress is not touched un
 | D1 | WhatsApp pop-up / WhatsApp leads | **Decided:** a WhatsApp click is not a lead; it opens the chat directly and is tracked as `whatsapp_click` only. Implemented. |
 | D2 | WhatsApp numbers | **Decided:** landing pages use 052-431-7164 for calls (`tel:+972524317164`) and WhatsApp (`972524317164`), including the delivery-failure message. The main site keeps 050-578-8634. Implemented. |
 | D3 | Old Wix landing pages | **Decided:** out of scope, not recreated. **Open (not blocking):** check active campaigns, then approve the redirects (REDIRECT-APPROVALS group D). |
-| D4 | Redirect approvals | **Open:** lp `/author/gal/` and `/author/roy/` (group B, **blocks lp cutover**); main-site obsolete pages (group C, not blocking). |
-| D5 | lp `/privacy/` text: starts with a duplicated accessibility statement, then a generic template (SEQ Legal / Website Planet credit) | **Open, blocks lp cutover:** legal review. Copied unchanged until then (`legalReview` flag in the inventory). |
+| D4 | Redirect approvals | **lp: decided (2026-10-13):** `/author/gal/` and `/author/roy/` need no redirect and are not recreated; they return the 404 page. No lp redirect needs approval any more. **Main site (not blocking):** the obsolete-page redirects (REDIRECT-APPROVALS group C) still await approval. |
+| D5 | lp `/privacy/` text: starts with a duplicated accessibility statement, then a generic template (SEQ Legal / Website Planet credit) | **Pending, blocks lp cutover:** the owner reviews it once the updated site is available to inspect (the workers.dev preview, O3b). **Not reviewed yet.** Copied unchanged until then, except the contact email (D9). It is tracked by the `ownerReview` flag in the inventory, which only the owner's confirmation clears. |
 | D6 | Google Ads conversion trigger (lp `/thankyou/` page view) | **Open (recommendation):** move it in GTM to `generate_lead`. |
 | D7 | `en.` / `he.` | **Decided:** unused; delete both DNS records at cutover. |
 | D8 | New Hebrew form text | **Open, owner approval:** see the list below. |
-| D9 | Contact email on the legal pages | **Decided (2026-10-12):** the lp privacy policy and accessibility statement show `lushi.office@gmail.com` as a `mailto:` link. WordPress had `mr.hadas@gmail.com` as plain text. The address is swapped when the page is built (`src/lib/lp-legal.mjs`); the policy wording is unchanged and still awaits legal review (D5). **Main site, also decided (2026-10-12):** the accessibility statement at `/הצהרתנגישות` (www) now shows `lushi.office@gmail.com`. It was already a `mailto:` link; only the address changed, and the rest of the statement is untouched. |
+| D9 | Contact email on the legal pages | **Decided (2026-10-12):** the lp privacy policy and accessibility statement show `lushi.office@gmail.com` as a `mailto:` link. WordPress had `mr.hadas@gmail.com` as plain text. The address is swapped when the page is built (`src/lib/lp-legal.mjs`); the policy wording is unchanged and still awaits the owner's review (D5). **Main site, also decided (2026-10-12):** the accessibility statement at `/הצהרתנגישות` (www) now shows `lushi.office@gmail.com`. It was already a `mailto:` link; only the address changed, and the rest of the statement is untouched. |
 
 **D8: exact Hebrew text.** The field messages were given by the owner (phone missing/invalid split on 2026-10-12).
 
@@ -220,14 +220,14 @@ Rollback for lp: point `lp` back to `A 69.62.113.1` (WordPress is not touched un
 | Delivery failure (both sites; replaces "השליחה נכשלה…") | לא הצלחנו לשלוח את הפרטים כרגע. אפשר לנסות שוב או ליצור קשר בטלפון או בוואטסאפ. ("בטלפון" and "בוואטסאפ" are links to the site's own number) |
 | Screen readers only (main site) | "(שדה חובה)" after each required field's label |
 
-## 8. Acceptance (re-run 2026-10-12)
+## 8. Acceptance (re-run 2026-10-13)
 
 - **`npm test`: 73/73 pass.** Covers:
   - The shared validation rules and the exact Hebrew messages; 26 valid phone formats accepted, 22 invalid numbers rejected; empty vs invalid phone.
   - The Worker applying the same rules, with 400 + field and nothing sent.
   - Lead client: a field rejection, CRM rejection, timeout and network failure produce no redirect and no conversion.
   - The OfficeCRM contract with a mock.
-  - Inventory coverage both ways; scope (only lp `/author/*` blocks); en./he. planned for removal; the redirect approval list up to date.
+  - Inventory coverage both ways; no redirect blocks launch; lp `/author/*` retired (no page, no redirect rule); privacy policy still pending owner review; en./he. planned for removal; the redirect approval list up to date.
   - lp canonicals, tags and form markup (required, `aria-describedby`, messages).
   - WhatsApp: 052-431-7164 plus the message on every lp page, the main site's 050-578-8634, never mixed; no pop-up form.
   - Main-site accessibility statement: `lushi.office@gmail.com` as a `mailto:` link, no `mr.hadas@gmail.com`.
@@ -247,9 +247,8 @@ Rollback for lp: point `lp` back to `A 69.62.113.1` (WordPress is not touched un
   - WhatsApp: the correct number and message, `whatsapp_click` once, no CRM request, no thank-you page, no `generate_lead`. The lp number is checked on all 7 lp pages.
   - No horizontal scroll and no JS errors.
 - **Browser, main-site OfficeCRM round trip:** 40/40 pass (`test/e2e/main-site.e2e.mjs`).
-- **`npm run check-launch`:** every repository check passes except two, which fail **by design** until the owner acts:
-  - The lp `/author/*` redirect approval.
-  - The `/privacy/` legal review.
+- **`npm run check-launch`:** every repository check passes except one, which fails **by design** until the owner acts:
+  - The `/privacy/` policy, pending the owner's review on the preview site.
   - The 12 out-of-scope Wix redirects are listed as not blocking.
 - **`wrangler deploy --dry-run`:**
   - `hagarlushi`: 1,431 asset files. `hagarlushi-lp`: 259 asset files.

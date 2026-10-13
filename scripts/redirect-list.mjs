@@ -3,7 +3,7 @@
 // (test/inventory.test.mjs fails if the file is out of date).
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { inventory } from '../src/data/url-inventory.mjs';
+import { inventory, retired } from '../src/data/url-inventory.mjs';
 
 const HOST = { www: 'www.hagarlushi.com', lp: 'lp.hagarlushi.com', apex: 'hagarlushi.com' };
 const redirects = inventory.filter((e) => e.status === 'redirect');
@@ -41,13 +41,13 @@ Every redirect (HTTP 301) on the main site (\`www.hagarlushi.com\`, rules in \`p
 \`lp.hagarlushi.com\` (rules in \`lp-public/_redirects\`). Campaign parameters (\`utm_*\`, \`gclid\`, \`fbclid\`) are kept
 on every redirect. Unknown URLs get the 404 page. Every real landing page keeps its exact URL and is not listed here.
 
-**How to approve:** reply with the numbers you approve (e.g. "C: approve 1–9", "B: approve 1–2") or the ones to change.
+**How to approve:** reply with the numbers you approve (e.g. "C: approve 1–9") or the ones to change.
 Claude then sets \`approved: true\` in the inventory.
 
 | Group | Rules | Blocks launch? |
 |---|---|---|
 | A. Technical: no visitor content is lost | ${rows(technical).length} | No (pre-approved; tell us if you object) |
-| B. Content, lp.hagarlushi.com | ${rows(lpContent).length} | **Yes, the lp. cutover** (\`npm run check-launch\` fails until approved) |
+| B. Content, lp.hagarlushi.com | ${rows(lpContent).length} | ${rows(lpContent).length ? '**Yes, the lp. cutover** (\`npm run check-launch\` fails until approved)' : 'No (none left)'} |
 | C. Content, main site: obsolete Wix pages (out of migration scope) | ${rows(wwwObsolete).length} | No. Without approval, the redirect proposed here goes live with the main site |
 | D. Main site: old Wix landing pages (out of scope, not recreated) | ${rows(wixLanding).length} | No, but **check active campaigns first** (below) |
 
@@ -55,9 +55,9 @@ Claude then sets \`approved: true\` in the inventory.
 
 ${table(technical, { approveCol: false })}
 
-## B. Content redirects: lp.hagarlushi.com (approval required)
+## B. Content redirects: lp.hagarlushi.com
 
-${table(lpContent, { approveCol: true })}
+${lpContent.length ? table(lpContent, { approveCol: true }) : 'None. The WordPress author archives are not redirected (see "No redirect" below).'}
 
 ## C. Content redirects: main site, obsolete Wix pages (approval requested, not blocking)
 
@@ -73,6 +73,14 @@ Before the main site moves to Cloudflare, check that no active Google Ads or Met
 If none does, approve the redirect. If one does, change the ad's URL to an lp. page first (e.g. \`https://lp.hagarlushi.com/\`).
 
 ${table(wixLanding, { approveCol: true })}
+
+## No redirect: these URLs return the 404 page
+
+Owner decision: no redirect needed, and the pages are not recreated. The 404 page is \`noindex\`, so search engines drop these URLs.
+
+| # | Site | Old URL | Why |
+|---|---|---|---|
+${retired().map((e, i) => `| ${i + 1} | ${HOST[e.host]} | \`${e.url}\` | ${e.reason} |`).join('\n')}
 `;
 }
 

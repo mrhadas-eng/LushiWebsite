@@ -1,6 +1,6 @@
 // Content of the landing pages' legal pages, exported unchanged from WordPress (src/data/lp/wp-pages.json).
 // Only executable / presentational markup is removed, and the contact email is replaced by the one the
-// owner set (lpSite.legalEmail, 2026-10-12). The policy text itself is not edited (legal review pending).
+// owner set (lpSite.legalEmail, 2026-10-12). The policy text itself is not edited (pending the owner's review).
 import { lpWpPages, lpSite } from '../data/lp.mjs';
 
 /** Addresses in the WordPress text that are replaced by lpSite.legalEmail (text and mailto: links). */

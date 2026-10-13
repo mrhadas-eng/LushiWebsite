@@ -17,7 +17,7 @@ CRM webhook URL secret on the free plan; every branch gets a preview URL.
 | C3 Lead endpoint → OfficeCRM | ✅ Done (code). ⏳ Live test lead pending (O3) | `POST /api/lead` translates to the OfficeCRM contract (Bearer auth, `name/phone/email/source/notes`) and succeeds only on `success: true`. `npm test`: 41 tests including a mock OfficeCRM server. Browser test on the local Cloudflare runtime with a mock OfficeCRM: 40/40 checks, desktop and mobile |
 | C4 Docs + tracking guard | ✅ Done | GTM loads only on `hagarlushi.com` hosts (verified: not requested on the local host) |
 | C5 Deploy pipeline | ⏳ Owner (dashboard) | See O3 below |
-| C6 Landing pages (`lp.`) rebuilt | ✅ Done (code). ⏳ Preview + acceptance (O6); open: D4 (2 lp redirects), D5 (privacy legal review), D8 (text approval) | Second Worker `hagarlushi-lp` (`wrangler.lp.jsonc`, `dist-lp/`). All 7 WordPress pages at their exact URLs, same copy/images/layout, forms → `/api/lead`. `npm test` 59/59; browser 66/66 (desktop + mobile, mock OfficeCRM); `wrangler deploy -c wrangler.lp.jsonc --dry-run` valid (258 assets). Full URL list and decisions: **docs/LANDING-PAGE-INVENTORY.md** |
+| C6 Landing pages (`lp.`) rebuilt | ✅ Done (code). ⏳ Preview + acceptance (O6); open: D5 (privacy policy, pending the owner's review on the preview), D8 (text approval) | Second Worker `hagarlushi-lp` (`wrangler.lp.jsonc`, `dist-lp/`). All 7 WordPress pages at their exact URLs, same copy/images/layout, forms → `/api/lead`. `npm test` 59/59; browser 66/66 (desktop + mobile, mock OfficeCRM); `wrangler deploy -c wrangler.lp.jsonc --dry-run` valid (258 assets). Full URL list and decisions: **docs/LANDING-PAGE-INVENTORY.md** |
 
 ---
 
@@ -203,7 +203,7 @@ Implemented exactly as specified by the owner (2026-10-11). Confirm during the O
 ---
 
 ### O6. Move `lp.hagarlushi.com` to the new Worker (only after acceptance)
-Preconditions, all required: O3b passed for all 4 forms; the lp `/author/*` redirects approved (D4) and the privacy text reviewed (D5) (docs/LANDING-PAGE-INVENTORY.md §7); the WordPress form actions checked in WordPress admin (Elementor → Submissions /
+Preconditions, all required: O3b passed for all 4 forms; the owner has reviewed the privacy policy on the preview site (D5) (docs/LANDING-PAGE-INVENTORY.md §7); the WordPress form actions checked in WordPress admin (Elementor → Submissions /
 form "Actions After Submit"); the Google Ads conversion checked in GTM preview on the workers.dev address.
 1. Workers → hagarlushi-lp → Settings → Domains & Routes → **Add Custom Domain** → `lp.hagarlushi.com`.
    This replaces the `lp` A record (69.62.113.1).

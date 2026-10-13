@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { inventory, pendingDecisions, outOfScopePending } from '../src/data/url-inventory.mjs';
+import { inventory, pendingDecisions, outOfScopePending, retired, ownerReviewPending } from '../src/data/url-inventory.mjs';
 
 const built = fs.existsSync('dist/index.html') && fs.existsSync('dist-lp/index.html');
 const skip = !built && 'run npm run build first';
@@ -38,9 +38,9 @@ test('inventory entries are well-formed and unique', () => {
     const key = `${e.host} ${e.url}`;
     assert.ok(!seen.has(key), `duplicate ${key}`); seen.add(key);
     assert.ok(['www', 'lp', 'apex', 'en', 'he', 'office'].includes(e.host), key);
-    assert.ok(['implemented', 'redirect', 'remove-dns', 'external'].includes(e.status), key);
+    assert.ok(['implemented', 'redirect', 'retired', 'remove-dns', 'external'].includes(e.status), key);
     if (e.status === 'redirect') { assert.ok(e.to, `${key}: redirect without target`); assert.equal(typeof e.approved, 'boolean', key); }
-    if (e.status === 'remove-dns' || e.status === 'external' || e.campaignCheck || (e.status === 'redirect' && !e.technical)) assert.ok(e.reason, `${key}: reason required`);
+    if (e.status === 'retired' || e.status === 'remove-dns' || e.status === 'external' || e.campaignCheck || (e.status === 'redirect' && !e.technical)) assert.ok(e.reason, `${key}: reason required`);
   }
 });
 
@@ -50,6 +50,9 @@ test('every inventoried www/lp URL is either served at the same URL or redirecte
     if (e.status === 'implemented') {
       assert.ok(served(e.host, e.url), `${key}: no page in ${DIR[e.host]}`);
       assert.ok(!RULES[e.host].some((r) => r.from === e.url), `${key}: a redirect rule hides this page`);
+    } else if (e.status === 'retired') {
+      assert.ok(!served(e.host, e.url), `${key}: retired URL is served`);
+      assert.ok(!ruleFor(e.host, e.url), `${key}: retired URL has a redirect rule`);
     } else {
       const r = ruleFor(e.host, e.url);
       assert.ok(r, `${key}: no redirect rule`);
@@ -97,9 +100,9 @@ test('no landing-page URL is redirected to a homepage silently', () => {
     assert.equal(inventory.find((e) => e.host === 'lp' && e.url === u)?.status, 'implemented', u);
 });
 
-test('scope: lp author archives block launch until approved; out-of-scope Wix pages are listed but do not block', () => {
-  const blocking = pendingDecisions().map((e) => `${e.host} ${e.url}`).sort();
-  assert.deepEqual(blocking, ['lp /author/gal/', 'lp /author/roy/']);
+test('scope: no redirect blocks launch; lp author archives are retired (404, not recreated); out-of-scope Wix pages are listed but do not block', () => {
+  assert.deepEqual(pendingDecisions(), []);
+  assert.deepEqual(retired().map((e) => `${e.host} ${e.url}`).sort(), ['lp /author/gal/', 'lp /author/roy/']);
   const out = outOfScopePending();
   assert.equal(out.length, 12);
   assert.ok(out.every((e) => e.host === 'www' && !e.technical && e.reason));
@@ -115,4 +118,8 @@ test('en. and he. are unused and planned for DNS removal; office. is untouched',
 test('the redirect approval list is up to date (npm run redirect-list)', async () => {
   const { render } = await import('../scripts/redirect-list.mjs');
   assert.equal(fs.readFileSync('docs/REDIRECT-APPROVALS.md', 'utf8'), render());
+});
+
+test('privacy policy: still pending the owner\'s review (never marked done automatically)', () => {
+  assert.deepEqual(ownerReviewPending().map((e) => `${e.host} ${e.url}`), ['lp /privacy/']);
 });
