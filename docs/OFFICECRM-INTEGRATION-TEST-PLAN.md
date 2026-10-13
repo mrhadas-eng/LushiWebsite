@@ -1,221 +1,207 @@
 # OfficeCRM integration test plan
 
-Status (2026-10-13): **not yet runnable. BLOCKED on the prerequisites in §1.**
-Contract and risks: `docs/OFFICECRM-INTEGRATION-CONTRACT.md`.
+Status: **2026-10-13 (afternoon). Updated for the OfficeCRM code report. No test has been run against a real OfficeCRM yet.**
+Contract, evidence levels and findings F1–F13: `docs/OFFICECRM-INTEGRATION-CONTRACT.md`.
 
-The automated tests (`npm test`, `test/e2e/*.e2e.mjs`) use a **fake local CRM** (`test/e2e/mock-office.mjs`). They prove how the website behaves, **not** that the real OfficeCRM accepts its leads. This plan is for the real CRM, run in isolation first.
+- **No staging exists**, so the first real test runs **locally**: OfficeCRM (`npm run dev`, Firebase emulators, port 3000) together with the website Workers (`wrangler dev`).
+- The production CRM is touched **once**, at the end (§4), only with explicit approval.
+- The website's automated tests use a fake CRM (`test/e2e/mock-office.mjs`). That fake still models the **old** contract (F12). The tests prove the website's own behaviour, **not** the integration.
 
-## 0. Rules for every test
+## 0. Rules
 
-- **Synthetic data only.** Never use a customer's details.
-  - **Name:** `בדיקה אתר – TEST-<run>-<n>`, where `<run>` is the date, e.g. `TEST-1015-03`.
-  - **Email:** an address the owner controls, with a tag, e.g. `lushi.office+crmtest-1015-03@gmail.com`. If OfficeCRM sends an automatic email, it reaches the owner, not a stranger.
-  - **Phone:** a number the owner controls. Never invent a number: a valid-looking number may belong to someone, and the CRM might call or text it.
-  - **Message (www):** `בדיקת אינטגרציה – למחוק`.
-- **Campaign tag on every test URL:** `?utm_source=crmtest&utm_medium=qa&utm_campaign=TEST-<run>`. Every test lead then has source `… / crmtest / qa` and is easy to filter.
-- **Record for each test:** time, page, the `/api/lead` response (browser DevTools → Network), the Worker log line (Cloudflare → Workers → *Worker* → Logs), and the OfficeCRM record ID.
-- **No deploy, DNS change or secret change** except the owner-approved steps in §2.
-- **Production CRM:** only in §4, with the owner's explicit go-ahead.
+- **Synthetic data only:**
+  - Name: `TEST – website migration <run>-<n>`.
+  - Email: an address the owner controls, with a tag, e.g. `lushi.office+crmtest-<run>-<n>@gmail.com`.
+  - Phone: a number the owner controls.
+  - Message: `בדיקת אינטגרציה – למחוק`.
+  - Never use a customer's details.
+- **Campaign tag on every page URL:** `?utm_source=crmtest&utm_medium=qa&utm_campaign=TEST-<run>`.
+- **One submission per action.** Never auto-retry. Every POST creates a lead (F8).
+- **Record for each test:**
+  - the `/api/lead` response (DevTools → Network)
+  - the `wrangler dev` log line
+  - the CRM response, if visible
+  - the `leadId` and the document in the emulator UI (`http://127.0.0.1:4000` → Firestore → `leads`)
+- **No deploy, DNS change, production secret or production lead**, except §4 with approval.
 
-## 1. Prerequisites (all required before the first real test)
+## 1. Prerequisites
 
-| # | Item | Who | How to check |
-|---|---|---|---|
-| P1 | **OfficeCRM source accessible** (the real repo `owner/name`) so the contract in CONTRACT §2 can be checked in code: route, auth, fields, responses, idempotency, sync vs async | Owner grants access; Claude verifies | CONTRACT §4 rows move from UNVERIFIED to MATCH/MISMATCH, with file references |
-| P2 | **A test environment of OfficeCRM**: a staging instance with its own database and its own `LEADS_WEBHOOK_API_KEY`, reachable over https | Owner (or confirm one exists in the CRM's deployment config) | Its URL is different from production; a lead created there does not appear in the production CRM |
-| P3 | Fallback if P2 isn't possible: owner approval to run §4 against production, with a deletable-test-lead procedure confirmed in OfficeCRM | Owner | Written approval; delete permission confirmed (P8) |
-| P4 | Any **CRM code changes** found under P1 (e.g. a fixed `source` list, a phone format, a missing `success` field) agreed and made **in OfficeCRM's repo**, not here | Owner decides | CONTRACT §4 has no MISMATCH left |
-| P5 | **Isolated website Workers** for the test: deploy the branch as `hagarlushi-staging` and `hagarlushi-lp-staging` (separate Worker names). The real `hagarlushi` and `hagarlushi-lp` Workers then never hold test secrets. Commands, for the owner to run or approve: `npx wrangler deploy --name hagarlushi-staging` and `npx wrangler deploy -c wrangler.lp.jsonc --name hagarlushi-lp-staging` | Owner approval needed (it is a deployment, though not to the real domains) | Both show a `*.workers.dev` URL; no custom domain attached |
-| P6 | **Secrets on both staging Workers**: `CRM_WEBHOOK_URL` = the **staging** CRM webhook URL (`https://…/api/leads/webhook`), `LEADS_WEBHOOK_API_KEY` = the **staging** key (bare, no `Bearer`). Set in Cloudflare → Workers → *Worker* → Settings → Variables and Secrets → Add → type **Secret** | Owner (copy straight from the CRM; never paste it in chat) | Secrets can't be read back, so check with T0 and T1: the lead appears in **staging**, and the Worker log shows the same `leadId` |
-| P7 | **Network path**: OfficeCRM doesn't block Cloudflare's IPs (no IP allowlist), and the hostname resolves publicly | Owner / P1 code review | T1 succeeds; a failure with log reason `unreachable` or `http_403` points here |
-| P8 | **OfficeCRM user** who can search, inspect and delete leads (and see an audit log, if one exists) | Owner | Can find a lead by name `TEST-` and delete it |
-| P9 | **Browser with DevTools**, to see `/api/lead` responses and `dataLayer`. Use `?gtm=1` only when GTM should load (it doesn't load on workers.dev otherwise) | Tester | none |
+| # | Item | How to verify |
+|---|---|---|
+| P1 | **OfficeCRM findings accepted as the contract** (CONTRACT §1). Ideally this session also gets read access to the OfficeCRM repository, to cross-check `route.ts` | CONTRACT §1 rows marked CRM-CODE; any re-read confirms the file references |
+| P2 | **Owner decisions D1–D9** (CONTRACT §8), at least D3 and D7 | Recorded in CONTRACT §8 |
+| P3 | **Website changes A1–A6 implemented and passing** on `cloudflare-migration`. Without them the test "passes" while losing `source` and the message | `npm test` green with the rebuilt mock (A6) |
+| P4 | **One machine runs both.** OfficeCRM and the website in the same environment: the owner's computer, or this session if it's given access to the OfficeCRM repo and the emulators install here (they need Java for Firestore). A cloud session can't reach another session's `localhost` | `curl -s http://localhost:3000/api/leads/webhook` (GET **without** parameters) returns the status text. Never call GET with parameters (it creates an empty lead) |
+| P5 | **Local OfficeCRM running:** `LEADS_WEBHOOK_API_KEY=local-test npm run dev` (emulators), port 3000, emulator UI on 4000 | The emulator UI shows an empty or known `leads` collection |
+| P6 | **Website `.dev.vars`** (git-ignored): `CRM_WEBHOOK_URL=http://localhost:3000/api/leads/webhook` and `LEADS_WEBHOOK_API_KEY=local-test`. `crmConfig()` allows http only for `localhost`/`127.0.0.1` | T0 succeeds |
+| P7 | **Both Workers running:** `npm run build`; `npx wrangler dev --port 8787 --inspector-port 9231`; `npx wrangler dev -c wrangler.lp.jsonc --port 8788 --inspector-port 9232 --persist-to <own folder>` (separate state folder, or the two collide) | `http://127.0.0.1:8787/` and `http://127.0.0.1:8788/architecture/` load |
+| P8 | **Keyword check on host names:** a local or preview host must not contain `design`, `interior` or `architect`, because the CRM matches on the whole URL (unknown, F1). `127.0.0.1` is safe. Check any `workers.dev` account subdomain before §4 | Visual check |
+| P9 | **For §4 only:** the key fingerprint. Compute `printf %s "$KEY" \| shasum -a 256 \| cut -c1-12` on the value from Secret Manager (project `jassign`) and on the value about to go into the Worker secret, and compare only those 12 characters. **Admin access to delete one lead** in the production leads screen | Fingerprints match; delete permission confirmed |
 
-**Unknown until P1:**
-- the exact error codes
-- whether duplicates are detected
-- whether `success:true` means the lead is stored
-- the phone and `source` rules
-- the rate limits
-- where the key is stored and how it is rotated
+## 2. Tests (local: OfficeCRM on emulators + `wrangler dev`)
 
-Each of these changes the "Expected result in OfficeCRM" lines below. Update them after P1.
+**Expected results assume A1–A6 are implemented.** Where today's code would behave differently, it is noted as "today:".
 
-## 2. Environment setup (isolated)
+### T0: Connectivity
+- **Action:** submit the www home form once (`-00`).
+- **HTTP:** `/api/lead` → 200 `{"ok":true}`. Worker log: `lead: created in OfficeCRM (leadId <id>)`.
+- **CRM:** one document in `leads` with that id, status "חדש".
+- **Visitor:** `/thankyou`.
+- **Analytics:** one `generate_lead` (`home`).
+- **Cleanup:** delete the document in the emulator UI (or restart the emulators).
 
-1. Complete P1 and P2. Note the staging CRM URL and record how a lead is looked up there (list view, search by name).
-2. With approval, deploy the two staging Workers (P5) and set their secrets (P6).
-3. Open `https://hagarlushi-staging.<account>.workers.dev/` and `https://hagarlushi-lp-staging.<account>.workers.dev/architecture/`. Both pages should load.
-4. Cloudflare → Workers → each staging Worker → **Logs** → start live tail. Keep it open during the tests.
-5. Run **T0** first. If it fails, stop: the secrets or network path are wrong.
+### T1: Main-site forms
+- **Action:** submit the home form (`-01`) and the contact form (`-02`), each once, with a message.
+- **HTTP:** 200 `{"ok":true}` each.
+- **CRM:**
+  - Exactly one lead each.
+  - name, email and phone as typed.
+  - Source = `Elementor / דף נחיתה` (D1 accepted) or the B7 category.
+  - The **message is not on the lead** (§5 limitation). Confirm it is visible only in `webhook-logs`.
+- **Visitor:** `/thankyou`.
+- **Analytics:** one `generate_lead` each (`home`, `contact`).
+- **Cleanup:** delete both.
+- **Today:** source is the fallback anyway, but for the wrong reason (no `page_url`).
 
-## 3. Tests
-
-Each test lists: **Setup** · **Action** · **HTTP** (the `/api/lead` response in DevTools) · **OfficeCRM** · **Visitor sees** · **Analytics** (`dataLayer`) · **Cleanup**.
-
-### T0: Connectivity smoke test (www)
-- **Setup:** §2 done.
-- **Action:** on `…hagarlushi-staging…/?utm_source=crmtest&utm_medium=qa&utm_campaign=TEST-<run>`, fill the home form with synthetic data (name `…-00`) and submit.
-- **HTTP:** 200 `{"ok":true}`. Worker log: `lead: created in OfficeCRM (leadId <id>)`.
-- **OfficeCRM:** exactly one new lead **in staging** with that `<id>`, and none in production.
-- **Visitor sees:** the `/thankyou` page.
-- **Analytics:** one `generate_lead` (`form_location: home`).
-- **Cleanup:** delete the lead in staging.
-
-### T1: Valid lead, main site, each form
-- **Action:** submit the **home** form (`/`) and the **contact** form (`/יצירת-קשר`) once each, with name suffixes `-01` and `-02`.
-- **HTTP:** 200 `{"ok":true}` for each.
-- **OfficeCRM:** exactly **one** lead per submission:
-  - `name` and `email` as typed.
-  - `phone` as typed (formatting kept).
-  - `source` = `website / crmtest / qa`.
-  - `notes` contains `טופס: דף הבית` or `טופס: דף יצירת קשר`, `נשלח מהדף: /…`, `קמפיין: utm_source=crmtest, …`, `אתר: hagarlushi-staging…` and the message.
-- **Visitor sees:** `/thankyou`.
-- **Analytics:** one `generate_lead` each (`home` / `contact`); a refresh of `/thankyou` adds none.
-- **Cleanup:** delete both leads.
-
-### T2: Valid lead, each landing-page form
-- **Action:** on the lp staging Worker, submit once each on `/`, `/architecture/`, `/interior-design/` and `/renovation/`, with the privacy box ticked (suffixes `-03` to `-06`).
-- **HTTP:** 200 `{"ok":true}`.
-- **OfficeCRM:** one lead each:
-  - `source` = `landing-page / crmtest / qa`.
-  - `notes` contains the right form name (`דף נחיתה – ראשי` / `אדריכלות` / `עיצוב פנים` / `שיפוץ`), the page path and `אישור מדיניות פרטיות: כן`.
-- **Visitor sees:** `/thankyou/`.
-- **Analytics:** one `generate_lead` each (`lp-home`, `lp-architecture`, `lp-interior-design`, `lp-renovation`).
+### T2: Each landing-page form
+- **Action:** submit on lp `/` (`-03`), `/architecture/` (`-04`), `/interior-design/` (`-05`) and `/renovation/` (`-06`), with consent ticked.
+- **HTTP:** 200 each.
+- **CRM sources:**
+  - `/`: `Elementor / דף נחיתה`
+  - `/architecture/`: `אדריכלות`
+  - `/interior-design/`: `עיצוב פנים`
+  - `/renovation/`: `Elementor / דף נחיתה` (D2)
+- **Visitor:** `/thankyou/`.
+- **Analytics:** one `generate_lead` each (`lp-…`).
 - **Cleanup:** delete all four.
+- **Today:** every lp lead gets the fallback source (F1).
 
-### T3: Exactly one record per accepted submission
-- **Action:** after T1 and T2, search OfficeCRM for `TEST-<run>`.
-- **Expected:** exactly **6** leads (T1 ×2, T2 ×4), plus T0's lead if it wasn't deleted yet. Each has a distinct `leadId` that matches the Worker log line for that submission. If the CRM has an audit log, it shows one create per lead.
-- **Cleanup:** none extra.
+### T2b: Source-rule edge cases (settles the UNKNOWNs in CONTRACT §4)
+Submit once each and record the source the CRM stores:
+- `/architecture/?utm_campaign=interior_design` (does the query string change the category? It shouldn't, after A1)
+- a `form_name` containing `design` on the lp home page (does `form_name` affect the category?)
+- an upper-case path, e.g. `/Architecture/`, sent as a direct API request with a crafted `page_path` (is matching case-sensitive?)
 
-### T4: Field mapping and value preservation
-- **Action:** one lp submission (suffix `-07`) with:
-  - a Hebrew name with a geresh (`בדיקה צ׳ אתר – TEST-<run>-07`)
-  - phone `+972 52-431-7164`, or the owner's own number in that format
-  - email in mixed case (`Lushi.Office+CRMTEST-07@gmail.com`)
-  - a long `utm_campaign` (100 characters)
-- **HTTP:** 200.
-- **OfficeCRM:**
-  - Hebrew characters are intact (no `?` or mojibake).
-  - Phone and email are stored exactly as sent. Note whether the CRM normalises them.
-  - `notes` keeps its line breaks and isn't cut off.
-- **Visitor sees:** `/thankyou/`.
-- **Analytics:** one `generate_lead`.
-- **Cleanup:** delete. **Record** the CRM's normalisation behaviour; it decides risk R5.
+Delete all. Update CONTRACT §4 with the results.
 
-### T5: Missing and invalid required fields (no CRM traffic expected)
-- **Action, browser:** on each site, submit with:
-  - an empty name
-  - an empty phone
-  - phone `12345`
-  - an empty email
-  - email `not-an-email`
-  - (lp) the privacy box unticked
-- **Action, server:** in DevTools Console, `fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({full_name:'x',phone:'',email:'a@b.co',form:'home'})})`, then repeat with `phone:'123'`.
-- **HTTP:**
-  - Browser cases: **no request** is made.
-  - Server cases: 400 `{"ok":false,"error":"missing_phone","field":"phone"}` and `invalid_phone`.
-- **OfficeCRM:** **no** new lead. The Worker log shows nothing, because validation happens before any CRM call.
-- **Visitor sees:** the Hebrew message beside the field (`יש להזין שם מלא`, `יש להזין מספר טלפון`, `יש להזין מספר טלפון תקין`, `נא להזין כתובת אימייל תקינה`, `יש לאשר את מדיניות הפרטיות`). Focus moves to the first invalid field.
+### T3: One record per accepted submission
+- **Action:** after T1 and T2, count the documents named `TEST – website migration <run>`.
+- **Expected:** exactly 6 (plus T0, if not deleted). Each `leadId` matches its Worker log line, and the `submission_id` (A4) is in `webhook-logs`.
+
+### T4: Field mapping
+- **T4a, values:** Hebrew name with a geresh; phone `+972 52-431-7164`; mixed-case email.
+  - **Expected:** stored exactly as sent (the CRM doesn't normalise phone, as reported); no mojibake.
+- **T4b, email hijack (F3):** a www message containing a second address, e.g. `תחזרו אליי ל-other+crmtest@gmail.com`.
+  - **Expected:** the lead's email is the form's email field, not the one in the message.
+  - **If not:** A2 must stop sending the message, or B1 is required. Record the result in CONTRACT F3.
+- **T4c, message storage probe (§5, informs B1, not a workaround):** one direct POST to the **local** CRM with an Elementor-style field, e.g. `fields[message][value]`.
+  - **Record:** whether it appears anywhere staff can see on the lead screen.
+- **Cleanup:** delete everything.
+
+### T5: Missing or invalid fields (the website rejects them; the CRM would accept them)
+- **Browser:** empty name; empty phone; phone `12345`; empty or invalid email; lp consent unticked.
+  - **Expected:** no request; the Hebrew inline message; focus on the first invalid field.
+- **API:** `fetch('/api/lead', …)` with `phone:''`, then `phone:'123'`.
+  - **Expected:** 400 `missing_phone` / `invalid_phone`.
+- **CRM:** **no** new document (essential, because the CRM itself would create a junk lead).
 - **Analytics:** no `generate_lead`.
 - **Cleanup:** none.
 
-### T6: Invalid or missing authentication (staging only)
-- **Setup:** on **one staging Worker only**, temporarily set `LEADS_WEBHOOK_API_KEY` to a wrong value, e.g. `wrong-key-test`. Then, as a second step, delete the secret.
-- **Action:** submit one valid lp form (`-08`) in each state.
-- **HTTP:**
-  - Wrong key: 502 `{"ok":false,"error":"crm_rejected"}`; Worker log `http_401` (or the CRM's actual code, per P1).
-  - Missing secret: 503 `{"ok":false,"error":"not_configured"}`; log `CRM_WEBHOOK_URL / LEADS_WEBHOOK_API_KEY missing or invalid`. **Nothing is sent.**
-- **OfficeCRM:** **no** lead.
-- **Visitor sees:** the separate failure message (`לא הצלחנו לשלוח את הפרטים כרגע…`) with the site's phone and WhatsApp links. The typed values are kept.
-- **Analytics:** no `generate_lead`.
-- **Cleanup:** restore the correct staging key, then rerun T0 to confirm.
+### T6: Authentication
+- **Wrong key:** set `.dev.vars` `LEADS_WEBHOOK_API_KEY=wrong`, restart `wrangler dev`, submit once (`-07`).
+  - **CRM:** 401, **no** document.
+  - **Worker:** 502 (`crm_rejected`, a **definite** failure after A3). Log `http_401`.
+  - **Visitor:** the definite-failure message, retry allowed.
+  - **Analytics:** no `generate_lead`.
+- **Missing key:** remove it from `.dev.vars`, submit once.
+  - **Worker:** 503 `not_configured`, **nothing sent**.
+  - Same visitor and analytics behaviour.
+- **CRM not configured:** run OfficeCRM **without** `LEADS_WEBHOOK_API_KEY`, submit once.
+  - **CRM:** 503 `{"success":false,"error":"Webhook is not configured."}`, no document.
+  - **Worker:** definite failure.
+- **Cleanup:** restore both keys; rerun T0.
 
 ### T7: CRM validation rejection
-- **Setup:** from the P1 code review, pick an input the website accepts but the CRM rejects (e.g. a `source` outside an allowed list, or a too-long field). If none exists, mark this test N/A: the website's rules are then at least as strict as the CRM's.
-- **Action:** submit it (`-09`).
-- **HTTP:** 502 `crm_rejected`; log `http_4xx`, or `not_confirmed` if the CRM answers 200 with `success:false`.
-- **OfficeCRM:** no lead, or exactly as the code says.
-- **Visitor sees:** the failure message; values kept; the visitor can retry.
-- **Analytics:** no `generate_lead`.
-- **Cleanup:** delete anything that was created, and report it. A created lead together with a failure response is a duplicate risk (R1).
+**N/A.** The CRM never returns 400 (CONTRACT F4). Keep T5 as the guard.
 
-### T8: CRM timeout and network failure
-- **Timeout:** can't be induced on a real CRM without changing it. It is covered by the automated mock tests (`hang` mode in `test/e2e/mock-office.mjs`: 502 `crm_unreachable`, failure message, no conversion).
-- **In the real environment, record the latency** of T1 and T2: in the Worker logs, use wall time per request. If any request is above ~5 s, raise it as R2.
-- **Network failure (safe; no data leaves Cloudflare):**
-  - **Setup:** on one staging Worker, set `CRM_WEBHOOK_URL` to `https://crm-unreachable.invalid/api/leads/webhook`. The `.invalid` domain never resolves.
-  - **Action:** submit one form (`-10`).
-  - **HTTP:** 502 `crm_unreachable`; log `unreachable`.
-  - **OfficeCRM:** nothing.
-  - **Visitor sees:** the failure message; values kept.
+### T8: Timeout and network failure
+- **Network failure:** stop OfficeCRM (Ctrl-C) and submit once (`-08`).
+  - **Worker:** 502, log `unreachable`.
+  - **CRM:** nothing (it's down).
+  - **Visitor (after A3):** the **uncertain** message, because a mid-request drop can't be told apart from "not sent". It does not invite resubmitting; phone and WhatsApp are offered.
   - **Analytics:** no `generate_lead`.
-  - **Cleanup:** restore the staging URL; rerun T0.
+- **Timeout after save:** can't be produced with the unmodified CRM. Covered by the mock's new `slow-after-save` mode (A6): the lead is stored, the answer comes after the timeout. The Worker reports uncertain; the visitor doesn't resubmit; no conversion.
+- **Latency:** record the CRM response times seen in T0–T2. If any is above ~5 s, revisit D6.
 
-### T9: Unexpected HTTP responses and malformed bodies
-- **Real CRM:** only by observation. Note any non-JSON or 3xx response seen during T0–T7.
-- **Automated (mock):** already proven for HTTP 500, `success:false`, a missing `success`, and malformed JSON. Each gives 502 with no conversion (`test/worker.test.mjs`; e2e `success-false` / `500` / `malformed`).
-- **Expected:** a body without `"success": true` is **never** treated as a lead, even with HTTP 200.
+### T9: Error after save and malformed responses
+- **500 after save:** the real path (the warning-note write failing) can't be triggered safely. Covered by the mock's `500-after-save` mode (A6).
+  - **Expected:** the mock stores the lead and returns 500; the Worker reports **uncertain**; no thank-you page; no `generate_lead`; the visitor isn't invited to retry. Staff can find the lead by `submission_id`.
+- **Malformed or empty 2xx body:** mock only (`malformed`, `missing-success`). **Expected:** uncertain, never success.
 
-### T10: Duplicate submissions and retries
-- **Double click:** double-click submit on one form (`-11`).
-  - **HTTP:** one request.
-  - **OfficeCRM:** exactly one lead.
-  - **Analytics:** one `generate_lead`.
-- **Deliberate resubmission:** submit the same details twice, 30 s apart (`-12`).
-  - **OfficeCRM:** record what happens: two leads, a merge, or a rejection with `success:false`.
-  - If the second is rejected as a duplicate, the visitor **sees a failure message for a lead that exists**. Report this (CONTRACT R1).
-- **Retry after failure:** not testable against the real CRM without a slow CRM. Risk R1 stays open until idempotency is agreed.
+### T10: Duplicates and retries
+- **Double click** (`-09`): one request, one document, one `generate_lead`.
+- **Deliberate resubmission:** the same details twice, 30 s apart (`-10`).
+  - **Expected today and after A1–A6:** **two** documents (no CRM idempotency, F8). Both carry **different** `submission_id`s, because each is a new form fill after the thank-you page.
+  - **After B3:** one document.
+- **Resubmission after an uncertain outcome:** stop OfficeCRM right after it writes (mock mode, A6), then submit again from the same, unreloaded form.
+  - **Expected:** the **same** `submission_id` on both requests (A4).
+  - **Without B3:** two leads with the same `submission_id` in `webhook-logs`.
+  - **After B3:** one lead.
 - **Cleanup:** delete all.
 
-### T11: Failed submissions never count as conversions
-- **Check:** across T5–T9, `dataLayer` shows **no** `generate_lead`, and opening `/thankyou` directly or refreshing it adds none.
-- **With GTM:** repeat T6 with `?gtm=1` and GTM Preview. No GA4, Google Ads or Meta lead tag fires.
+### T11: Failures never count as conversions
+Across T5–T10: no `generate_lead`. Opening or refreshing `/thankyou` directly adds none. With `?gtm=1` and GTM Preview, no GA4, Ads or Meta lead tag fires.
 
 ### T12: WhatsApp and phone clicks are not leads
-- **Action:** on both staging Workers, click:
-  - the floating WhatsApp button
-  - the WhatsApp and phone links in the failure message (triggered by T8 setup)
-  - the lp thank-you WhatsApp button
-  - (www) the phone and email links
-- **HTTP:** **no** `/api/lead` request.
-- **OfficeCRM:** no lead.
-- **Visitor sees:** WhatsApp opens with the right number: lp `972524317164` with "היי הגר! יש לי פרוייקט…", www `972505788634`. The phone link dials lp `052-431-7164` / www `050-578-8634`.
-- **Analytics:** `whatsapp_click` / `phone_click` / `email_click` only; **no** `generate_lead`.
-- **Cleanup:** none.
-
-### T13: Logs contain no personal data or secrets
-- **Action:** after T0–T10, export or scroll the staging Workers' logs.
+- **Action:** click the floating WhatsApp button, the failure-message WhatsApp and phone links, the lp thank-you WhatsApp button, and the www phone and email links.
 - **Expected:**
-  - Only lines like `lead: created in OfficeCRM (leadId …)` and `lead: OfficeCRM did not confirm the lead (<reason>)`.
-  - **No** name, phone, email, notes, webhook URL or key.
-  - Also check the OfficeCRM side's request logs, if any, for logged `Authorization` headers.
+  - **No** `/api/lead` request.
+  - **No** CRM document.
+  - Only `whatsapp_click` / `phone_click` / `email_click`.
+  - Numbers: lp `972524317164` / `tel:+972524317164`; www `972505788634` / `tel:+972505788634`.
 
-### T14: Both Workers point at the same, intended environment
-- **Action:** compare T1's and T2's leads: both must be in **staging**, none in production.
-- **Before cutover:** repeat T0 once on each **production** Worker (`hagarlushi`, `hagarlushi-lp`) after their production secrets are set. That is §4.
+### T13: Logs
+- **Worker logs:** only `lead: created in OfficeCRM (leadId …)` and `lead: OfficeCRM did not confirm the lead (<reason>)`, plus `submission_id` after A4. No personal data, no URL, no key.
+- **Note for the owner:** the CRM's `webhook-logs` hold the **full raw request**, with personal data, for 30 days. That is the CRM's own retention, not the website's.
 
-## 4. Production verification (only after §3 passes, with explicit owner approval)
+### T14: Both Workers, same environment
+T1 and T2 leads all land in the same local emulator. Before §4, compute the key fingerprint (P9) for **both** production Workers.
 
-1. Set the production secrets on `hagarlushi` and `hagarlushi-lp` (CLOUDFLARE-PLAN O3/O3b).
-2. On each Worker's `workers.dev` address, before any DNS change, submit **one** synthetic lead: `TEST-PROD-<date>`, `utm_source=crmtest`.
-3. Confirm one production lead each, with the correct `source` and notes, and a `leadId` that matches the log.
-4. Delete both leads at once.
-5. Result: **READY FOR PRODUCTION VERIFICATION → verified.**
+## 3. What the automated tests do and don't cover (gaps)
 
-## 5. Results log (fill in)
+| Area | Covered by `npm test` / e2e today | Gap |
+|---|---|---|
+| Website validation, inline messages, focus, no request on invalid input | ✅ | none |
+| Success only on 2xx + `success:true`; failures → no conversion | ✅ | none |
+| WhatsApp and phone never leads | ✅ | none |
+| Payload shape | Asserts `{name, phone, email, source, notes}` | ❌ asserts fields the CRM ignores or drops; no `page_url`/`form_name` (F1, F12) |
+| Mock CRM behaviour | Returns 400 for missing fields; needs `source` | ❌ the real CRM never returns 400 and ignores `source`; no 500-after-save; no slow-after-save (F12) |
+| Uncertain vs definite failure | Not distinguished | ❌ (A3) |
+| Duplicate identification | none | ❌ (A4) |
+| Real CRM | none | ❌ needs §2 locally |
+
+## 4. Production verification (only after §2 passes, with explicit owner approval)
+
+1. Fingerprints match (P9). Set the production secrets on `hagarlushi` and `hagarlushi-lp`.
+2. On each Worker's `workers.dev` address (P8 host check first), submit **one** lead:
+   - name `TEST – website migration PROD`
+   - `page_url` path `/architecture/` for lp, `/` for www
+   - `utm_source=crmtest`
+3. One POST each, **no retries**.
+4. Confirm one lead each in the production leads screen (status "חדש", the expected source). An admin deletes both immediately.
+
+## 5. Results log
 
 | Test | Date | Environment | Result | leadIds | Notes |
 |---|---|---|---|---|---|
 | T0 |  |  |  |  |  |
 | T1 |  |  |  |  |  |
 | T2 |  |  |  |  |  |
+| T2b |  |  |  |  |  |
 | T3 |  |  |  |  |  |
-| T4 |  |  |  |  |  |
+| T4a–c |  |  |  |  |  |
 | T5 |  |  |  |  |  |
 | T6 |  |  |  |  |  |
-| T7 |  |  |  |  |  |
 | T8 |  |  |  |  |  |
 | T9 |  |  |  |  |  |
 | T10 |  |  |  |  |  |
