@@ -42,14 +42,14 @@ for (const [vp, viewport] of [['desktop', { width: 1280, height: 800 }], ['mobil
   check((await leads(p)) === 0, t('refresh of thank-you page: no second conversion'));
 
   // Failures on the contact page: no redirect, no conversion, data kept
-  for (const m of ['success-false', 'missing-success', 'malformed', '500']) {
+  for (const [m, sel] of [['not-configured', '.status:not(.status-uncertain)'], ['success-false', '.status-uncertain'], ['missing-success', '.status-uncertain'], ['malformed', '.status-uncertain'], ['500', '.status-uncertain']]) {
     await mode(m);
     await p.goto(`${B}/${encodeURI('יצירת-קשר')}`);
     await fill(p, '');
     await p.click('.send');
-    await p.waitForSelector('.status:not([hidden])', { timeout: 15000 }).catch(() => {});
+    await p.waitForSelector(`${sel}:not([hidden])`, { timeout: 15000 }).catch(() => {});
     const stayed = decodeURI(new URL(p.url()).pathname) === '/יצירת-קשר';
-    check(stayed && (await p.isVisible('.status')), t(`OfficeCRM ${m}: error shown, no redirect`));
+    check(stayed && (await p.isVisible(sel)), t(`OfficeCRM ${m}: ${sel.includes('uncertain') ? 'uncertain' : 'retry'} message shown, no redirect`));
     check((await leads(p)) === 0 && (await p.inputValue('input[name=phone]')) === '050-1234567', t(`OfficeCRM ${m}: no conversion, typed data kept`));
   }
 

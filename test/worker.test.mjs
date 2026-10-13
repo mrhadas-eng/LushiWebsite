@@ -96,38 +96,60 @@ test('success only for HTTP 2xx with success: true (leadId returned)', async () 
   assert.equal((await res.json()).ok, true);
 });
 
-for (const [label, status, body] of [
-  ['HTTP 200 with success: false', 200, '{"success":false,"error":"duplicate"}'],
-  ['HTTP 200 without success', 200, '{"leadId":"L-1"}'],
-  ['HTTP 200 with success: "true" (string)', 200, '{"success":"true","leadId":"L-1"}'],
-  ['HTTP 200 with malformed JSON', 200, '{"success":tru'],
-  ['HTTP 200 with an empty body', 200, ''],
-  ['HTTP 401 (bad key)', 401, '{"success":false,"error":"unauthorized"}'],
-  ['HTTP 400 (missing field)', 400, '{"success":false}'],
-  ['HTTP 500', 500, 'Internal Server Error'],
+// Real OfficeCRM answers (docs/OFFICECRM-INTEGRATION-CONTRACT.md §1): 401 bad key, 503 not configured → the lead was
+// NOT saved (retry is safe). A 500 can follow a successful write, and malformed or unconfirmed 2xx answers prove
+// nothing → the outcome is UNKNOWN: never success, never "definitely failed".
+const UNKNOWN = { ok: false, error: 'crm_uncertain', outcome: 'unknown' };
+const NOT_SAVED = { ok: false, error: 'crm_rejected', outcome: 'not_saved' };
+for (const [label, status, body, expected] of [
+  ['HTTP 401 (bad key, real OfficeCRM body)', 401, '{"success":false,"error":"Unauthorized. Invalid API Key."}', NOT_SAVED],
+  ['HTTP 503 (webhook not configured, real OfficeCRM body)', 503, '{"success":false,"error":"Webhook is not configured."}', NOT_SAVED],
+  ['HTTP 400 (validation, planned CRM change B5)', 400, '{"success":false}', NOT_SAVED],
+  ['HTTP 404 (route missing)', 404, 'Not Found', NOT_SAVED],
+  ['HTTP 500 (may follow a saved lead)', 500, '{"success":false,"error":"x"}', UNKNOWN],
+  ['HTTP 502 from a proxy', 502, '<html>Bad gateway</html>', UNKNOWN],
+  ['HTTP 200 with success: false', 200, '{"success":false,"error":"duplicate"}', UNKNOWN],
+  ['HTTP 200 without success', 200, '{"leadId":"L-1"}', UNKNOWN],
+  ['HTTP 200 with success: "true" (string)', 200, '{"success":"true","leadId":"L-1"}', UNKNOWN],
+  ['HTTP 200 with malformed JSON', 200, '{"success":tru', UNKNOWN],
+  ['HTTP 200 with an empty body', 200, '', UNKNOWN],
 ]) {
-  test(`not confirmed: ${label} → 502, no success`, async () => {
+  test(`not confirmed: ${label} → 502 ${expected.outcome}, no success`, async () => {
     const res = await post(SITE_LEAD, ENV, crm(status, body));
     assert.equal(res.status, 502);
-    assert.deepEqual(await res.json(), { ok: false, error: 'crm_rejected' });
+    assert.deepEqual(await res.json(), expected);
   });
 }
 
-test('network failure → 502 crm_unreachable', async () => {
+test('network failure → 502 unknown (the request may have reached OfficeCRM)', async () => {
   const res = await handleLead(req(SITE_LEAD), ENV, { fetchImpl: async () => { throw new TypeError('fetch failed'); } });
   assert.equal(res.status, 502);
-  assert.equal((await res.json()).error, 'crm_unreachable');
+  assert.deepEqual(await res.json(), UNKNOWN);
 });
 
-test('timeout → 502 crm_unreachable (request aborted)', async () => {
+test('timeout → 502 unknown (request aborted; OfficeCRM may still have saved it)', async () => {
   let aborted = false;
   const hang = (url, init) => new Promise((_, reject) => {
     init.signal.addEventListener('abort', () => { aborted = true; reject(init.signal.reason); });
   });
   const res = await handleLead(req(SITE_LEAD), ENV, { fetchImpl: hang, timeoutMs: 50 });
   assert.equal(res.status, 502);
-  assert.equal((await res.json()).error, 'crm_unreachable');
+  assert.deepEqual(await res.json(), UNKNOWN);
   assert.ok(aborted);
+});
+
+test('default CRM timeout is 20 s (owner, provisional) and response time is logged without lead data', async () => {
+  const src = (await import('node:fs')).readFileSync('worker/index.js', 'utf8');
+  assert.match(src, /const CRM_TIMEOUT_MS = 20_000;/);
+  const logs = []; const orig = [console.log, console.error];
+  console.log = console.error = (m) => logs.push(String(m));
+  try {
+    let t = 1000; const now = () => (t += 250);
+    await handleLead(req(SITE_LEAD), ENV, { fetchImpl: crm(200, '{"success":true,"leadId":"L-7","message":"Lead created successfully"}').impl, now });
+    await handleLead(req(SITE_LEAD), ENV, { fetchImpl: crm(500, '{"success":false}').impl, now });
+  } finally { [console.log, console.error] = orig; }
+  assert.match(logs[0], /^lead: created in OfficeCRM \(leadId L-7, \d+ ms\)$/);
+  assert.match(logs[1], /^lead: OfficeCRM did not confirm the lead \(http_500, unknown, \d+ ms\)$/);
 });
 
 // ---------------------------------------------------------------- configuration

@@ -9,7 +9,7 @@ node test/e2e/mock-office.mjs &                        # mock OfficeCRM on 127.0
 npm run build
 npx wrangler dev --port 8787 --inspector-port 9231 &   # www
 npx wrangler dev -c wrangler.lp.jsonc --port 8788 --inspector-port 9232 &   # lp.
-node test/e2e/forms.e2e.mjs       # validation, delivery failures, conversions, WhatsApp — both sites (188 checks)
-node test/e2e/main-site.e2e.mjs   # main-site OfficeCRM round trip (40 checks)
+node test/e2e/forms.e2e.mjs       # validation, delivery failures, conversions, WhatsApp — both sites (240 checks)
+node test/e2e/main-site.e2e.mjs   # main-site OfficeCRM round trip (44 checks)
 ```
-Mock modes: `GET /mode/ok|success-false|missing-success|malformed|500|hang|reset`.
+The fake CRM models today's real OfficeCRM (no 400, real 401/503 bodies, every POST saved). Modes (`GET /mode/…`): `ok`, `not-configured`, `500`, `500-after-save`, `slow-after-save`, `hang`, `reset`, `malformed`, `missing-success`, `success-false`; `GET /leads` lists stored leads.

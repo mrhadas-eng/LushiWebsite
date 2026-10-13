@@ -8,13 +8,14 @@
 // delivery-failure message is shown only when a valid lead could not be delivered.
 import { lpShared, lpSite, lpWhatsAppUrl } from '../../data/lp.mjs';
 import { lpHref } from '../../lib/lp-paths.mjs';
-import { DELIVERY_FAILED_TEXT } from '../../lib/lead-rules.js';
+import { DELIVERY_FAILED_TEXT, DELIVERY_UNCERTAIN_TEXT } from '../../lib/lead-rules.js';
 interface Props { form: string }
 const { form } = Astro.props;
 const L = lpShared.formLabels;
 const id = (f: string) => `${form}-${f}-err`;
 // "…ליצור קשר בטלפון או בוואטסאפ." with the two words linked to the landing pages' contact details.
 const [failBefore, failAfter] = DELIVERY_FAILED_TEXT.split('בטלפון או בוואטסאפ');
+const [unsureBefore, unsureAfter] = DELIVERY_UNCERTAIN_TEXT.split('בטלפון או בוואטסאפ');
 ---
 <form class="lp-form" novalidate data-form={form} data-thanks={lpHref('/thankyou/')}>
   <input type="text" name="website" class="visually-hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
@@ -39,6 +40,9 @@ const [failBefore, failAfter] = DELIVERY_FAILED_TEXT.split('בטלפון או ב
   </div>
   <p class="lp-form-error" role="alert" hidden>
     {failBefore}<a href={lpSite.phoneHref}>בטלפון</a> או <a href={lpWhatsAppUrl()} target="_blank" rel="noopener" data-track="lp_form_error">בוואטסאפ</a>{failAfter}
+  </p>
+  <p class="lp-form-error lp-form-uncertain" role="alert" hidden>
+    {unsureBefore}<a href={lpSite.phoneHref}>בטלפון</a> או <a href={lpWhatsAppUrl()} target="_blank" rel="noopener" data-track="lp_form_uncertain">בוואטסאפ</a>{unsureAfter}
   </p>
 </form>
 
@@ -73,10 +77,12 @@ const [failBefore, failAfter] = DELIVERY_FAILED_TEXT.split('בטלפון או ב
     liveRevalidate(form, { requireConsent: true });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const err = form.querySelector<HTMLElement>('.lp-form-error')!;
+      const err = form.querySelector<HTMLElement>('.lp-form-error:not(.lp-form-uncertain)')!;
+      const unsure = form.querySelector<HTMLElement>('.lp-form-uncertain')!;
       const btn = form.querySelector<HTMLButtonElement>('.lp-submit')!;
       if (btn.disabled) return;                       // a request is already in progress
       err.hidden = true;
+      unsure.hidden = true;
       if (!validateForm(form, { requireConsent: true })) return;  // nothing sent, nothing counted
       const fd = new FormData(form);
       let a: Record<string, string> = {};
@@ -102,8 +108,9 @@ const [failBefore, failAfter] = DELIVERY_FAILED_TEXT.split('בטלפון או ב
         thanksPath: form.dataset.thanks, send: (l: Record<string, string>) => sendLead(l),
         onFieldError: (field: string, code: string) => { if (!showServerFieldError(form, field, code)) err.hidden = false; },
       });
-      if (result === 'failed') err.hidden = false;   // valid lead, delivery not confirmed: values kept
-      if (result === 'failed' || result === 'invalid') { btn.disabled = false; btn.removeAttribute('aria-busy'); }
+      if (result === 'failed') err.hidden = false;        // definitely not saved: values kept, retry is safe
+      if (result === 'uncertain') unsure.hidden = false;  // the lead may exist: no resubmit invited, no conversion
+      if (result === 'failed' || result === 'invalid' || result === 'uncertain') { btn.disabled = false; btn.removeAttribute('aria-busy'); }
     });
   });
 </script>

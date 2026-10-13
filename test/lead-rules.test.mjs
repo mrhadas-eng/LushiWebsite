@@ -1,7 +1,7 @@
 // Shared validation rules (src/lib/lead-rules.js), used by the forms and by the Worker. Run: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fieldErrors, isValidPhone, normalizePhone, ERROR_MESSAGES, ERROR_FIELD, DELIVERY_FAILED_TEXT } from '../src/lib/lead-rules.js';
+import { fieldErrors, isValidPhone, normalizePhone, ERROR_MESSAGES, ERROR_FIELD, DELIVERY_FAILED_TEXT, DELIVERY_UNCERTAIN_TEXT } from '../src/lib/lead-rules.js';
 import { validateLead } from '../worker/index.js';
 
 const OK = { full_name: 'ישראל ישראלי', phone: '050-1234567', email: 'a@example.com', consent: 'yes' };
@@ -15,6 +15,8 @@ test('owner Hebrew messages (exact text); an empty phone and an invalid phone ge
     missing_consent: 'יש לאשר את מדיניות הפרטיות',
   });
   assert.equal(DELIVERY_FAILED_TEXT, 'לא הצלחנו לשלוח את הפרטים כרגע. אפשר לנסות שוב או ליצור קשר בטלפון או בוואטסאפ.');
+  assert.equal(DELIVERY_UNCERTAIN_TEXT, 'לא ניתן לוודא שהפרטים נקלטו. ייתכן שהם נשמרו בכל זאת, ולכן מומלץ לא לשלוח את הטופס שוב כרגע. אפשר ליצור קשר בטלפון או בוואטסאפ.');
+  assert.ok(!DELIVERY_UNCERTAIN_TEXT.includes('לנסות שוב'), 'the uncertain message never invites a retry');
 });
 
 test('each required field missing or invalid is reported, in form order', () => {

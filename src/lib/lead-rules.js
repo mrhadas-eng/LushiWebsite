@@ -12,8 +12,14 @@ export const ERROR_MESSAGES = {
   missing_consent: 'יש לאשר את מדיניות הפרטיות',
 };
 
-/** Shown only when a valid lead could not be delivered (CRM rejected it, timed out or was unreachable). */
+/** Shown only when a valid lead was definitely NOT saved (refused before OfficeCRM wrote anything): retrying is safe. */
 export const DELIVERY_FAILED_TEXT = 'לא הצלחנו לשלוח את הפרטים כרגע. אפשר לנסות שוב או ליצור קשר בטלפון או בוואטסאפ.';
+
+/**
+ * Shown when the outcome is unknown (OfficeCRM timeout, 500, dropped connection, unreadable answer): the lead may
+ * exist, so the visitor is not invited to resubmit. Text approved by the owner, 2026-10-13.
+ */
+export const DELIVERY_UNCERTAIN_TEXT = 'לא ניתן לוודא שהפרטים נקלטו. ייתכן שהם נשמרו בכל זאת, ולכן מומלץ לא לשלוח את הטופס שוב כרגע. אפשר ליצור קשר בטלפון או בוואטסאפ.';
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 // Phone numbers. Formatting is ignored: spaces, hyphens, dots and parentheses may appear anywhere.

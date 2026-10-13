@@ -10,17 +10,25 @@ function memoryStorage() {
 }
 const reply = (status, body) => async () => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status });
 
-test('sendLead: ok only for HTTP 2xx with { ok: true }', async () => {
+test('sendLead: ok only for HTTP 2xx with { ok: true }; every failure is classified not_saved or unknown', async () => {
+  const U = (error) => ({ ok: false, error, outcome: 'unknown' });
+  const N = (error) => ({ ok: false, error, outcome: 'not_saved' });
   assert.deepEqual(await sendLead({}, { fetchImpl: reply(200, { ok: true }) }), { ok: true });
-  assert.deepEqual(await sendLead({}, { fetchImpl: reply(200, { ok: false }) }), { ok: false, error: 'http_200' });
-  assert.equal((await sendLead({}, { fetchImpl: reply(200, {}) })).ok, false);
-  assert.equal((await sendLead({}, { fetchImpl: reply(200, 'not json') })).ok, false);
-  assert.deepEqual(await sendLead({}, { fetchImpl: reply(502, { ok: false, error: 'crm_rejected' }) }), { ok: false, error: 'crm_rejected' });
-  assert.deepEqual(await sendLead({}, { fetchImpl: reply(502, { ok: false, error: 'crm_unreachable' }) }), { ok: false, error: 'crm_unreachable' });
-  assert.deepEqual(await sendLead({}, { fetchImpl: reply(503, { ok: false, error: 'not_configured' }) }), { ok: false, error: 'not_configured' });
-  assert.deepEqual(await sendLead({}, { fetchImpl: async () => { throw new TypeError('offline'); } }), { ok: false, error: 'network' });
+  // A 2xx that isn't { ok: true } proves nothing: unknown.
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(200, { ok: false }) }), U('http_200'));
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(200, {}) }), U('http_200'));
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(200, 'not json') }), U('http_200'));
+  // The Worker's verdicts.
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(502, { ok: false, error: 'crm_rejected', outcome: 'not_saved' }) }), N('crm_rejected'));
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(502, { ok: false, error: 'crm_uncertain', outcome: 'unknown' }) }), U('crm_uncertain'));
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(503, { ok: false, error: 'not_configured' }) }), N('not_configured'));
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(403, { ok: false, error: 'forbidden' }) }), N('forbidden'));
+  // Our own endpoint's answer lost or not ours: unknown (it may have reached OfficeCRM).
+  assert.deepEqual(await sendLead({}, { fetchImpl: async () => { throw new TypeError('offline'); } }), U('network'));
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(502, '<html>Cloudflare error</html>') }), U('http_502'));
+  assert.deepEqual(await sendLead({}, { fetchImpl: reply(500, { ok: false, error: 'crm_rejected' }) }), U('crm_rejected'));
   assert.deepEqual(await sendLead({}, { fetchImpl: reply(400, { ok: false, error: 'invalid_phone', field: 'phone' }) }),
-    { ok: false, error: 'invalid_phone', field: 'phone' });
+    { ok: false, error: 'invalid_phone', field: 'phone', outcome: 'not_saved' });
 });
 
 test('server field rejection: field reported, no redirect, no conversion', async () => {
@@ -46,13 +54,14 @@ test('sendLead posts JSON to /api/lead', async () => {
   assert.deepEqual(JSON.parse(call.init.body), { full_name: 'x' });
 });
 
-for (const [label, fetchImpl] of [
-  ['OfficeCRM rejected (502)', reply(502, { ok: false, error: 'crm_rejected' })],
-  ['not configured (503)', reply(503, { ok: false, error: 'not_configured' })],
-  ['OfficeCRM timeout / unreachable (502)', reply(502, { ok: false, error: 'crm_unreachable' })],
-  ['network error', async () => { throw new TypeError('offline'); }],
+for (const [label, fetchImpl, expected] of [
+  ['OfficeCRM rejected before saving (502 not_saved)', reply(502, { ok: false, error: 'crm_rejected', outcome: 'not_saved' }), 'failed'],
+  ['not configured (503)', reply(503, { ok: false, error: 'not_configured' }), 'failed'],
+  ['OfficeCRM outcome unknown (502 crm_uncertain)', reply(502, { ok: false, error: 'crm_uncertain', outcome: 'unknown' }), 'uncertain'],
+  ['network error to our endpoint', async () => { throw new TypeError('offline'); }, 'uncertain'],
+  ['unreadable 5xx', reply(500, 'oops'), 'uncertain'],
 ]) {
-  test(`delivery failed (${label}): no redirect, no conversion`, async () => {
+  test(`not delivered (${label}): ${expected}, no redirect, no conversion`, async () => {
     const storage = memoryStorage();
     const navigations = [];
     const dataLayer = [];
@@ -60,7 +69,7 @@ for (const [label, fetchImpl] of [
       lead: { full_name: 'x' }, honeypot: '', formLocation: 'home', storage,
       navigate: (p) => navigations.push(p), send: (l) => sendLead(l, { fetchImpl }),
     });
-    assert.equal(result, 'failed');
+    assert.equal(result, expected);
     assert.deepEqual(navigations, []);
     assert.equal(storage.getItem(LEAD_FLAG), null);
     assert.equal(recordLeadConversion(storage, dataLayer), false);

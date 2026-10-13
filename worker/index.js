@@ -23,7 +23,9 @@ import { EMAIL_RE, isValidPhone, ERROR_FIELD } from '../src/lib/lead-rules.js';
 
 const MAX_BODY_BYTES = 10_000;
 // Not exported: the Workers runtime only accepts functions and handlers as module exports.
-const CRM_TIMEOUT_MS = 10_000;
+// 20 s (owner, 2026-10-13, provisional): OfficeCRM runs on Firebase App Hosting (cold starts, max 2 instances).
+// Re-check against the response times logged during the local and production tests.
+const CRM_TIMEOUT_MS = 20_000;
 const MAX_NOTES = 4000;
 
 // Fields accepted from the browser (anything else is dropped), with maximum lengths.
@@ -145,11 +147,23 @@ export function crmConfig(env) {
   return { url, key: key.replace(/^Bearer\s+/i, '').trim() };
 }
 
+// OfficeCRM answers that prove the lead was NOT saved (rejected before any write), so a retry is safe.
+// As reported from the OfficeCRM code (docs/OFFICECRM-INTEGRATION-CONTRACT.md §1): 401 bad key, 503 webhook not
+// configured. 400/422 (planned validation, CRM change B5), 403/404/405/415 (request never reached the handler) too.
+// Everything else that isn't a confirmed success is UNKNOWN: OfficeCRM can store a lead and then answer 500,
+// and a timeout or dropped connection can happen after the write. Unknown is never reported as success or as
+// a definite failure.
+const NOT_SAVED_STATUSES = new Set([400, 401, 403, 404, 405, 415, 422, 503]);
+
 /**
- * Sends the lead to OfficeCRM. Resolves { ok: true, leadId } only for HTTP 2xx + JSON success:true;
- * otherwise { ok: false, reason }. Never throws.
+ * Sends the lead to OfficeCRM. Never throws. Resolves:
+ *   { ok: true, leadId, ms }                      HTTP 2xx + JSON success:true (the lead is stored)
+ *   { ok: false, outcome: 'not_saved', reason, ms }   OfficeCRM rejected it before saving (see NOT_SAVED_STATUSES)
+ *   { ok: false, outcome: 'unknown', reason, ms }     timeout, network error, 5xx, malformed or unconfirmed answer
  */
-export async function forwardToCrm(lead, cfg, { fetchImpl = fetch, timeoutMs = CRM_TIMEOUT_MS } = {}) {
+export async function forwardToCrm(lead, cfg, { fetchImpl = fetch, timeoutMs = CRM_TIMEOUT_MS, now = Date.now } = {}) {
+  const t0 = now();
+  const done = (r) => ({ ...r, ms: now() - t0 });
   let res;
   try {
     res = await fetchImpl(cfg.url, {
@@ -163,13 +177,14 @@ export async function forwardToCrm(lead, cfg, { fetchImpl = fetch, timeoutMs = C
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (e) {
-    return { ok: false, reason: e && (e.name === 'TimeoutError' || e.name === 'AbortError') ? 'timeout' : 'unreachable' };
+    const timeout = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+    return done({ ok: false, outcome: 'unknown', reason: timeout ? 'timeout' : 'unreachable' });
   }
-  if (!res.ok) return { ok: false, reason: `http_${res.status}` };
+  if (!res.ok) return done({ ok: false, outcome: NOT_SAVED_STATUSES.has(res.status) ? 'not_saved' : 'unknown', reason: `http_${res.status}` });
   let body;
-  try { body = JSON.parse(await res.text()); } catch { return { ok: false, reason: 'invalid_json' }; }
-  if (!body || body.success !== true) return { ok: false, reason: 'not_confirmed' };
-  return { ok: true, leadId: body.leadId };
+  try { body = JSON.parse(await res.text()); } catch { return done({ ok: false, outcome: 'unknown', reason: 'invalid_json' }); }
+  if (!body || body.success !== true) return done({ ok: false, outcome: 'unknown', reason: 'not_confirmed' });
+  return done({ ok: true, leadId: body.leadId });
 }
 
 export async function handleLead(request, env, opts = {}) {
@@ -201,12 +216,16 @@ export async function handleLead(request, env, opts = {}) {
   const result = await forwardToCrm(lead, cfg, opts);
   if (result.ok) {
     // The leadId is OfficeCRM's record number, not lead data: logged so a test lead can be traced.
-    console.log(`lead: created in OfficeCRM (leadId ${result.leadId ?? 'not returned'})`);
+    console.log(`lead: created in OfficeCRM (leadId ${result.leadId ?? 'not returned'}, ${result.ms} ms)`);
     return json(200, { ok: true });
   }
-  // Only the reason code is logged: no lead data, no URL, no key.
-  console.error(`lead: OfficeCRM did not confirm the lead (${result.reason})`);
-  return json(502, { ok: false, error: result.reason === 'timeout' || result.reason === 'unreachable' ? 'crm_unreachable' : 'crm_rejected' });
+  // Only the reason code, outcome and timing are logged: no lead data, no URL, no key.
+  console.error(`lead: OfficeCRM did not confirm the lead (${result.reason}, ${result.outcome}, ${result.ms} ms)`);
+  // not_saved: OfficeCRM rejected it before writing, retrying is safe.
+  // unknown: the lead may exist; the visitor is told so and not invited to resubmit.
+  return json(502, result.outcome === 'not_saved'
+    ? { ok: false, error: 'crm_rejected', outcome: 'not_saved' }
+    : { ok: false, error: 'crm_uncertain', outcome: 'unknown' });
 }
 
 export default {

@@ -10,13 +10,15 @@ const ev = (p, n) => p.evaluate((n) => (window.dataLayer || []).filter((e) => e.
 const PHONE_MISSING = 'יש להזין מספר טלפון', PHONE_INVALID = 'יש להזין מספר טלפון תקין';
 const MSG = { full_name: 'יש להזין שם מלא', phone: PHONE_MISSING, email: 'נא להזין כתובת אימייל תקינה', consent: 'יש לאשר את מדיניות הפרטיות' };
 const FAIL = 'לא הצלחנו לשלוח את הפרטים כרגע. אפשר לנסות שוב או ליצור קשר בטלפון או בוואטסאפ.';
+const UNSURE = 'לא ניתן לוודא שהפרטים נקלטו. ייתכן שהם נשמרו בכל זאת, ולכן מומלץ לא לשלוח את הטופס שוב כרגע. אפשר ליצור קשר בטלפון או בוואטסאפ.';
+const crmSaved = async () => (await (await fetch(`${M}/last`)).json()).saved;
 const VALID = { full_name: 'בדיקה טופס', phone: '050-1234567', email: 'test@example.com' };
 
 const SITES = [
-  { name: 'www', base: 'http://127.0.0.1:8787', pages: [['/', 'home'], ['/יצירת-קשר', 'contact']], form: '.contact-form', submit: '.send', fail: '.status',
+  { name: 'www', base: 'http://127.0.0.1:8787', pages: [['/', 'home'], ['/יצירת-קשר', 'contact']], form: '.contact-form', submit: '.send', fail: '.status:not(.status-uncertain)', unsure: '.status-uncertain',
     thanks: '/thankyou', consent: false, wa: { float: '.wa-float', number: '972505788634' }, src: 'website / google / cpc' },
   { name: 'lp', base: 'http://127.0.0.1:8788', pages: [['/', 'lp-home'], ['/architecture/', 'lp-architecture'], ['/interior-design/', 'lp-interior-design'], ['/renovation/', 'lp-renovation']],
-    form: '.lp-form', submit: '.lp-submit', fail: '.lp-form-error', thanks: '/thankyou/', consent: true, wa: { float: '.lp-wa', number: '972524317164' }, src: 'landing-page / google / cpc' },
+    form: '.lp-form', submit: '.lp-submit', fail: '.lp-form-error:not(.lp-form-uncertain)', unsure: '.lp-form-uncertain', thanks: '/thankyou/', consent: true, wa: { float: '.lp-wa', number: '972524317164' }, src: 'landing-page / google / cpc' },
 ];
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }).catch(() => chromium.launch());
 
@@ -118,20 +120,26 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
     }
     await p.reload(); check((await ev(p, 'generate_lead')) === 0, t('thank-you refresh: no second conversion'));
 
-    // 6. delivery failures: rejection, timeout, CRM connection dropped, browser offline
-    for (const m of ['success-false', '500', 'hang', 'reset', 'browser-offline']) {
-      if (m === 'browser-offline') await p.route('**/api/lead', (r) => r.abort('internetdisconnected')); else await mode(m);
-      await go(S.pages[S.pages.length - 1][0]); await fill();
+    // 6. not delivered. "not_saved" (OfficeCRM refused before writing): the retry message.
+    //    "unknown" (the lead may exist): the uncertain message, which never invites a resubmit. Never success.
+    for (const [m, kind, savedDelta] of [
+      ['not-configured', 'not_saved', 0], ['500', 'unknown', 0], ['500-after-save', 'unknown', 1], ['slow-after-save', 'unknown', 1],
+      ['hang', 'unknown', 0], ['reset', 'unknown', 0], ['malformed', 'unknown', 1], ['browser-offline', 'unknown', 0],
+    ]) {
+      if (m === 'browser-offline') { await mode('ok'); await p.route('**/api/lead', (r) => r.abort('internetdisconnected')); } else await mode(m);
+      await go(S.pages[S.pages.length - 1][0]); await fill(); const s0 = await crmSaved();
       await p.click(F(S.submit));
-      await p.waitForSelector(`${S.form} ${S.fail}:not([hidden])`, { timeout: 20000 }).catch(() => {});
-      const txt = (await p.textContent(F(S.fail)).catch(() => '')).replace(/\s+/g, ' ').trim();
+      const shownSel = kind === 'not_saved' ? S.fail : S.unsure, otherSel = kind === 'not_saved' ? S.unsure : S.fail;
+      await p.waitForSelector(`${S.form} ${shownSel}:not([hidden])`, { timeout: 30000 }).catch(() => {});
+      const txt = (await p.textContent(F(shownSel)).catch(() => '')).replace(/\s+/g, ' ').trim();
       const keptAll = await p.inputValue(F('[name=full_name]')) === VALID.full_name && await p.inputValue(F('[name=phone]')) === VALID.phone && await p.inputValue(F('[name=email]')) === VALID.email;
-      const links = await p.$$eval(`${S.form} ${S.fail} a`, (as) => as.map((a) => a.getAttribute('href')));
-      check(txt === FAIL && keptAll && Object.keys(await shown()).length === 0 && !p.url().includes('thankyou') && (await ev(p, 'generate_lead')) === 0
-        && !(await p.$eval(F(S.submit), (el) => el.disabled)), t(`delivery ${m}: distinct message, values kept, no redirect, no conversion, can retry`), txt.slice(0, 30));
-      check(links.includes(`tel:+${S.wa.number}`) && links.some((h) => /whatsapp|wa\.me/.test(h) && h.includes(S.wa.number)) && links.length === 2, t(`delivery ${m}: phone/WhatsApp links use this site's number`), links.join(' '));
+      const links = await p.$$eval(`${S.form} ${shownSel} a`, (as) => as.map((a) => a.getAttribute('href')));
+      check(txt === (kind === 'not_saved' ? FAIL : UNSURE) && !(await p.isVisible(F(otherSel))) && keptAll && Object.keys(await shown()).length === 0
+        && !p.url().includes('thankyou') && (await ev(p, 'generate_lead')) === 0 && !(await p.$eval(F(S.submit), (el) => el.disabled)),
+        t(`CRM ${m}: ${kind === 'not_saved' ? 'retry' : 'uncertain'} message only, values kept, no redirect, no conversion`), txt.slice(0, 30));
+      if (m !== 'browser-offline') check((await crmSaved()) - s0 === savedDelta, t(`CRM ${m}: fake CRM stored ${savedDelta} lead(s)${savedDelta ? ' although the visitor saw no success' : ''}`));
+      check(links.includes(`tel:+${S.wa.number}`) && links.some((h) => /whatsapp|wa\.me/.test(h) && h.includes(S.wa.number)) && links.length === 2, t(`CRM ${m}: phone/WhatsApp links use this site's number`), links.join(' '));
       if (m === 'browser-offline') await p.unroute('**/api/lead');
-      if (m !== 'success-false') { /* only check one non-timeout variant per site for speed */ }
     }
     await mode('ok');
 

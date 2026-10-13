@@ -18,7 +18,7 @@
 //   utm_source, utm_medium, utm_campaign, utm_term, utm_content, gclid, fbclid,
 //   source_summary (one readable line), submitted_at (ISO time), site
 import { site } from '../data/content.mjs';
-import { DELIVERY_FAILED_TEXT } from '../lib/lead-rules.js';
+import { DELIVERY_FAILED_TEXT, DELIVERY_UNCERTAIN_TEXT } from '../lib/lead-rules.js';
 interface Props { variant?: 'home' | 'page' }
 const { variant = 'home' } = Astro.props;
 const f = variant === 'home'
@@ -29,6 +29,7 @@ const waHref = `https://wa.me/${site.whatsapp.number}?text=${encodeURIComponent(
 const uid = variant === 'home' ? 'home' : 'contact';
 const id = (field: string) => `${uid}-${field}-err`;
 const [failBefore, failAfter] = DELIVERY_FAILED_TEXT.split('בטלפון או בוואטסאפ');
+const [unsureBefore, unsureAfter] = DELIVERY_UNCERTAIN_TEXT.split('בטלפון או בוואטסאפ');
 const REQ = ' *';
 ---
 <form class="contact-form" novalidate
@@ -66,6 +67,9 @@ const REQ = ' *';
   <button type="submit" class="send">שליחה</button>
   <p class="status" role="alert" hidden>
     {failBefore}<a href={site.phoneHref}>בטלפון</a> או <a href={waHref} target="_blank" rel="noopener" data-track="form_error">בוואטסאפ</a>{failAfter}
+  </p>
+  <p class="status status-uncertain" role="alert" hidden>
+    {unsureBefore}<a href={site.phoneHref}>בטלפון</a> או <a href={waHref} target="_blank" rel="noopener" data-track="form_uncertain">בוואטסאפ</a>{unsureAfter}
   </p>
 </form>
 
@@ -117,10 +121,12 @@ const REQ = ' *';
     liveRevalidate(form);
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const status = form.querySelector<HTMLElement>('.status')!;
+      const status = form.querySelector<HTMLElement>('.status:not(.status-uncertain)')!;
+      const unsure = form.querySelector<HTMLElement>('.status-uncertain')!;
       const btn = form.querySelector<HTMLButtonElement>('.send')!;
       if (btn.disabled) return;                       // a request is already in progress
       status.hidden = true;
+      unsure.hidden = true;
       if (!validateForm(form)) return;                // nothing sent, nothing counted
 
       const fd = new FormData(form);
@@ -153,9 +159,11 @@ const REQ = ' *';
         send: (l: Record<string, string>) => sendLead(l, { endpoint: form.dataset.endpoint }),
         onFieldError: (field: string, code: string) => { if (!showServerFieldError(form, field, code)) status.hidden = false; },
       });
-      // Not confirmed by OfficeCRM: keep everything the visitor typed, offer phone / WhatsApp
+      // Definitely not saved: keep everything the visitor typed, offer phone / WhatsApp, retrying is safe.
       if (result === 'failed') status.hidden = false;
-      if (result === 'failed' || result === 'invalid') { btn.disabled = false; btn.removeAttribute('aria-busy'); }
+      // Unknown outcome (the lead may exist): say so, don't invite a resubmit; no conversion either way.
+      if (result === 'uncertain') unsure.hidden = false;
+      if (result === 'failed' || result === 'invalid' || result === 'uncertain') { btn.disabled = false; btn.removeAttribute('aria-busy'); }
     });
   });
 </script>
