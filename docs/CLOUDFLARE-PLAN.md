@@ -14,7 +14,7 @@ CRM webhook URL secret on the free plan; every branch gets a preview URL.
 |---|---|---|
 | C1 Worker + config | ✅ Done | `wrangler.jsonc`, `worker/index.js`. `npx wrangler deploy --dry-run` succeeds (1,421 assets, 5 KB Worker). Under `wrangler dev` all 25 pages return 200 at their Wix URLs, `/אודות/` returns 307 to `/אודות`, and unknown URLs return the 404 page with status 404 |
 | C2 Redirects + headers | ✅ Done | `public/_redirects` (16 rules) and `public/_headers`. All 16 redirects verified under `wrangler dev` with Hebrew sources. Images and fonts send `max-age=31536000, immutable`; HTML sends `must-revalidate` |
-| C3 Lead endpoint → OfficeCRM | ✅ Done (code). ⏳ Live test lead pending (O3) | `POST /api/lead` translates to the OfficeCRM contract (Bearer auth, `name/phone/email/source/notes`) and succeeds only on `success: true`. `npm test`: 41 tests including a mock OfficeCRM server. Browser test on the local Cloudflare runtime with a mock OfficeCRM: 40/40 checks, desktop and mobile |
+| C3 Lead endpoint → OfficeCRM | ⚠️ Code done for the original contract; **OfficeCRM changes required** (CHANGE-REQUEST), then the payload update and a local emulator test. ⏳ Live test lead (O3) after that | `POST /api/lead` translates to the OfficeCRM contract (Bearer auth, `name/phone/email/source/notes`) and succeeds only on `success: true`. `npm test`: 41 tests including a mock OfficeCRM server. Browser test on the local Cloudflare runtime with a mock OfficeCRM: 40/40 checks, desktop and mobile |
 | C4 Docs + tracking guard | ✅ Done | GTM loads only on `hagarlushi.com` hosts (verified: not requested on the local host) |
 | C5 Deploy pipeline | ⏳ Owner (dashboard) | See O3 below |
 | C6 Landing pages (`lp.`) rebuilt | ✅ Done (code). ⏳ Preview + acceptance (O6); open: D5 (privacy policy, pending the owner's review on the preview), D8 (text approval) | Second Worker `hagarlushi-lp` (`wrangler.lp.jsonc`, `dist-lp/`). All 7 WordPress pages at their exact URLs, same copy/images/layout, forms → `/api/lead`. `npm test` 59/59; browser 66/66 (desktop + mobile, mock OfficeCRM); `wrangler deploy -c wrangler.lp.jsonc --dry-run` valid (258 assets). Full URL list and decisions: **docs/LANDING-PAGE-INVENTORY.md** |
@@ -98,13 +98,15 @@ Authorization: Bearer <LEADS_WEBHOOK_API_KEY>
 | `notes` (optional) | the visitor's message, which form, the page it was sent from, the landing page, all utm tags, gclid/fbclid, the referring URL, and the time, with Hebrew labels; max 4,000 characters |
 | `referrerName` (optional) | **never sent**: the website has no "who referred you" field, and a referring website isn't a person's name |
 
-**Success rule.** The Worker replies `{ok:true}` only when OfficeCRM answers **HTTP 2xx with JSON `success: true`**
-(expected: HTTP 200 `{ "success": true, "leadId": … }`). The `leadId` is written to the Worker log so a test lead can be traced.
-Anything else, such as `success: false`, a missing `success`, `success: "true"` as a string, malformed or empty JSON,
-4xx/5xx, a timeout (10 s) or a network error, gives 502 (`crm_rejected` or `crm_unreachable`). Missing or invalid secrets,
-or a non-https URL, give 503 (`not_configured`) and nothing is sent. The browser shows the thank-you page and fires
-`generate_lead` **only** after `{ok:true}`. On failure it keeps the typed data and shows the phone / WhatsApp
-alternatives. Logs contain only a reason code or the `leadId`: never lead data, the URL or the key.
+**Success rule** (updated 2026-10-13). The Worker replies `{ok:true}` only when OfficeCRM answers **HTTP 2xx with JSON `success: true`**
+(real OfficeCRM: 200 `{"success":true,"leadId":"…","message":"Lead created successfully"}`, sent after the lead is written).
+Every other answer is classified:
+- **Not saved:** OfficeCRM 400/401/403/404/405/415/422/503 → 502 `crm_rejected` / `not_saved` → retry message.
+- **Unknown:** 500 or other 5xx, a timeout (**20 s**, provisional), a dropped connection, malformed or unconfirmed JSON → 502 `crm_uncertain` / `unknown` → the owner-approved uncertain message, which does not invite a resubmit. OfficeCRM can store a lead and then answer 500.
+
+Missing or invalid secrets, or a non-https URL, give 503 (`not_configured`) and nothing is sent. The thank-you page and
+`generate_lead` happen **only** after `{ok:true}`. Logs contain only the `leadId` or a reason code, the outcome and the response time in ms;
+never lead data, the URL or the key.
 
 ### Secrets (Cloudflare → Workers → hagarlushi **and** hagarlushi-lp → Settings → Variables and Secrets)
 Each Worker has its own secrets: set the same two values on both.
@@ -117,14 +119,20 @@ Never put either value in the repository, `wrangler.jsonc`, chat, email or a scr
 Locally, `npm run preview:cf` reads them from `.dev.vars` (git-ignored). Use a **mock** server and a fake key there, never the production key.
 `npm test` and `npm run check-launch` fail if the webhook address appears in any committed file or in the built site.
 
-### Contract uncertainty (OfficeCRM source wasn't available to this repo, so it wasn't inspected)
-Implemented exactly as specified by the owner (2026-10-11). Confirm during the O3 test lead:
-1. That OfficeCRM accepts free-text `source` values like `website / facebook / paid`. If it expects a fixed list
-   (e.g. just `website`), change `leadSource()` in `worker/index.js`.
-2. That `notes` up to 4,000 characters, with line breaks and Hebrew, is accepted.
-3. What OfficeCRM returns for a duplicate lead. If it's `success: false`, the visitor sees the error message even though
-   OfficeCRM already has them.
-4. That OfficeCRM doesn't block requests from Cloudflare's network (firewall or IP allowlist).
+### OfficeCRM contract status (2026-10-13)
+**Not compatible yet.** The OfficeCRM code report shows that OfficeCRM ignores `source` (it derives the category from `page_url`),
+drops `notes` (so the visitor's message and the consent text are lost), never returns 400, can return 500 after saving,
+and has no duplicate protection. The owner decided that OfficeCRM changes come first:
+- an explicit website and renovation category
+- the message stored visibly
+- consent recorded
+- validation
+- idempotency
+- safe errors
+- webhook security
+
+See `docs/OFFICECRM-INTEGRATION-CONTRACT.md`, `docs/OFFICECRM-CHANGE-REQUEST.md` and `docs/OFFICECRM-INTEGRATION-TEST-PLAN.md`.
+The payload below is today's and will change to the confirmed contract. The first real test is local (Firebase emulators + `wrangler dev`), before any O3 test lead.
 
 ---
 
@@ -140,7 +148,7 @@ Implemented exactly as specified by the owner (2026-10-11). Confirm during the O
 2. **Find the registrar:** Wix → Domains. If the domain was bought at Wix, check whether "Change nameservers"
    is offered. If not, the domain has to be transferred out first (e.g. to Cloudflare Registrar; it takes a few days,
    and the domain must be more than 60 days past registration or last transfer).
-3. **OfficeCRM:** have the `LEADS_WEBHOOK_API_KEY` value ready (from OfficeCRM's settings) for O3, and check the 4 contract points above.
+3. **OfficeCRM:** have the `LEADS_WEBHOOK_API_KEY` value ready (from Secret Manager, project `jassign`) for O3. The CRM changes in `docs/OFFICECRM-CHANGE-REQUEST.md` must be live first.
 
 ### O2. Create the Cloudflare zone (no risk: nothing changes until the nameservers change)
 1. Create a free Cloudflare account → Add a domain → `hagarlushi.com` → Free plan.
