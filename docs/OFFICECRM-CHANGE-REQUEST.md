@@ -1,8 +1,8 @@
 # OfficeCRM change request: website lead intake (for the OfficeCRM workstream)
 
-From: the website migration (`mrhadas-eng/LushiWebsite`, branch `cloudflare-migration`). Date: 2026-10-13.
+From: the website migration (`mrhadas-eng/LushiWebsite`, branch `cloudflare-migration`). Date: 2026-10-13, updated 2026-10-14 with the owner's final decisions on categories and duplicate protection.
 Status: **REQUESTED, for assessment and implementation in the OfficeCRM repository.** No OfficeCRM code is changed from the website branch.
-Basis: the owner's decisions of 2026-10-13, and the OfficeCRM code report (`claude/website-lead-integration.md` in the OfficeCRM session). Background: `docs/OFFICECRM-INTEGRATION-CONTRACT.md`.
+Basis: the owner's decisions of 2026-10-13 and 2026-10-14, and the OfficeCRM code report (`claude/website-lead-integration.md` in the OfficeCRM session). Background: `docs/OFFICECRM-INTEGRATION-CONTRACT.md`.
 
 ## 1. Owner requirements (decisions of 2026-10-13)
 
@@ -11,7 +11,9 @@ Basis: the owner's decisions of 2026-10-13, and the OfficeCRM code report (`clau
 3. **The visitor's message is saved visibly on the lead before launch.**
 4. **Privacy consent is recorded against landing-page leads before the landing-page cutover**, with the consent state and the available submission context. The exact consent wording is still subject to the owner's privacy-policy review.
 5. **Only information the CRM demonstrably saves**, on the lead or in an associated record, counts as persisted. The 30-day raw `webhook-logs` don't count.
-6. **Priorities:**
+6. **(2026-10-14) Duplicate protection is mandatory before production cutover.** Repeated requests with the same submission ID must create exactly one lead, including when the first request saved the lead but its response was lost (§6).
+7. **(2026-10-14) Explicit, stable category labels** (§4). Categories are **never** inferred from campaign query parameters or URLs.
+8. **Priorities:**
    - source and category handling
    - visible message storage
    - consent recording
@@ -71,15 +73,23 @@ Idempotency-Key: <submission_id>
 ```
 `page_url` has no query string; campaign parameters are sent as separate fields.
 
-## 4. Categories (requirements 1 and 2)
+## 4. Categories (owner decision, 2026-10-14: final)
 
-| `lead_source` | Category (label is the owner's/CRM's choice) | Note |
-|---|---|---|
-| `website-home`, `website-contact` | **new**: e.g. `אתר` / "אתר הבית" | Never "Elementor / דף נחיתה" |
-| `lp-architecture` | `אדריכלות` | existing |
-| `lp-interior-design` | `עיצוב פנים` | existing |
-| `lp-renovation` | **new**: `שיפוץ` | requirement 2 |
-| `lp-home` | existing landing-page label, or a new "דף נחיתה – כללי" | owner's choice; **not** "Elementor" once WordPress is gone |
+The mapping is **explicit and stable**: `lead_source` → category label, exactly as below. For `website-v1` requests the CRM **must not** derive the category from `page_url`, `context`, UTM or other campaign parameters, or any URL keyword. An unknown `lead_source` is rejected with **400** (no fallback category, nothing saved).
+
+| `lead_source` (sent by the website) | Category label in OfficeCRM (exact) |
+|---|---|
+| `website-home` | `Website – General Enquiry` |
+| `website-contact` | `Website – General Enquiry` |
+| `lp-home` | `Landing Page – General Enquiry` |
+| `lp-architecture` | `Architecture` |
+| `lp-interior-design` | `Interior Design` |
+| `lp-renovation` | `Renovation` |
+
+- The labels use an en dash (`–`, U+2013), with spaces around it.
+- `lead_source` values are a fixed vocabulary. Adding a form means adding a row here, with the owner's approval.
+- The website derives `lead_source` **only** from the form's fixed identifier, which the Worker validates against its own list. It never derives it from the URL or campaign data.
+- **Open question for the OfficeCRM workstream and the owner (doesn't block the website):** the legacy Elementor path currently produces Hebrew labels (`אדריכלות`, `עיצוב פנים`, `Elementor / דף נחיתה`). Should those leads keep their labels until the lp cutover, or be mapped to the new labels? Should existing leads be relabelled? Reports that mix both label sets will need a mapping.
 
 ## 5. Responses (safe error semantics)
 
@@ -87,34 +97,52 @@ Idempotency-Key: <submission_id>
 |---|---|---|---|
 | Created | 200 (or 201) | `{"success":true,"leadId":"…","duplicate":false}` | yes, exactly one |
 | Repeated `Idempotency-Key` (same `submission_id`) | 200 | `{"success":true,"leadId":"<existing>","duplicate":true}` | no new lead |
-| Validation failed | **400** | `{"success":false,"error":"validation","fields":["email",…]}` | **no** |
+| Same key while the first request is still being processed | 200 once the first commits (preferred), or **409** `{"success":false,"error":"in_progress"}` | no second lead |
+| Validation failed (including an unknown `lead_source`, or a missing or mismatched `Idempotency-Key`) | **400** | `{"success":false,"error":"validation","fields":["email",…]}` | **no** |
 | Bad or missing key | 401 | unchanged | no |
 | Webhook not configured | 503 | unchanged | no |
 | Unexpected error | 500 | `{"success":false,"error":"…"}` | **only if nothing was written** |
 
 **Rules:**
 - A **500 is only allowed before any write.** Once the lead is written, secondary steps (warning notes, alert emails) are best-effort and logged. The response is still a success, with optional `"warnings": [...]`.
-- The website treats 400, 401 and 503 as "not saved, retry is safe", and anything else that isn't a success as "unknown". That is already implemented on the website branch.
+- The website treats 400, 401 and 503 as "not saved, retry is safe", and anything else that isn't a success (including 409 `in_progress`) as "unknown". That is already implemented on the website branch.
+- `duplicate: true` is a **success** for the website: thank-you page and one `generate_lead`. This is correct, because the website only reuses an ID while the enquiry is unconfirmed (§6), so the first attempt never counted a conversion.
 
-## 6. Duplicate protection (requirement 7: "a generated submission ID alone is not duplicate protection")
+## 6. Duplicate protection (owner decision, 2026-10-14: **mandatory before production cutover**)
 
-- Store `submission_id` with the lead, plus a unique index or record keyed by `Idempotency-Key`, for at least 7 days.
-- The first request with a key creates the lead.
-- Later requests with the same key return the **same** `leadId` with `duplicate: true` and create nothing.
-- Two concurrent requests with the same key must still produce one lead: use a Firestore transaction or create-if-absent on a document whose id is the key.
-- A request with the same key but a different body: return the existing lead, and log a warning. Don't create a second lead.
-- (Optional, owner decision) Flag a *likely* duplicate when the same phone or email arrives within N minutes **without** a matching key. Flag only, never drop.
+Requirement: repeated requests with the same submission ID create **exactly one** lead. That includes the case where the first request saved the lead but its response never reached the website. A generated ID on its own is not protection; OfficeCRM must enforce it.
+
+**OfficeCRM (B3):**
+- `website-v1` requests **must** carry `Idempotency-Key: <submission_id>`, equal to the body's `submission_id` (a UUID). If it's missing, malformed or mismatched → 400, nothing saved.
+- **Atomic create-if-absent:** in one Firestore transaction, create an idempotency record whose document id is the key (e.g. `lead_submissions/<key>` → `{ leadId, createdAt, bodyHash }`) **together with** the lead. If the record already exists, create nothing.
+- A repeat of a known key → 200 `{"success":true,"leadId":"<same>","duplicate":true}`.
+- **Concurrent** requests with the same key (the second arrives while the first is still running) → still one lead. Preferably wait for the transaction and return the same `leadId`; otherwise 409 `in_progress`.
+- **Same key, different body:**
+  - Keep the original lead, create **no** second lead, and return its `leadId` with `duplicate: true`.
+  - Store the later payload as a visible revision on that lead, e.g. a "resubmitted with changes" note shown in the lead screen, so a visitor's corrections aren't lost.
+- **Retention:** at least 30 days.
+- **Scope:** only the `website-v1` contract. The legacy Elementor path is unchanged (§2).
+- **Optional (owner decision):** flag a *likely* duplicate when the same phone or email arrives within N minutes under a **different** key, e.g. the same person in a new browser tab. Flag only, never drop.
+
+**Website (A4, implemented after the contract is confirmed):**
+- **When an ID is created:** a new `submission_id` (`crypto.randomUUID()`) at the first send attempt of an enquiry, after browser validation passes. It is stored in `sessionStorage` under a per-form key (e.g. `hl_submission:<form id>`).
+- **When it is reused:** every resend of that form, in that browser tab, until a **confirmed** success. That covers a resend after an "uncertain" or "not saved" outcome, a page reload, and a resend after the visitor edits a field (the CRM keeps the edit as a revision, see above).
+- **When it is cleared:** only on a confirmed success (`ok: true`, including `duplicate: true`), before the thank-you redirect. The next enquiry on that form gets a new ID.
+- **What counts as a genuinely new enquiry (new ID):** a new submission after a confirmed success; a different form; a new browser tab or session.
+- **Accepted residual case:** a visitor gets "uncertain", closes the tab and later submits again in a new tab. This creates a new ID, and therefore a second lead. Only the optional likely-duplicate flag above catches it.
+- The Worker forwards the ID as both the `Idempotency-Key` header and the `submission_id` field, and logs it (not personal data).
+- **No automatic retry, ever.** A resend only happens when the visitor submits again.
 
 ## 7. Change list and order of work
 
 | Order | ID | Change (OfficeCRM) | Blocks |
 |---|---|---|---|
-| 1 | B1a | Accept `website-v1`: read `lead_source` and map it to categories, including **new website and renovation categories** (B7). Take `email` **only** from `email` | Main-site launch, lp cutover |
+| 1 | B1a | Accept `website-v1`: read `lead_source` and map it **exactly** per §4 (`Website – General Enquiry`, `Landing Page – General Enquiry`, `Architecture`, `Interior Design`, `Renovation`). No URL or campaign inference; unknown value → 400. Take `email` **only** from `email` | Main-site launch, lp cutover |
 | 2 | B1b + B6 | Store `message` **visibly** on the lead; make CRM-written notes visible (fix the `NOTE_ADDED` filtering in `lead-details-sheet.tsx`, or store the message as a lead field) | **Main-site launch** (requirement 3) |
 | 3 | B2 | Store `consent` (given, text, policy URL, time) and `context` as structured data on, or associated with, the lead, visible to staff | **lp cutover** (requirement 4) |
 | 4 | B5 | Validate `website-v1` requests (required fields, types, lengths, `lead_source` enum, consent for `lp-*`) → 400 with field list; nothing saved | Launch (with B4) |
 | 5 | B4 | Safe error semantics: no 500 after a write; secondary failures become warnings | Launch |
-| 6 | B3 | Idempotency (§6) | Recommended before launch: owner to confirm whether it blocks |
+| 6 | B3 | Idempotency (§6): atomic create-if-absent on `Idempotency-Key`; same `leadId` with `duplicate: true` on repeats; safe under concurrency and lost responses | **Production cutover (mandatory, owner 2026-10-14)** |
 | 7 | B8 | Webhook security: constant-time key comparison; remove the `?api_key=` query parameter and the GET-with-parameters → POST path (once nothing uses them); restrict CORS (server-to-server needs none); keep the key in Secret Manager; a documented rotation procedure | Before launch (recommended) |
 | 8 | (none) | Tests in OfficeCRM for all of the above, plus a regression test that the Elementor form-urlencoded path is unchanged | with each step |
 
@@ -122,7 +150,7 @@ Idempotency-Key: <submission_id>
 
 These are the website changes A1, A2 and A4, deferred until the OfficeCRM workstream confirms the field names above or its own version of them:
 - `toCrmPayload()` sends the confirmed fields: `lead_source`, `message`, `consent`, `context`, `submission_id`.
-- The browser generates `submission_id` per form fill and keeps it on resubmits.
+- The browser creates, reuses and clears `submission_id` exactly as in §6 (website A4).
 - The Worker sends the `Idempotency-Key` header and stops sending `source` and `notes`.
 - The fake CRM and the tests are switched to the confirmed contract.
 
@@ -136,8 +164,8 @@ These are the website changes A1, A2 and A4, deferred until the OfficeCRM workst
 
 1. OfficeCRM: `LEADS_WEBHOOK_API_KEY=local-test npm run dev` (Firebase emulators, port 3000).
 2. Website: `wrangler dev` for both Workers with `.dev.vars` pointing at `http://localhost:3000/api/leads/webhook`, on the **same machine**.
-3. Every form creates **exactly one** lead with the right category, contact details and message, plus consent and context for lp forms.
-4. Resubmitting with the same `submission_id` creates no second lead.
+3. Every form creates **exactly one** lead with the exact §4 category, contact details and message, plus consent and context for lp forms. Campaign parameters never change the category.
+4. Resubmitting with the same `submission_id` creates no second lead. That includes the **lost-response case**: the first request saves the lead, its response is dropped, and the visitor resubmits. Result: one lead, `duplicate: true`, one conversion. Also concurrent same-key requests: one lead.
 5. Validation errors return 400 with nothing saved; a forced post-write failure doesn't return 500.
 6. The Elementor regression path still works.
 7. Production: one approved, marked test lead per Worker, deleted straight afterwards (test plan §4).

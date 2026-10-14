@@ -1,6 +1,6 @@
 # OfficeCRM integration contract (website ↔ OfficeCRM)
 
-Status: **2026-10-13, after the owner's decisions. NOT compatible yet: the OfficeCRM changes in `docs/OFFICECRM-CHANGE-REQUEST.md` are required first.**
+Status: **2026-10-14, after the owner's decisions (D1–D11). NOT compatible yet: the OfficeCRM changes in `docs/OFFICECRM-CHANGE-REQUEST.md` are required first.**
 - Done on the website (doesn't depend on CRM field names): definite vs uncertain outcomes with the approved text, the 20 s timeout, response-time logging, and a fake CRM that models today's real behaviour.
 - Waiting for the confirmed field contract: the payload changes (A1, A2, A4).
 
@@ -84,7 +84,7 @@ Both keep the typed values, show this site's phone and WhatsApp, and record no c
 
 ## 4. `page_url` and `form_name` for each form (today's CRM)
 
-> **Superseded by D1/D2:** OfficeCRM is asked to read an explicit `lead_source` (CHANGE-REQUEST §3–4), which gives main-site leads their own category and adds renovation. This section describes how **today's** CRM would categorise the forms. It is kept for the transition and for checking that the Elementor path is unchanged.
+> **Superseded by D1/D2/D11:** OfficeCRM is asked to read an explicit `lead_source` and map it to fixed labels (`Website – General Enquiry`, `Landing Page – General Enquiry`, `Architecture`, `Interior Design`, `Renovation`; CHANGE-REQUEST §4). It must never infer the category from URLs or campaign parameters. This section describes how **today's** CRM categorises the forms, kept for the transition and for checking that the Elementor path is unchanged.
 
 The CRM rule, as reported: the URL contains `interior` or `design` → `עיצוב פנים`; contains `architect` → `אדריכלות`; else `Elementor / דף נחיתה`.
 
@@ -132,7 +132,7 @@ What the WordPress Elementor form sends as `form_name` today is **UNKNOWN** (Wor
 | **Unknown** | OfficeCRM 500 or other 5xx; timeout (20 s); dropped connection; malformed body; 2xx without `success:true`; the browser lost our endpoint's answer | **Maybe** | "לא ניתן לוודא שהפרטים נקלטו…", no resubmit invited, no conversion | ✅ never shown as success or as a definite failure |
 | Spam trap | Honeypot filled | No (nothing sent) | Thank-you page, no conversion | ✅ by design |
 
-**Remaining risk:** the visitor may still resubmit after an "unknown" message. Only CRM idempotency (B3) prevents the resulting duplicate. A `submission_id` alone doesn't.
+**Remaining risk until B3 is live:** the visitor may still resubmit after an "unknown" message, which creates a duplicate today. **Owner D10 (2026-10-14): CRM idempotency is mandatory before production cutover.** The website will reuse the same `submission_id` for resends of an unconfirmed enquiry and create a new one only for a genuinely new enquiry (CHANGE-REQUEST §6).
 
 ## 7. Changes and their status
 
@@ -143,7 +143,7 @@ What the WordPress Elementor form sends as `form_name` today is **UNKNOWN** (Wor
 | A1 ⏸ **waits for the confirmed field contract** (CHANGE-REQUEST §3) | Send `page_url` = `<origin><page_path>` (no query) and `form_name` = form id; stop sending `source` | `toCrmPayload()`, `handleLead()` (origin) | F1: correct category for architecture and interior-design; deterministic |
 | A2 ⏸ **waits**; superseded by CHANGE-REQUEST §3 (`message`, `consent`, `context`) | Decide what, if anything, to send instead of `notes`. **Proposal:** send `message` (www) and `submission_id` as top-level fields. They are kept in `webhook-logs` for 30 days for manual recovery, and the lead itself is unaffected. **Don't** send the attribution and consent text block until the CRM stores it. Verify F3 (email hijack) locally first | `toCrmPayload()`, `leadNotes()` | F2/F3: stop pretending `notes` is stored, and minimise data the CRM can't use |
 | A3 ✅ **done 2026-10-13** | Split failures into **definite** (Worker 503, CRM 401/503 → today's message, retry is fine) and **uncertain** (CRM 5xx/timeout/network/malformed/2xx-without-success). Uncertain shows a new message that doesn't invite resubmitting, and offers phone/WhatsApp. Approved text: "לא ניתן לוודא שהפרטים נקלטו. ייתכן שהם נשמרו בכל זאת, ולכן מומלץ לא לשלוח את הטופס שוב כרגע. אפשר ליצור קשר בטלפון או בוואטסאפ." | `forwardToCrm()` (reason codes), `handleLead()` (502 `crm_uncertain` vs `crm_rejected`), `lead-rules.js`, both forms | F7: honesty; prevents most duplicates |
-| A4 ⏸ **waits**; only effective with B3 (owner: an ID alone isn't duplicate protection) | A `submission_id` (random UUID) per form fill, kept for that fill across resubmits. Sent as a field and as an `Idempotency-Key` header (ignored today, ready for B3). Logged by the Worker (not personal data) | both forms, `lead-client.js`, `forwardToCrm()` | F8: lets staff identify duplicates in `webhook-logs`; future-proof |
+| A4 ⏸ **waits for the confirmed contract; design fixed** (CHANGE-REQUEST §6). Mandatory with B3 (D10) | `submission_id` (`crypto.randomUUID()`), created at the first send of an enquiry, kept in `sessionStorage` per form and **reused** for every resend until a confirmed success (including after uncertain/not-saved outcomes, reloads and edits). **Cleared only on confirmed success**, so the next enquiry gets a new ID. Sent as the `Idempotency-Key` header and the `submission_id` field; logged (not personal data). No automatic retry | both forms, `lead-client.js`, `forwardToCrm()` | Exactly one lead per enquiry, together with B3 |
 | A5 ✅ **done** (provisional) | Raise the CRM timeout from 10 s to 20 s (App Hosting cold starts; max 2 instances) | `CRM_TIMEOUT_MS` | Fewer uncertain outcomes (D6) |
 | A6 ◐ **fake CRM done**; payload assertions follow A1/A2 | Rebuild the mock CRM and tests on the real contract: 200 for anything with a valid key, 401/503/500 shapes, a 500-after-save mode, source derivation from `page_url`, `notes` ignored; per-form `page_url`/`form_name` assertions; remove assertions on `source`/`notes` content | `test/e2e/mock-office.mjs`, `test/worker.test.mjs`, `test/e2e/forms.e2e.mjs` | F12 |
 | A7 | Optional diagnostic event `lead_delivery_uncertain` (no personal data); never `generate_lead` | `lead-client.js`, `docs/ANALYTICS-EVENTS.md` | Visibility of uncertain outcomes |
@@ -173,13 +173,15 @@ What the WordPress Elementor form sends as `form_name` today is **UNKNOWN** (Wor
 | D6 | 20 s timeout approved **provisionally**: test real response times. An uncertain result must never be shown as success or as a definite failure (implemented and tested). |
 | D7 | A1–A6 approved in principle. **Don't assume the CRM saves fields it ignores.** Confirm the final field contract before changing the payload. A submission ID alone is not duplicate protection. |
 | D8 | OfficeCRM changes B1–B8 requested for the OfficeCRM workstream, prioritised: source/category, visible message, consent, validation, duplicate protection, safe error semantics, security. CRM code stays out of this branch (`docs/OFFICECRM-CHANGE-REQUEST.md`). |
+| D10 (2026-10-14) | **Duplicate protection is mandatory before production cutover.** OfficeCRM enforces idempotency (B3): repeated requests with the same submission ID create exactly one lead. The website reuses the ID for resends of the same enquiry and creates a new ID for a genuinely new one. The lost-response case (the first request saves, its response is lost) must be tested. |
+| D11 (2026-10-14) | **Explicit, stable category labels:** main website → `Website – General Enquiry`; lp homepage → `Landing Page – General Enquiry`; architecture → `Architecture`; interior design → `Interior Design`; renovation → `Renovation`. Never inferred from campaign query parameters; the mapping is fixed (`lead_source` → label). |
 | D9 | Stop relying on `webhook-logs` or discarded text. Information counts as persisted **only** when the CRM demonstrably saves it on the lead or an associated record. |
 
 ## 9. Recommendation
 
-**BLOCKED** until OfficeCRM implements and confirms at least B1a, B1b/B6, B2, B5 and B4 (CHANGE-REQUEST §7, orders 1–5). Then:
+**BLOCKED** until OfficeCRM implements and confirms B1a, B1b/B6, B2, B5, B4 and **B3** (CHANGE-REQUEST §7, orders 1–6). B3 is mandatory before production cutover (D10). Then:
 1. The website implements A1, A2 and A4 against the confirmed contract.
 2. The local emulator test runs (test plan §2).
-3. Verify that every form creates **exactly one** lead with the correct source/category, message, contact details and (lp) consent.
+3. Verify that every form creates **exactly one** lead with the exact D11 category, message, contact details and (lp) consent. Verify that resends with the same ID, **including the lost-response case**, never create a second lead.
 
 **Also required for the local test:** OfficeCRM and the website must run on the same machine.

@@ -1,6 +1,6 @@
 # OfficeCRM integration test plan
 
-Status: **2026-10-13, after the owner's decisions. Not runnable yet.** It needs the OfficeCRM changes (`docs/OFFICECRM-CHANGE-REQUEST.md`, orders 1–5) and the website payload changes (A1, A2, A4) built on the **confirmed** field contract.
+Status: **2026-10-14, after the owner's decisions (incl. D10 idempotency mandatory, D11 category labels). Not runnable yet.** It needs the OfficeCRM changes (`docs/OFFICECRM-CHANGE-REQUEST.md`, orders 1–6, including B3 idempotency) and the website payload changes (A1, A2, A4) built on the **confirmed** field contract.
 Contract and findings: `docs/OFFICECRM-INTEGRATION-CONTRACT.md`.
 
 - **No staging exists.** The integration test runs **locally**: the changed OfficeCRM (`npm run dev`, Firebase emulators, port 3000) with both website Workers (`wrangler dev`).
@@ -29,10 +29,10 @@ Contract and findings: `docs/OFFICECRM-INTEGRATION-CONTRACT.md`.
 
 | # | Item | How to verify |
 |---|---|---|
-| P1 | OfficeCRM has implemented and unit-tested CHANGE-REQUEST orders 1–5 (B1a category/source, B1b/B6 visible message, B2 consent and context, B5 validation, B4 safe errors). The Elementor regression test passes | OfficeCRM workstream report, with file references |
+| P1 | OfficeCRM has implemented and unit-tested CHANGE-REQUEST orders 1–6 (B1a explicit categories, B1b/B6 visible message, B2 consent and context, B5 validation, B4 safe errors, **B3 idempotency**). The Elementor regression test passes | OfficeCRM workstream report, with file references |
 | P2 | **Final field contract confirmed** by the OfficeCRM workstream (CHANGE-REQUEST §3, or its adjusted version) | Written confirmation; CONTRACT §1 updated from "reported" to the confirmed contract |
 | P3 | Website A1, A2, A4 implemented against P2; the fake CRM and tests switched to it; `npm test` and the e2e suites green | Commit on `cloudflare-migration` |
-| P4 | B3 (idempotency) implemented, **or** the owner has explicitly accepted testing without it | Owner decision |
+| P4 | **B3 idempotency implemented (mandatory, owner D10).** Website A4 implemented (ID reused until confirmed success, cleared on success). The **response-dropping proxy** for T10c is available: `test/e2e/drop-response-proxy.mjs`, to be built with A4/A6. It forwards a request to the CRM, waits for the CRM's answer, then closes the connection without passing the answer back | Proxy self-test; OfficeCRM B3 unit tests |
 | P5 | **One machine runs both**: the owner's computer, or this session if it gets access to the OfficeCRM repo and the emulators (Java for Firestore) | `curl -s http://localhost:3000/api/leads/webhook` (GET **without** parameters) returns the status text. Never call GET with parameters |
 | P6 | OfficeCRM: `LEADS_WEBHOOK_API_KEY=local-test npm run dev` | Emulator UI shows `leads` |
 | P7 | Website `.dev.vars` (git-ignored): `CRM_WEBHOOK_URL=http://localhost:3000/api/leads/webhook`, `LEADS_WEBHOOK_API_KEY=local-test` | T0 |
@@ -43,14 +43,16 @@ Contract and findings: `docs/OFFICECRM-INTEGRATION-CONTRACT.md`.
 
 Every form creates **exactly one** lead, and on that lead, visible in the CRM:
 
-| Form | Category / source | Contact details | Message | Consent + context |
-|---|---|---|---|---|
-| www home `/` | **website category** (not Elementor) | name, phone, email as typed | ✅ visible | context ✅; no consent box on www |
-| www contact `/יצירת-קשר` | website category | ✅ | ✅ visible | context ✅ |
-| lp `/` | the agreed lp-home label (not "Elementor") | ✅ | (no message field) | consent ✅ (given, text, policy URL, time) + context ✅ |
-| lp `/architecture/` | אדריכלות | ✅ | (none) | consent ✅ + context ✅ |
-| lp `/interior-design/` | עיצוב פנים | ✅ | (none) | consent ✅ + context ✅ |
-| lp `/renovation/` | **שיפוץ** (new) | ✅ | (none) | consent ✅ + context ✅ |
+| Form | `lead_source` | Category label (exact, D11) | Contact details | Message | Consent + context |
+|---|---|---|---|---|---|
+| www home `/` | `website-home` | `Website – General Enquiry` | name, phone, email as typed | ✅ visible | context ✅; no consent box on www |
+| www contact `/יצירת-קשר` | `website-contact` | `Website – General Enquiry` | ✅ | ✅ visible | context ✅ |
+| lp `/` | `lp-home` | `Landing Page – General Enquiry` | ✅ | (no message field) | consent ✅ (given, text, policy URL, time) + context ✅ |
+| lp `/architecture/` | `lp-architecture` | `Architecture` | ✅ | (none) | consent ✅ + context ✅ |
+| lp `/interior-design/` | `lp-interior-design` | `Interior Design` | ✅ | (none) | consent ✅ + context ✅ |
+| lp `/renovation/` | `lp-renovation` | `Renovation` | ✅ | (none) | consent ✅ + context ✅ |
+
+**Every enquiry creates exactly one lead**, however often its submission ID is resent, including when the first response is lost (D10).
 
 **Website side, for every form:**
 - The thank-you page and exactly one `generate_lead` appear only after a confirmed lead.
@@ -71,7 +73,7 @@ Each test lists: **Action** · **HTTP** · **CRM** · **Visitor** · **Analytics
 
 ### T1: Main-site forms (acceptance rows 1–2)
 - **Action:** submit home (`-01`) and contact (`-02`), each once, with a message.
-- **CRM:** one lead each, matching §2: website category; message visible; context (page, form, UTMs) stored. Check it in the **lead screen**, not only in the database.
+- **CRM:** one lead each, matching §2: category `Website – General Enquiry`; message visible; context (page, form, UTMs) stored. Check it in the **lead screen**, not only in the database.
 - **Visitor:** `/thankyou`.
 - **Analytics:** one `generate_lead` each.
 - **Cleanup:** delete.
@@ -83,14 +85,18 @@ Each test lists: **Action** · **HTTP** · **CRM** · **Visitor** · **Analytics
 - **Analytics:** one `generate_lead` each (`lp-…`).
 - **Cleanup:** delete.
 
-### T2b: Category is independent of campaign tags
-- **Action:** `/architecture/?utm_campaign=interior_design` (`-07`).
-- **CRM:** category `אדריכלות` (from `lead_source`, not from the URL).
+### T2b: The category never comes from campaign data or the URL (D11)
+- **Action:** submit once each (`-07` to `-09`):
+  - `/architecture/?utm_campaign=interior_design`
+  - `/interior-design/?utm_campaign=renovation&utm_source=architecture`
+  - www `/?utm_campaign=architecture`
+- **CRM:** `Architecture`, `Interior Design` and `Website – General Enquiry` respectively, from `lead_source` only. The campaign values are stored only in the context record.
+- **Unknown `lead_source`:** a direct `curl` to the **local** CRM with `"lead_source":"lp-unknown"` → **400**, nothing saved, no fallback category.
 - **Cleanup:** delete.
 
 ### T3: Exactly one lead per accepted submission
 - **Action:** after T1–T2b, count the leads with names starting `TEST – website migration <run>`.
-- **Expected:** exactly 7 (plus T0 if not deleted). Each `leadId` matches its Worker log line, and each lead carries its `submission_id`.
+- **Expected:** exactly 9 (plus T0 if not deleted). Each `leadId` matches its Worker log line, and each lead carries its `submission_id`.
 
 ### T4: Field fidelity
 - **T4a:** Hebrew name with a geresh; phone `+972 52-431-7164`; mixed-case email.
@@ -132,12 +138,28 @@ Each test lists: **Action** · **HTTP** · **CRM** · **Visitor** · **Analytics
 - **Expected:** the CRM returns success (with warnings), not 500. Exactly one lead.
 - **Website:** thank-you page, one `generate_lead`.
 
-### T10: Duplicates (B3)
-- **Same fill resubmitted:** after an "uncertain" outcome (CRM stopped right after its write, or `slow-after-save` in a local CRM test build), submit again from the same, unreloaded form.
-  - **Expected:** the same `submission_id` and `Idempotency-Key` on both requests. The CRM returns the **same** `leadId` with `duplicate: true`. **One** lead.
-- **Double click:** one request; one lead.
-- **A new fill with the same details:** a different `submission_id`, so a second lead, unless the owner chose B3's optional "likely duplicate" flag.
-- **Without B3:** two leads. Record this as a failure of the duplicate requirement.
+### T10: Duplicate protection (B3 + A4, mandatory, D10)
+For every case, count the leads and the idempotency records in the emulator, and check the Worker log lines (which include `submission_id`).
+
+- **T10a, double click:** one request; one lead; one `generate_lead`.
+- **T10b, resend after "not saved":** set a wrong key in the website's `.dev.vars` and restart `wrangler dev`, submit (401 → retry message), restore the key, restart `wrangler dev`, submit again from the **same, unreloaded** form.
+  - **Expected:** the same `submission_id` on both requests; the first created nothing; the second creates **one** lead (`duplicate: false`).
+  - **Visitor:** thank-you page, one `generate_lead`.
+- **T10c, first request saves, response lost (D10):** route the Worker through the response-dropping proxy (P4): `CRM_WEBHOOK_URL=http://localhost:3100/api/leads/webhook`, proxy → `localhost:3000`, mode `drop-once`. Submit (`-10`).
+  - **First request:** the CRM saves the lead (one document, `duplicate: false` in its log). The proxy drops the answer. The Worker logs `unreachable, unknown`. The visitor sees the **uncertain** message; no `generate_lead`.
+  - **Resend** from the same, unreloaded form (the proxy is now in pass-through mode).
+  - **Expected:** the **same** `submission_id` / `Idempotency-Key`. The CRM answers 200 `duplicate: true` with the **same** `leadId`. **Exactly one lead.** The visitor reaches the thank-you page, and **one** `generate_lead` fires in total.
+- **T10d, lost response then reload:** as T10c, but reload the page before resending.
+  - **Expected:** the ID is restored from `sessionStorage`; the same result as T10c (one lead).
+- **T10e, resend with an edited message:** after an uncertain outcome (T10c setup), change the message and resend.
+  - **Expected:** one lead (the original). The edited payload appears as a visible revision note on it; `duplicate: true`.
+- **T10f, concurrent same key:** send two identical requests with the same `Idempotency-Key` at the same time (`curl … & curl …` to the local CRM).
+  - **Expected:** one lead. Both answers return the same `leadId`, or one returns 409 `in_progress`.
+- **T10g, genuinely new enquiry:** after T10c's confirmed success, submit again with the same details.
+  - **Expected:** a **new** `submission_id` (cleared on success) → a second lead. This is correct: it's a new enquiry. If the owner enabled the optional likely-duplicate flag, it is flagged.
+- **T10h, different form:** submit lp `/architecture/` and lp `/renovation/` in the same tab.
+  - **Expected:** different IDs; two leads.
+- **Fail criterion:** any case that produces more leads than listed above fails D10 and **blocks production cutover**.
 
 ### T11: Conversions
 Across T5–T10: no `generate_lead` except on confirmed leads. Opening or refreshing `/thankyou` directly adds none. With `?gtm=1` and GTM Preview, no GA4, Ads or Meta lead tag fires on failures or uncertain outcomes.
@@ -174,6 +196,7 @@ Across T5–T10: no `generate_lead` except on confirmed leads. Opening or refres
 | Not saved (401/503/400…) → retry message; unknown (500, 500-after-save, slow-after-save, timeout, reset, malformed, browser offline) → uncertain message; never success | ✅ (`npm test` 79/79; e2e 240/240 and 44/44, 2026-10-13) |
 | 20 s timeout and response-time logging | ✅ |
 | Payload `{lead_source, message, consent, context, submission_id}` + `Idempotency-Key` | ⏸ waits for P2 (current tests still assert today's `{name, phone, email, source, notes}`) |
+| ID reuse / renewal rules (A4) and an idempotent fake CRM; lost-response proxy | ⏸ built with A4/A6 after P2 |
 | Real CRM | ⏸ §3 |
 
 ## 6. Results log
@@ -191,7 +214,7 @@ Across T5–T10: no `generate_lead` except on confirmed leads. Opening or refres
 | T7 |  |  |  |  |  |  |
 | T8 |  |  |  |  |  |  |
 | T9 |  |  |  |  |  |  |
-| T10 |  |  |  |  |  |  |
+| T10a–h |  |  |  |  |  |  |
 | T11 |  |  |  |  |  |  |
 | T12 |  |  |  |  |  |  |
 | T13 |  |  |  |  |  |  |
