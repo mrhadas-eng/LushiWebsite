@@ -175,6 +175,15 @@
 
 ## 7. לידים ושליחה ל-OfficeCRM
 
+> **עדכון 2026-10-14:** האתר שולח עכשיו לפי החוזה `website-v1` שאושר מול OfficeCRM:
+> - `lead_source` קבוע לכל טופס
+> - `message`
+> - `context`
+> - `consent` בדפי הנחיתה
+> - מזהה פנייה אחד לכל פנייה, שנשלח גם ככותרת `Idempotency-Key`
+>
+> השדות `source` ו-`notes` כבר לא נשלחים. הפירוט והתוצאות: `docs/OFFICECRM-INTEGRATION-CONTRACT.md` §0b. הטבלה שלמטה מתארת את המצב הקודם.
+
 **הארכיטקטורה:** הטופס שולח JSON לכתובת באותו אתר, `POST /api/lead`. שם Cloudflare Worker (`worker/index.js`) בודק את הבקשה, מתרגם אותה למבנה ש-OfficeCRM מצפה לו, ושולח אותה ל-webhook הקיים של OfficeCRM. OfficeCRM עצמו לא שונה.
 
 **סודות ב-Cloudflare** (Workers ← hagarlushi ← Settings ← Variables and Secrets, סוג **Secret**):

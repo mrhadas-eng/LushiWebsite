@@ -1,4 +1,5 @@
-// Form validation, delivery and WhatsApp checks on both local Workers (www 8787, lp 8788) + mock OfficeCRM (8799).
+// Form validation, delivery, website-v1 contract, idempotency and WhatsApp checks on both local Workers
+// (www 8787, lp 8788) + the fake OfficeCRM (8799, test/e2e/mock-office.mjs). Never the real CRM.
 import { chromium } from 'playwright';
 const M = 'http://127.0.0.1:8799';
 const mode = (m) => fetch(`${M}/mode/${m}`);
@@ -12,6 +13,12 @@ const MSG = { full_name: 'יש להזין שם מלא', phone: PHONE_MISSING, em
 const FAIL = 'לא הצלחנו לשלוח את הפרטים כרגע. אפשר לנסות שוב או ליצור קשר בטלפון או בוואטסאפ.';
 const UNSURE = 'לא ניתן לוודא שהפרטים נקלטו. ייתכן שהם נשמרו בכל זאת, ולכן מומלץ לא לשלוח את הטופס שוב כרגע. אפשר ליצור קשר בטלפון או בוואטסאפ.';
 const crmSaved = async () => (await (await fetch(`${M}/last`)).json()).saved;
+const crmState = async () => (await fetch(`${M}/last`)).json();
+const crmLeads = async () => (await fetch(`${M}/leads`)).json();
+const CONSENT = 'קראתי ומאשר/ת את מדיניות הפרטיות';
+const SOURCE = { home: 'website-home', contact: 'website-contact', 'lp-home': 'lp-home', 'lp-architecture': 'lp-architecture', 'lp-interior-design': 'lp-interior-design', 'lp-renovation': 'lp-renovation' };
+const LABEL = { 'website-home': 'Website – General Enquiry', 'website-contact': 'Website – General Enquiry', 'lp-home': 'Landing Page – General Enquiry',
+  'lp-architecture': 'Architecture', 'lp-interior-design': 'Interior Design', 'lp-renovation': 'Renovation' };
 const VALID = { full_name: 'בדיקה טופס', phone: '050-1234567', email: 'test@example.com' };
 
 const SITES = [
@@ -38,6 +45,8 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
     };
     const shown = async () => p.$$eval(`${S.form} [data-error-for]`, (els) => Object.fromEntries(els.filter((e) => !e.hidden).map((e) => [e.dataset.errorFor, e.textContent.trim()])));
     const focused = () => p.evaluate(() => document.activeElement?.getAttribute('name'));
+    // A genuinely new enquiry (new visitor): no stored submission ID for any form.
+    const newEnquiry = () => p.evaluate(() => Object.keys(sessionStorage).filter((k) => k.startsWith('hl_submission:')).forEach((k) => sessionStorage.removeItem(k))).catch(() => {});
     const go = async (path) => { await p.goto(`${S.base}${encodeURI(path)}?utm_source=google&utm_medium=cpc&utm_campaign=t`); apiCalls = 0; };
     const fields = ['full_name', 'phone', 'email', ...(S.consent ? ['consent'] : [])];
 
@@ -107,27 +116,42 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
 
     // 5. success on every form, button disabled while sending, double click sends once
     for (const [path, formId] of S.pages) {
-      await mode('ok'); await go(path); await fill(); const c = await crmCount();
+      await mode('ok'); await go(path); await newEnquiry(); await fill(); const c = await crmCount();
+      const msg = `הודעת בדיקה ${vp} ${formId}`;
+      if (!S.consent) await p.fill(F('[name=message]'), msg);
       await p.route('**/api/lead', async (r) => { await new Promise((ok) => setTimeout(ok, 800)); await r.continue(); });
       await p.click(F(S.submit));
       const disabled = await p.$eval(F(S.submit), (el) => el.disabled);
       await p.click(F(S.submit), { force: true }).catch(() => {});
       await p.waitForURL(`**${S.thanks}`, { timeout: 15000 }).catch(() => {});
       await p.unroute('**/api/lead');
-      const sent = JSON.parse((await crmLast())?.body || '{}');
+      const lastReq = await crmLast(); const sent = JSON.parse(lastReq?.body || '{}');
+      const stored = (await crmLeads()).find((l) => l.submission_id === sent.submission_id) || {};
+      const expectSrc = SOURCE[formId];
       check(disabled && (await crmCount()) === c + 1, t(`${path}: button disabled while sending, exactly one OfficeCRM request`));
-      check(p.url().endsWith(S.thanks) && (await ev(p, 'generate_lead')) === 1 && sent.source === S.src, t(`${path}: thank-you + one generate_lead (${formId})`), sent.source);
+      check(p.url().endsWith(S.thanks) && (await ev(p, 'generate_lead')) === 1, t(`${path}: thank-you + one generate_lead (${formId})`));
+      check(sent.contract === 'website-v1' && sent.lead_source === expectSrc && lastReq.idempotencyKey === sent.submission_id && /^[0-9a-f-]{36}$/.test(sent.submission_id)
+        && !('source' in sent) && !('notes' in sent),
+        t(`${path}: website-v1, lead_source ${expectSrc}, Idempotency-Key = submission_id, no source/notes`), sent.lead_source);
+      const ctxOk = sent.context?.form_name === expectSrc && sent.context?.page_url === `${S.base}${encodeURI(path)}` && sent.context?.site === new URL(S.base).host
+        && !!sent.context?.submitted_at && sent.context?.utm_source === 'google' && sent.context?.utm_campaign === 't';
+      check(ctxOk, t(`${path}: context (site, page_url without query, form_name, submitted_at, UTMs)`), JSON.stringify(sent.context).slice(0, 90));
+      if (S.consent) check(sent.consent?.given === true && sent.consent?.text === CONSENT && sent.consent?.policy_url === `${S.base}/privacy/` && !!sent.consent?.given_at && !('message' in sent),
+        t(`${path}: consent object with the exact displayed wording; no message field`));
+      else check(sent.message === msg && !('consent' in sent), t(`${path}: message mapped, no consent object`));
+      check(stored.category === LABEL[expectSrc] && stored.name === VALID.full_name && stored.phone === VALID.phone && stored.email === VALID.email,
+        t(`${path}: fake CRM stored one lead, category "${LABEL[expectSrc]}", contact details as typed`), stored.category);
     }
     await p.reload(); check((await ev(p, 'generate_lead')) === 0, t('thank-you refresh: no second conversion'));
 
     // 6. not delivered. "not_saved" (OfficeCRM refused before writing): the retry message.
     //    "unknown" (the lead may exist): the uncertain message, which never invites a resubmit. Never success.
     for (const [m, kind, savedDelta] of [
-      ['not-configured', 'not_saved', 0], ['500', 'unknown', 0], ['500-after-save', 'unknown', 1], ['slow-after-save', 'unknown', 1],
+      ['not-configured', 'not_saved', 0], ['force-400', 'not_saved', 0], ['in-progress', 'unknown', 0], ['500', 'unknown', 0], ['500-after-save', 'unknown', 1], ['slow-after-save', 'unknown', 1],
       ['hang', 'unknown', 0], ['reset', 'unknown', 0], ['malformed', 'unknown', 1], ['browser-offline', 'unknown', 0],
     ]) {
       if (m === 'browser-offline') { await mode('ok'); await p.route('**/api/lead', (r) => r.abort('internetdisconnected')); } else await mode(m);
-      await go(S.pages[S.pages.length - 1][0]); await fill(); const s0 = await crmSaved();
+      await go(S.pages[S.pages.length - 1][0]); await newEnquiry(); await fill(); const s0 = await crmSaved();
       await p.click(F(S.submit));
       const shownSel = kind === 'not_saved' ? S.fail : S.unsure, otherSel = kind === 'not_saved' ? S.unsure : S.fail;
       await p.waitForSelector(`${S.form} ${shownSel}:not([hidden])`, { timeout: 30000 }).catch(() => {});
@@ -142,6 +166,55 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
       if (m === 'browser-offline') await p.unroute('**/api/lead');
     }
     await mode('ok');
+
+    // 6b. Idempotency (OfficeCRM website-v1): one submission ID per enquiry; resends reuse it; exactly one lead.
+    {
+      const path = S.pages[S.pages.length - 1][0];
+      const submitAndWait = async (sel) => { await p.click(F(S.submit)); await p.waitForSelector(sel, { timeout: 30000 }).catch(() => {}); };
+      // (a) lost response: the CRM saves, the answer is dropped → uncertain; the resend replays the same ID → one lead
+      await go(path); await newEnquiry(); await fill(); const s0 = await crmState();
+      await mode('drop-after-save-once');
+      await submitAndWait(`${S.form} ${S.unsure}:not([hidden])`);
+      const k1 = (await crmLast()).idempotencyKey; const afterFirst = await crmState();
+      check(await p.isVisible(F(S.unsure)) && afterFirst.saved === s0.saved + 1 && (await ev(p, 'generate_lead')) === 0,
+        t('lost response: CRM saved the lead, visitor sees "uncertain", no conversion'));
+      await p.click(F(S.submit)); await p.waitForURL(`**${S.thanks}`, { timeout: 15000 }).catch(() => {});
+      const k2 = (await crmLast()).idempotencyKey; const afterResend = await crmState();
+      check(k1 === k2 && afterResend.saved === s0.saved + 1 && p.url().endsWith(S.thanks) && (await ev(p, 'generate_lead')) === 1,
+        t('lost response → resend: same submission ID, still ONE lead (duplicate replay), thank-you, exactly one generate_lead'), `${k1 === k2} saved+${afterResend.saved - s0.saved}`);
+      // (b) edited resend after an uncertain outcome: same ID, no second lead, the edit kept as a revision
+      await go(path); await newEnquiry(); await fill(); const e0 = await crmState();
+      await mode('drop-after-save-once');
+      await submitAndWait(`${S.form} ${S.unsure}:not([hidden])`);
+      const ke1 = (await crmLast()).idempotencyKey;
+      await p.fill(F('[name=full_name]'), `${VALID.full_name} (תוקן)`);
+      if (S.consent) await p.check(F('[name=consent]'));
+      await p.click(F(S.submit)); await p.waitForURL(`**${S.thanks}`, { timeout: 15000 }).catch(() => {});
+      const ke2 = (await crmLast()).idempotencyKey; const e1 = await crmState();
+      check(ke1 === ke2 && e1.saved === e0.saved + 1 && e1.revisions === e0.revisions + 1 && (await ev(p, 'generate_lead')) === 1,
+        t('edited resend: same submission ID, one lead, edit stored as a revision, one generate_lead'), `saved+${e1.saved - e0.saved} rev+${e1.revisions - e0.revisions}`);
+      // (c) lost response, then a page reload before resending: the ID survives in sessionStorage
+      await go(path); await newEnquiry(); await fill(); const r0 = await crmState();
+      await mode('drop-after-save-once');
+      await submitAndWait(`${S.form} ${S.unsure}:not([hidden])`);
+      const kr1 = (await crmLast()).idempotencyKey;
+      await p.reload(); await fill();
+      await p.click(F(S.submit)); await p.waitForURL(`**${S.thanks}`, { timeout: 15000 }).catch(() => {});
+      const kr2 = (await crmLast()).idempotencyKey; const r1 = await crmState();
+      check(kr1 === kr2 && r1.saved === r0.saved + 1 && (await ev(p, 'generate_lead')) === 1, t('lost response + reload + resend: same ID, one lead, one generate_lead'));
+      // (d) a genuinely new enquiry after a confirmed lead gets a new ID → a new lead
+      await go(path); await fill(); const n0 = await crmState();
+      await p.click(F(S.submit)); await p.waitForURL(`**${S.thanks}`, { timeout: 15000 }).catch(() => {});
+      const kn = (await crmLast()).idempotencyKey; const n1 = await crmState();
+      check(kn !== kr2 && n1.saved === n0.saved + 1, t('new enquiry after a confirmed lead: new submission ID, new lead'));
+      // (e) CRM validation rejection (400) is "not saved" (retry message), never "uncertain"; no conversion
+      await mode('force-400'); await go(path); await newEnquiry(); await fill(); const v0 = await crmState();
+      await submitAndWait(`${S.form} ${S.fail}:not([hidden])`);
+      const v1 = await crmState();
+      check(await p.isVisible(F(S.fail)) && !(await p.isVisible(F(S.unsure))) && v1.saved === v0.saved && (await ev(p, 'generate_lead')) === 0 && !p.url().includes('thankyou'),
+        t('CRM 400 validation: "not saved" retry message, not uncertain; nothing stored; no conversion'));
+      await mode('ok');
+    }
 
     // 7. WhatsApp: correct number + message, whatsapp_click only, no CRM / thank-you / generate_lead
     await go(S.pages[0][0]); const cw = await crmCount();

@@ -1,10 +1,83 @@
 # OfficeCRM integration contract (website ↔ OfficeCRM)
 
-Status: **2026-10-14, after the owner's decisions (D1–D12). NOT compatible yet: the OfficeCRM changes in `docs/OFFICECRM-CHANGE-REQUEST.md` are required first.**
-- Done on the website (doesn't depend on CRM field names): definite vs uncertain outcomes with the approved text, the 20 s timeout, response-time logging, and a fake CRM that models today's real behaviour.
-- Waiting for the confirmed field contract: the payload changes (A1, A2, A4).
+Status: **2026-10-14. The website implements the confirmed `website-v1` request contract** (OfficeCRM branch `website-lead-contract-v2`, commit `76b99cc`, which passes its own unit and Firestore-emulator tests, as reported by the OfficeCRM workstream). It is verified against a **fake** CRM only. **The real local end-to-end test has not run yet** (§0b).
 
 Companions: `docs/OFFICECRM-INTEGRATION-TEST-PLAN.md`, `docs/OFFICECRM-CHANGE-REQUEST.md` (for the OfficeCRM workstream).
+Sections 1–5 below describe the **old** OfficeCRM behaviour that led to the change request. They are kept as history, because the legacy Elementor path still behaves that way until the lp cutover (D12).
+
+## 0b. Current state: `website-v1` (website side implemented 2026-10-14)
+
+**Request: confirmed by the owner from the OfficeCRM workstream (2026-10-14).** Implemented exactly:
+
+| Item | Website implementation | Code |
+|---|---|---|
+| Headers | `Content-Type: application/json`, `Accept: application/json`, `Authorization: Bearer <key>`, **`Idempotency-Key: <submission_id>`** | `forwardToCrm()` |
+| `contract` | `"website-v1"` | `CRM_CONTRACT` (`src/lib/lead-rules.js`) |
+| `submission_id` | UUID v4, exactly equal to the header | `currentSubmission()` / `newSubmissionId()` (`src/lib/lead-client.js`); validated by `UUID_RE` in `validateLead()` |
+| `lead_source` | One of `website-home`, `website-contact`, `lp-home`, `lp-architecture`, `lp-interior-design`, `lp-renovation`, from the validated form id only | `LEAD_SOURCES`, `toCrmPayload()` |
+| `name` | Required, trimmed, ≤ 200 | `validateLead()` |
+| `phone` | Required, ≤ 40, as typed. The website also requires a valid number (`isValidPhone`), which is stricter | `validateLead()` |
+| `email` | Required, ≤ 254. The website also requires a valid format, which is stricter | `validateLead()` |
+| `message` | Optional, ≤ 5,000; omitted when empty (main-site forms only) | `validateLead()`, `toCrmPayload()` |
+| `context` | Required: `site` (the Worker's own host), `page_url` (origin + path, no query), `form_name` (= `lead_source`), `submitted_at`. Plus `landing_page`, `referrer`, `utm_source/medium/campaign/term/content`, `gclid`, `fbclid` when present | `toCrmPayload()` |
+| `consent` | Landing-page forms only: `{ given: true, text: "קראתי ומאשר/ת את מדיניות הפרטיות", policy_url: "<site>/privacy/", given_at: <submitted_at> }`. The text equals the displayed label (tested) and stays subject to the owner's privacy-policy review | `CONSENT_TEXT`, `toCrmPayload()` |
+| `source`, `notes`, `referrerName` | **Not sent** (tested) | `toCrmPayload()` |
+
+**Idempotency (website side):**
+- One `submission_id` per enquiry, stored per form in `sessionStorage` together with its `submitted_at`, so a pure resend is byte-identical (tested).
+- **Reused** for every resend of the same enquiry: after "not saved", after "uncertain", after a reload, after editing.
+- **Cleared only on a confirmed lead**, so a new enquiry gets a new ID.
+- Falls back to in-memory storage if `sessionStorage` is blocked.
+- **No automatic retry.**
+
+**Responses: NOT read from OfficeCRM's code or documentation by this workstream.** The OfficeCRM repository isn't accessible to this session, and the owner's message didn't include the response bodies. So the website relies only on these rules, which hold whatever the exact body is:
+
+| OfficeCRM answer | Website outcome | Visitor | Conversion |
+|---|---|---|---|
+| 2xx with `success: true` (with or without `duplicate: true`) | **confirmed** | thank-you page | exactly one `generate_lead` (the ID is cleared at this point) |
+| 400, 401, 403, 404, 405, 415, 422, 503 | **not saved** (the CRM rejected it before writing) | retry message | none |
+| 409, any 5xx, timeout (20 s), dropped connection, non-JSON, 2xx without `success: true` | **unknown** | approved uncertain message, no resubmit invited | none |
+
+- A 4xx validation rejection is **never** treated as uncertain (tested).
+- An unknown outcome is **never** shown as success or as a definite failure (tested).
+- **To verify against OfficeCRM `76b99cc`** (needed before the real test):
+  - the exact success and duplicate bodies
+  - the exact 400 body and field names
+  - whether a concurrent same-key request answers 409 or waits
+  - how an edited resend is answered and stored
+  - that no 500 follows a write
+  - the email validation rule
+
+  The fake CRM uses the proposed schema (CHANGE-REQUEST §5) for these.
+
+**Verification (2026-10-14, fake CRM only; no real CRM contacted):**
+
+| Check | Result |
+|---|---|
+| `npm test` | **89/89** pass |
+| Browser, forms, both sites, desktop + mobile (`test/e2e/forms.e2e.mjs`) | **336/336** |
+| Browser, main-site round trip (`test/e2e/main-site.e2e.mjs`) | **44/44** |
+| Browser, lost response through the response-dropping proxy (`test/e2e/lost-response.e2e.mjs`) | **5/5** |
+| `npm run build` | 35 pages |
+| `npm run check-launch` | 1 item, by design: the privacy policy is pending the owner's review |
+| `wrangler deploy --dry-run`, both Workers | valid (1,431 / 259 files) |
+
+**What those tests cover:**
+- all six form ids, with the right `lead_source` and category label
+- consent wording, policy URL and time
+- message and context mapping; no `source`/`notes`
+- `Idempotency-Key` equal to `submission_id`
+- website and CRM validation failures (CRM 400 → "not saved")
+- 409 and 5xx → "uncertain"
+- **duplicate replay after a lost response:** one lead, one conversion
+- **edited resend:** one lead plus a revision
+- lost response + reload; a new enquiry gets a new ID
+- WhatsApp and phone clicks are never leads
+
+**Still preventing the real local end-to-end test:**
+1. **OfficeCRM `website-lead-contract-v2` (`76b99cc`) isn't reachable from this session**, so the response schema above can't be checked. Either give this session read access to the OfficeCRM repository, or send its contract documentation, i.e. the response bodies and validation rules.
+2. **Both apps must run on one machine:** OfficeCRM `npm run dev` with the Firebase emulators (port 3000, `LEADS_WEBHOOK_API_KEY=local-test`), plus the two Workers via `wrangler dev`. This session can't reach another session's `localhost`. That means either the owner's computer, or this session once it can clone OfficeCRM (with Java for the Firestore emulator).
+3. **Still owner-pending, not blocking the local test:** the privacy-policy review (consent wording).
 
 ## 0. Evidence levels
 
@@ -41,7 +114,7 @@ Companions: `docs/OFFICECRM-INTEGRATION-TEST-PLAN.md`, `docs/OFFICECRM-CHANGE-RE
 | Restrictions | No IP allowlist, no rate limit, no WAF; CORS `*`; at most 2 backend instances | `apphosting.yaml` |
 | Finding a lead | The `leadId` is a document in the `leads` collection. It appears in the CRM's leads screen with status "חדש" | report §6 |
 
-## 2. What the website does today (WEBSITE-CODE, verified)
+## 2. What the website did before `website-v1` (WEBSITE-CODE, 2026-10-13; superseded by §0b)
 
 | Aspect | Current implementation | Where |
 |---|---|---|
@@ -140,12 +213,12 @@ What the WordPress Elementor form sends as `form_name` today is **UNKNOWN** (Wor
 
 | # | Change | Where | Why |
 |---|---|---|---|
-| A1 ⏸ **waits for the confirmed field contract** (CHANGE-REQUEST §3) | Send `page_url` = `<origin><page_path>` (no query) and `form_name` = form id; stop sending `source` | `toCrmPayload()`, `handleLead()` (origin) | F1: correct category for architecture and interior-design; deterministic |
-| A2 ⏸ **waits**; superseded by CHANGE-REQUEST §3 (`message`, `consent`, `context`) | Decide what, if anything, to send instead of `notes`. **Proposal:** send `message` (www) and `submission_id` as top-level fields. They are kept in `webhook-logs` for 30 days for manual recovery, and the lead itself is unaffected. **Don't** send the attribution and consent text block until the CRM stores it. Verify F3 (email hijack) locally first | `toCrmPayload()`, `leadNotes()` | F2/F3: stop pretending `notes` is stored, and minimise data the CRM can't use |
+| A1 ✅ **done 2026-10-14** as `website-v1` (`lead_source`, `context.page_url` = origin + path) | Send `page_url` = `<origin><page_path>` (no query) and `form_name` = form id; stop sending `source` | `toCrmPayload()`, `handleLead()` (origin) | F1: correct category for architecture and interior-design; deterministic |
+| A2 ✅ **done 2026-10-14**: `message`, `consent`, `context`; no `source`/`notes` | Decide what, if anything, to send instead of `notes`. **Proposal:** send `message` (www) and `submission_id` as top-level fields. They are kept in `webhook-logs` for 30 days for manual recovery, and the lead itself is unaffected. **Don't** send the attribution and consent text block until the CRM stores it. Verify F3 (email hijack) locally first | `toCrmPayload()`, `leadNotes()` | F2/F3: stop pretending `notes` is stored, and minimise data the CRM can't use |
 | A3 ✅ **done 2026-10-13** | Split failures into **definite** (Worker 503, CRM 401/503 → today's message, retry is fine) and **uncertain** (CRM 5xx/timeout/network/malformed/2xx-without-success). Uncertain shows a new message that doesn't invite resubmitting, and offers phone/WhatsApp. Approved text: "לא ניתן לוודא שהפרטים נקלטו. ייתכן שהם נשמרו בכל זאת, ולכן מומלץ לא לשלוח את הטופס שוב כרגע. אפשר ליצור קשר בטלפון או בוואטסאפ." | `forwardToCrm()` (reason codes), `handleLead()` (502 `crm_uncertain` vs `crm_rejected`), `lead-rules.js`, both forms | F7: honesty; prevents most duplicates |
-| A4 ⏸ **waits for the confirmed contract; design fixed** (CHANGE-REQUEST §6). Mandatory with B3 (D10) | `submission_id` (`crypto.randomUUID()`), created at the first send of an enquiry, kept in `sessionStorage` per form and **reused** for every resend until a confirmed success (including after uncertain/not-saved outcomes, reloads and edits). **Cleared only on confirmed success**, so the next enquiry gets a new ID. Sent as the `Idempotency-Key` header and the `submission_id` field; logged (not personal data). No automatic retry | both forms, `lead-client.js`, `forwardToCrm()` | Exactly one lead per enquiry, together with B3 |
+| A4 ✅ **done 2026-10-14** (CHANGE-REQUEST §6); effective together with OfficeCRM B3 (D10) | `submission_id` (`crypto.randomUUID()`), created at the first send of an enquiry, kept in `sessionStorage` per form and **reused** for every resend until a confirmed success (including after uncertain/not-saved outcomes, reloads and edits). **Cleared only on confirmed success**, so the next enquiry gets a new ID. Sent as the `Idempotency-Key` header and the `submission_id` field; logged (not personal data). No automatic retry | both forms, `lead-client.js`, `forwardToCrm()` | Exactly one lead per enquiry, together with B3 |
 | A5 ✅ **done** (provisional) | Raise the CRM timeout from 10 s to 20 s (App Hosting cold starts; max 2 instances) | `CRM_TIMEOUT_MS` | Fewer uncertain outcomes (D6) |
-| A6 ◐ **fake CRM done**; payload assertions follow A1/A2 | Rebuild the mock CRM and tests on the real contract: 200 for anything with a valid key, 401/503/500 shapes, a 500-after-save mode, source derivation from `page_url`, `notes` ignored; per-form `page_url`/`form_name` assertions; remove assertions on `source`/`notes` content | `test/e2e/mock-office.mjs`, `test/worker.test.mjs`, `test/e2e/forms.e2e.mjs` | F12 |
+| A6 ✅ **done 2026-10-14**: fake CRM on `website-v1` (validation, idempotency, revisions, lost response); proxy tool | Rebuild the mock CRM and tests on the real contract: 200 for anything with a valid key, 401/503/500 shapes, a 500-after-save mode, source derivation from `page_url`, `notes` ignored; per-form `page_url`/`form_name` assertions; remove assertions on `source`/`notes` content | `test/e2e/mock-office.mjs`, `test/worker.test.mjs`, `test/e2e/forms.e2e.mjs` | F12 |
 | A7 | Optional diagnostic event `lead_delivery_uncertain` (no personal data); never `generate_lead` | `lead-client.js`, `docs/ANALYTICS-EVENTS.md` | Visibility of uncertain outcomes |
 
 ### B. Need OfficeCRM development (not in this repository)
@@ -178,11 +251,8 @@ What the WordPress Elementor form sends as `form_name` today is **UNKNOWN** (Wor
 | D12 (2026-10-14) | **Legacy labels preserved; labels coexist.** Existing OfficeCRM leads are **not** relabelled, and there is no bulk relabelling in this migration. The WordPress/Elementor integration keeps working, with its Hebrew categorisation unchanged, until the lp cutover. Only leads from the new website integration use the five English labels with explicit form identifiers. A unified view, if needed, is a **read-only reporting mapping** (CHANGE-REQUEST §4a) that never modifies stored records. |
 | D9 | Stop relying on `webhook-logs` or discarded text. Information counts as persisted **only** when the CRM demonstrably saves it on the lead or an associated record. |
 
-## 9. Recommendation
+## 9. Recommendation (2026-10-14)
 
-**BLOCKED** until OfficeCRM implements and confirms B1a, B1b/B6, B2, B5, B4 and **B3** (CHANGE-REQUEST §7, orders 1–6). B3 is mandatory before production cutover (D10). Then:
-1. The website implements A1, A2 and A4 against the confirmed contract.
-2. The local emulator test runs (test plan §2).
-3. Verify that every form creates **exactly one** lead with the exact D11 category, message, contact details and (lp) consent. Verify that resends with the same ID, **including the lost-response case**, never create a second lead.
-
-**Also required for the local test:** OfficeCRM and the website must run on the same machine.
+**READY FOR ISOLATED (LOCAL) TEST** on the website side, once the two prerequisites in §0b are met: the OfficeCRM response schema checked, and both apps on one machine.
+- **Not** ready for production verification. That needs a passing local end-to-end test, the OfficeCRM changes deployed, and the owner's approval.
+- Requirements before production cutover (owner): idempotency, correct category mapping, visible message, lp consent recording. All are implemented on the website side and must be shown in the real local test.

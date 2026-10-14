@@ -53,10 +53,16 @@ test('phone: incomplete, too long or impossible numbers are rejected', () => {
 
 test('the Worker applies exactly the same rules (browser validation is not the only check)', () => {
   for (const patch of [{}, { full_name: '' }, { phone: '' }, { phone: '12345' }, { phone: '+++------' }, { email: 'a@b' }, { consent: '' }]) {
-    const lead = { ...OK, ...patch, form: 'lp-home' };
+    const lead = { ...OK, ...patch, form: 'lp-home', submission_id: '3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c', page_path: '/' };
     const browser = fieldErrors(lead, { requireConsent: true })[0];
     assert.equal(validateLead(lead).error, browser, JSON.stringify(patch));
   }
   for (const code of Object.keys(ERROR_FIELD)) assert.ok(ERROR_MESSAGES[code], code);
   assert.deepEqual(Object.keys(ERROR_MESSAGES).sort(), Object.keys(ERROR_FIELD).sort());
+});
+
+test('the consent wording sent to OfficeCRM is exactly what the landing pages display', async () => {
+  const { CONSENT_TEXT } = await import('../src/lib/lead-rules.js');
+  const { lpShared } = await import('../src/data/lp.mjs');
+  assert.equal(`${lpShared.consentBefore}${lpShared.consentLink}`, CONSENT_TEXT);
 });

@@ -169,7 +169,12 @@ Requirement: repeated requests with the same submission ID create **exactly one*
 | 8 | (none) | Tests in OfficeCRM for all of the above, plus a regression test that the Elementor form-urlencoded path is unchanged, **including its Hebrew category labels**, and that no existing lead is modified | with each step |
 | 9 | (optional) | A **read-only** reporting mapping from legacy to new categories (§4a), applied at read or export time only. Never written to stored leads | not blocking |
 
-## 8. What the website does once the contract is confirmed
+## 8. Website side: implemented 2026-10-14 (branch `cloudflare-migration`)
+
+OfficeCRM reported `website-v1` implemented on branch `website-lead-contract-v2`, commit `76b99cc`. The website now sends exactly the confirmed request, verified against a fake CRM. See `docs/OFFICECRM-INTEGRATION-CONTRACT.md` §0b, including the **response details the website workstream still needs to see** from OfficeCRM's documentation.
+
+<details><summary>Original plan</summary>
+
 
 These are the website changes A1, A2 and A4, deferred until the OfficeCRM workstream confirms the field names above or its own version of them:
 - `toCrmPayload()` sends the confirmed fields: `lead_source`, `message`, `consent`, `context`, `submission_id`.
@@ -182,6 +187,8 @@ These are the website changes A1, A2 and A4, deferred until the OfficeCRM workst
 - the 20 s timeout
 - response-time logging
 - a fake CRM that matches today's real behaviour
+
+</details>
 
 ## 9. Verification (joint, local first)
 

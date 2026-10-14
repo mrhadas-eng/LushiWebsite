@@ -67,3 +67,27 @@ export function fieldErrors(values, { requireConsent = false } = {}) {
   if (requireConsent && v('consent') !== 'yes') errors.push('missing_consent');
   return errors;
 }
+
+// ---------------------------------------------------------------- OfficeCRM website-v1 contract
+// Confirmed by the OfficeCRM workstream (branch website-lead-contract-v2, commit 76b99cc; owner, 2026-10-14).
+// Request side only. See docs/OFFICECRM-INTEGRATION-CONTRACT.md.
+
+export const CRM_CONTRACT = 'website-v1';
+
+/** Website form id → OfficeCRM `lead_source` (fixed vocabulary; OfficeCRM maps it to its category label). */
+export const LEAD_SOURCES = {
+  home: 'website-home',
+  contact: 'website-contact',
+  'lp-home': 'lp-home',
+  'lp-architecture': 'lp-architecture',
+  'lp-interior-design': 'lp-interior-design',
+  'lp-renovation': 'lp-renovation',
+};
+
+/** The privacy-consent wording exactly as displayed next to the landing-page checkbox (subject to the owner's review). */
+export const CONSENT_TEXT = 'קראתי ומאשר/ת את מדיניות הפרטיות';
+
+/** Contract limits (OfficeCRM website-v1). The website's own rules are at least this strict. */
+export const CRM_LIMITS = { name: 200, phone: 40, email: 254, message: 5000 };
+
+export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

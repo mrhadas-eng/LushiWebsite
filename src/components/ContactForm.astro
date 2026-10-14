@@ -11,12 +11,10 @@
 //
 // Under `npm run dev` there is no Worker, so sending fails by design; use `npm run preview:cf`.
 //
-// Website payload sent to /api/lead (English keys, empty values omitted; the Worker maps it to
-// OfficeCRM's name / phone / email / source / notes, see docs/CLOUDFLARE-PLAN.md):
-//   full_name, email, phone, message, form ("home" | "contact"),
-//   page_url, page_path, landing_page, referrer,
-//   utm_source, utm_medium, utm_campaign, utm_term, utm_content, gclid, fbclid,
-//   source_summary (one readable line), submitted_at (ISO time), site
+// Website payload sent to /api/lead (empty values omitted). The Worker turns it into OfficeCRM's website-v1 request
+// (docs/OFFICECRM-INTEGRATION-CONTRACT.md): full_name, email, phone, message, form ("home" | "contact"),
+//   page_path, landing_page, referrer, utm_source, utm_medium, utm_campaign, utm_term, utm_content, gclid, fbclid,
+//   plus submission_id and submitted_at, added by submitLead() (one ID per enquiry, reused on resends).
 import { site } from '../data/content.mjs';
 import { DELIVERY_FAILED_TEXT, DELIVERY_UNCERTAIN_TEXT } from '../lib/lead-rules.js';
 interface Props { variant?: 'home' | 'page' }
@@ -105,18 +103,6 @@ const REQ = ' *';
     try { return JSON.parse(sessionStorage.getItem('hl_attribution') || '{}'); } catch { return {}; }
   }
 
-  function summary(a) {
-    return [
-      a.utm_source && `utm_source=${a.utm_source}`,
-      a.utm_medium && `utm_medium=${a.utm_medium}`,
-      a.utm_campaign && `utm_campaign=${a.utm_campaign}`,
-      a.gclid && 'Google Ads (gclid)',
-      a.fbclid && 'Facebook / Instagram (fbclid)',
-      a.referrer && `referrer: ${a.referrer}`,
-      a.landing_page && `landing: ${decodeURI(a.landing_page)}`,
-    ].filter(Boolean).join(' | ') || 'direct';
-  }
-
   document.querySelectorAll<HTMLFormElement>('.contact-form').forEach((form) => {
     liveRevalidate(form);
     form.addEventListener('submit', async (e) => {
@@ -138,11 +124,7 @@ const REQ = ' *';
         phone: String(fd.get('phone') || '').trim(),
         message: String(fd.get('message') || '').trim(),
         form: form.dataset.location || '',
-        page_url: location.href.split('#')[0],
-        page_path: decodeURI(location.pathname),
-        source_summary: summary(a),
-        submitted_at: new Date().toISOString(),
-        site: location.hostname,
+        page_path: location.pathname,
       };
       for (const k of ATTR_KEYS) if (a[k]) lead[k] = k === 'landing_page' ? decodeURI(a[k]) : a[k];
       for (const k of Object.keys(lead)) if (!lead[k]) delete lead[k];

@@ -1,21 +1,25 @@
-// Tests for /api/lead against the OfficeCRM leads-webhook contract. Run: npm test
-// No real CRM is contacted: requests go to an injected fetch or a local mock server.
+// Tests for /api/lead against the OfficeCRM "website-v1" contract (docs/OFFICECRM-INTEGRATION-CONTRACT.md). Run: npm test
+// No real CRM is contacted: requests go to an injected fetch or a local fake server.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import * as workerModule from '../worker/index.js';
-import worker, { handleLead, validateLead, toCrmPayload, leadSource } from '../worker/index.js';
+import worker, { handleLead, validateLead, toCrmPayload } from '../worker/index.js';
+import { CONSENT_TEXT, LEAD_SOURCES } from '../src/lib/lead-rules.js';
 
 const ORIGIN = 'https://www.hagarlushi.com';
 const TEST_KEY = 'test-key-not-real';
 const ENV = { CRM_WEBHOOK_URL: 'https://crm.example.test/api/leads/webhook', LEADS_WEBHOOK_API_KEY: TEST_KEY };
 
 // What the website's form sends to /api/lead
+const SID = '3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c';
+const CONTACT_PATH = encodeURI('/יצירת-קשר');   // the browser sends location.pathname (percent-encoded)
 const SITE_LEAD = {
   full_name: 'ישראל ישראלי', email: 'test@example.com', phone: '050-1234567',
-  message: 'מעוניין בתכנון מטבח', form: 'contact', page_path: '/יצירת-קשר', landing_page: '/',
+  message: 'מעוניין בתכנון מטבח', form: 'contact', page_path: CONTACT_PATH, landing_page: '/',
   utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'autumn', gclid: 'abc123',
-  referrer: 'https://www.google.com/', submitted_at: '2026-10-11T09:00:00.000Z', site: 'www.hagarlushi.com',
+  referrer: 'https://www.google.com/', submitted_at: '2026-10-11T09:00:00.000Z',
+  submission_id: SID,
 };
 
 function req(body, { method = 'POST', origin = ORIGIN, type = 'application/json', site = 'same-origin', raw } = {}) {
@@ -54,6 +58,8 @@ test('sends to the configured endpoint with Bearer auth and JSON content type', 
   assert.equal(init.method, 'POST');
   assert.equal(init.headers['Content-Type'], 'application/json');
   assert.equal(init.headers.Authorization, `Bearer ${TEST_KEY}`);
+  assert.equal(init.headers['Idempotency-Key'], SID, 'Idempotency-Key header = submission_id');
+  assert.equal(JSON.parse(init.body).submission_id, SID, 'body submission_id exactly matches the header');
 });
 
 test('a key stored with a "Bearer " prefix is not doubled', async () => {
@@ -62,38 +68,70 @@ test('a key stored with a "Bearer " prefix is not doubled', async () => {
   assert.equal(c.calls[0].init.headers.Authorization, `Bearer ${TEST_KEY}`);
 });
 
-test('maps the website payload to exactly the OfficeCRM fields', async () => {
+test('website-v1 body for the main-site contact form: exact fields; no source / notes / referrerName', async () => {
   const c = crm();
-  await post({ ...SITE_LEAD, admin: 'x' }, ENV, c);
+  await post({ ...SITE_LEAD, admin: 'x', source: 'spoof', notes: 'spoof', page_url: 'https://evil.example/', site: 'evil.example' }, ENV, c);
   const sent = JSON.parse(c.calls[0].init.body);
-  assert.deepEqual(Object.keys(sent).sort(), ['email', 'name', 'notes', 'phone', 'source']);
-  assert.equal(sent.name, SITE_LEAD.full_name);
-  assert.equal(sent.phone, SITE_LEAD.phone);
-  assert.equal(sent.email, SITE_LEAD.email);
-  assert.equal(sent.source, 'website / google / cpc');
-  assert.equal(sent.referrerName, undefined, 'referrerName is never invented');
-  for (const part of ['מעוניין בתכנון מטבח', 'דף יצירת קשר', '/יצירת-קשר', 'utm_campaign=autumn', 'gclid: abc123', 'https://www.google.com/']) {
-    assert.ok(sent.notes.includes(part), `notes should include ${part}`);
+  assert.deepEqual(sent, {
+    contract: 'website-v1',
+    submission_id: SID,
+    lead_source: 'website-contact',
+    name: 'ישראל ישראלי',
+    phone: '050-1234567',
+    email: 'test@example.com',
+    message: 'מעוניין בתכנון מטבח',
+    context: {
+      site: 'www.hagarlushi.com',                                   // from the Worker's own origin, not the browser
+      page_url: `https://www.hagarlushi.com${CONTACT_PATH}`,        // origin + path, no query string
+      form_name: 'website-contact',
+      submitted_at: '2026-10-11T09:00:00.000Z',
+      landing_page: '/', referrer: 'https://www.google.com/',
+      utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'autumn', gclid: 'abc123',
+    },
+  });
+  assert.ok(!('consent' in sent), 'no consent object on main-site forms');
+});
+
+test('lead_source: the six fixed identifiers, from the form id only (never from the URL or campaign data)', async () => {
+  const cases = [
+    ['home', 'https://www.hagarlushi.com', '/', 'website-home'],
+    ['contact', 'https://www.hagarlushi.com', CONTACT_PATH, 'website-contact'],
+    ['lp-home', 'https://lp.hagarlushi.com', '/', 'lp-home'],
+    ['lp-architecture', 'https://lp.hagarlushi.com', '/architecture/', 'lp-architecture'],
+    ['lp-interior-design', 'https://lp.hagarlushi.com', '/interior-design/', 'lp-interior-design'],
+    ['lp-renovation', 'https://lp.hagarlushi.com', '/renovation/', 'lp-renovation'],
+  ];
+  assert.deepEqual(Object.values(LEAD_SOURCES).sort(), cases.map((x) => x[3]).sort());
+  for (const [form, origin, path, expected] of cases) {
+    const body = toCrmPayload({ ...SITE_LEAD, form, page_path: path, utm_campaign: 'interior_design', utm_source: 'architecture', consent: 'yes' }, { origin });
+    assert.equal(body.lead_source, expected, form);
+    assert.equal(body.context.form_name, expected, form);
+    assert.equal(body.context.page_url, `${origin}${path}`, form);
   }
 });
 
-test('source reflects the acquisition channel', () => {
-  const base = { full_name: 'a', phone: '0501234567', email: 'a@b.co' };
-  assert.equal(leadSource(base), 'website / direct');
-  assert.equal(leadSource({ ...base, utm_source: 'facebook' }), 'website / facebook');
-  assert.equal(leadSource({ ...base, gclid: 'x' }), 'website / google-ads');
-  assert.equal(leadSource({ ...base, fbclid: 'x' }), 'website / facebook');
-  assert.equal(leadSource({ ...base, referrer: 'https://www.instagram.com/p/1' }), 'website / instagram.com');
-  assert.equal(leadSource({ ...base, referrer: 'https://www.hagarlushi.com/אודות' }), 'website / direct');
-  assert.ok(toCrmPayload(base).notes.includes('טופס'));
+test('landing-page consent object: given, the exact displayed Hebrew wording, policy_url on the same site, given_at', () => {
+  assert.equal(CONSENT_TEXT, 'קראתי ומאשר/ת את מדיניות הפרטיות');
+  const body = toCrmPayload({ ...SITE_LEAD, form: 'lp-renovation', page_path: '/renovation/', consent: 'yes', message: undefined }, { origin: 'https://lp.hagarlushi.com' });
+  assert.deepEqual(body.consent, { given: true, text: CONSENT_TEXT, policy_url: 'https://lp.hagarlushi.com/privacy/', given_at: '2026-10-11T09:00:00.000Z' });
+  assert.ok(!('message' in body), 'message omitted when empty');
+  assert.equal(body.context.site, 'lp.hagarlushi.com');
+});
+
+test('a resend of the same enquiry produces a byte-identical body (stable submitted_at), so OfficeCRM sees a replay', () => {
+  const a = JSON.stringify(toCrmPayload(SITE_LEAD, { origin: ORIGIN, now: () => new Date('2030-01-01') }));
+  const b = JSON.stringify(toCrmPayload(SITE_LEAD, { origin: ORIGIN, now: () => new Date('2031-01-01') }));
+  assert.equal(a, b);
 });
 
 // ---------------------------------------------------------------- OfficeCRM responses
 
-test('success only for HTTP 2xx with success: true (leadId returned)', async () => {
-  const res = await post(SITE_LEAD, ENV, crm(200, '{"success":true,"leadId":"L-1"}'));
-  assert.equal(res.status, 200);
-  assert.equal((await res.json()).ok, true);
+test('success only for HTTP 2xx with success: true; a duplicate replay of the same submission is a confirmed lead', async () => {
+  for (const body of ['{"success":true,"leadId":"L-1"}', '{"success":true,"leadId":"L-1","duplicate":false}', '{"success":true,"leadId":"L-1","duplicate":true}']) {
+    const res = await post(SITE_LEAD, ENV, crm(200, body));
+    assert.equal(res.status, 200, body);
+    assert.deepEqual(await res.json(), { ok: true });
+  }
 });
 
 // Real OfficeCRM answers (docs/OFFICECRM-INTEGRATION-CONTRACT.md §1): 401 bad key, 503 not configured → the lead was
@@ -104,7 +142,8 @@ const NOT_SAVED = { ok: false, error: 'crm_rejected', outcome: 'not_saved' };
 for (const [label, status, body, expected] of [
   ['HTTP 401 (bad key, real OfficeCRM body)', 401, '{"success":false,"error":"Unauthorized. Invalid API Key."}', NOT_SAVED],
   ['HTTP 503 (webhook not configured, real OfficeCRM body)', 503, '{"success":false,"error":"Webhook is not configured."}', NOT_SAVED],
-  ['HTTP 400 (validation, planned CRM change B5)', 400, '{"success":false}', NOT_SAVED],
+  ['HTTP 400 (website-v1 validation)', 400, '{"success":false,"error":"validation","fields":["email"]}', NOT_SAVED],
+  ['HTTP 409 (same key still in progress)', 409, '{"success":false,"error":"in_progress"}', UNKNOWN],
   ['HTTP 404 (route missing)', 404, 'Not Found', NOT_SAVED],
   ['HTTP 500 (may follow a saved lead)', 500, '{"success":false,"error":"x"}', UNKNOWN],
   ['HTTP 502 from a proxy', 502, '<html>Bad gateway</html>', UNKNOWN],
@@ -148,8 +187,13 @@ test('default CRM timeout is 20 s (owner, provisional) and response time is logg
     await handleLead(req(SITE_LEAD), ENV, { fetchImpl: crm(200, '{"success":true,"leadId":"L-7","message":"Lead created successfully"}').impl, now });
     await handleLead(req(SITE_LEAD), ENV, { fetchImpl: crm(500, '{"success":false}').impl, now });
   } finally { [console.log, console.error] = orig; }
-  assert.match(logs[0], /^lead: created in OfficeCRM \(leadId L-7, \d+ ms\)$/);
-  assert.match(logs[1], /^lead: OfficeCRM did not confirm the lead \(http_500, unknown, \d+ ms\)$/);
+  assert.match(logs[0], new RegExp(`^lead: created in OfficeCRM \\(leadId L-7, submission ${SID}, \\d+ ms\\)$`));
+  assert.match(logs[1], new RegExp(`^lead: OfficeCRM did not confirm the lead \\(http_500, unknown, submission ${SID}, \\d+ ms\\)$`));
+  logs.length = 0;
+  console.log = console.error = (m) => logs.push(String(m));
+  try { await handleLead(req(SITE_LEAD), ENV, { fetchImpl: crm(200, '{"success":true,"leadId":"L-7","duplicate":true}').impl }); }
+  finally { [console.log, console.error] = orig; }
+  assert.match(logs[0], /^lead: already in OfficeCRM \(duplicate submission\) \(leadId L-7, submission /);
 });
 
 // ---------------------------------------------------------------- configuration
@@ -196,8 +240,8 @@ test('wrong method, content type, size and JSON are rejected', async () => {
   assert.equal((await handleLead(req({ ...SITE_LEAD, message: 'א'.repeat(6000) }), ENV, opt)).status, 413);
 });
 
-test('validation: name, phone and email are required (OfficeCRM contract)', async () => {
-  const lead = { full_name: 'דנה', phone: '050-1234567', email: 'a@b.co' };
+test('validation: name, phone, email, form, submission ID and page path are required (website-v1)', async () => {
+  const lead = { full_name: 'דנה', phone: '050-1234567', email: 'a@b.co', form: 'home', submission_id: SID, page_path: '/' };
   assert.ok(validateLead(lead).lead);
   assert.equal(validateLead({ ...lead, full_name: '' }).error, 'missing_name');
   assert.equal(validateLead({ ...lead, phone: '' }).error, 'missing_phone');
@@ -206,6 +250,13 @@ test('validation: name, phone and email are required (OfficeCRM contract)', asyn
   assert.equal(validateLead({ ...lead, email: 'not-an-email' }).error, 'invalid_email');
   assert.equal(validateLead({ ...lead, email: 42 }).error, 'invalid_email');
   assert.equal(validateLead({ ...lead, form: 'other' }).error, 'invalid_form');
+  assert.equal(validateLead({ ...lead, form: undefined }).error, 'invalid_form');
+  assert.equal(validateLead({ ...lead, submission_id: undefined }).error, 'invalid_submission_id');
+  assert.equal(validateLead({ ...lead, submission_id: 'not-a-uuid' }).error, 'invalid_submission_id');
+  assert.equal(validateLead({ ...lead, page_path: '/?utm_source=x' }).error, 'invalid_page_path');
+  assert.equal(validateLead({ ...lead, page_path: 'https://evil.example/' }).error, 'invalid_page_path');
+  assert.equal(validateLead({ ...lead, full_name: 'א'.repeat(201) }).error, 'too_long_full_name');
+  assert.equal(validateLead({ ...lead, message: 'א'.repeat(5001) }).error, 'too_long_message');
   const c = crm();
   const res = await post({ email: 'a@b.co', full_name: 'x' }, ENV, c);
   assert.equal(res.status, 400);
@@ -250,8 +301,9 @@ const mock = http.createServer((rq, rs) => {
     rs.setHeader('Content-Type', 'application/json');
     if (rq.headers.authorization !== `Bearer ${TEST_KEY}`) { rs.statusCode = 401; return rs.end('{"success":false,"error":"unauthorized"}'); }
     let lead; try { lead = JSON.parse(body); } catch { rs.statusCode = 400; return rs.end('{"success":false}'); }
-    if (!['name', 'phone', 'email', 'source'].every((k) => typeof lead[k] === 'string' && lead[k])) {
-      rs.statusCode = 400; return rs.end('{"success":false,"error":"missing fields"}');
+    if (lead.contract !== 'website-v1' || rq.headers['idempotency-key'] !== lead.submission_id
+      || !['name', 'phone', 'email', 'lead_source'].every((k) => typeof lead[k] === 'string' && lead[k])) {
+      rs.statusCode = 400; return rs.end('{"success":false,"error":"validation"}');
     }
     rs.end(JSON.stringify({ success: true, leadId: `lead_${received.length}` }));
   });
@@ -269,6 +321,7 @@ test('round trip through a mock OfficeCRM server (real HTTP)', async () => {
   assert.equal(received[0].url, '/api/leads/webhook');
   assert.match(received[0].headers['content-type'], /^application\/json/);
   assert.equal(JSON.parse(received[0].body).name, SITE_LEAD.full_name);
+  assert.equal(received[0].headers['idempotency-key'], SID);
 });
 
 test('round trip with a wrong key: OfficeCRM 401 → not confirmed', async () => {
@@ -281,25 +334,29 @@ test('round trip with a wrong key: OfficeCRM 401 → not confirmed', async () =>
 const LP_ORIGIN = 'https://lp.hagarlushi.com';
 const LP_LEAD = {
   full_name: 'ישראל ישראלי', email: 'test@example.com', phone: '050-1234567', consent: 'yes',
-  form: 'lp-architecture', page_url: `${LP_ORIGIN}/architecture/?utm_source=google&utm_medium=cpc&gclid=abc123`,
+  form: 'lp-architecture', submission_id: SID,
   page_path: '/architecture/', landing_page: '/architecture/', utm_source: 'google', utm_medium: 'cpc',
-  utm_campaign: 'arch', gclid: 'abc123', site: 'lp.hagarlushi.com', submitted_at: '2026-10-11T09:00:00.000Z',
+  utm_campaign: 'arch', gclid: 'abc123', submitted_at: '2026-10-11T09:00:00.000Z',
 };
 const lpReq = (body) => new Request(`${LP_ORIGIN}/api/lead`, {
   method: 'POST', body: JSON.stringify(body),
   headers: { Origin: LP_ORIGIN, 'Content-Type': 'application/json', 'Sec-Fetch-Site': 'same-origin' },
 });
 
-test('landing-page forms: accepted from lp.hagarlushi.com, source "landing-page / …", page and consent in the notes', async () => {
-  for (const form of ['lp-home', 'lp-architecture', 'lp-interior-design', 'lp-renovation']) {
+test('landing-page forms: website-v1 with lead_source, context and consent for all four forms', async () => {
+  for (const [form, path] of [['lp-home', '/'], ['lp-architecture', '/architecture/'], ['lp-interior-design', '/interior-design/'], ['lp-renovation', '/renovation/']]) {
     const c = crm();
-    const res = await handleLead(lpReq({ ...LP_LEAD, form }), ENV, { fetchImpl: c.impl });
+    const res = await handleLead(lpReq({ ...LP_LEAD, form, page_path: path }), ENV, { fetchImpl: c.impl });
     assert.equal(res.status, 200, form);
     const sent = JSON.parse(c.calls[0].init.body);
-    assert.deepEqual(Object.keys(sent).sort(), ['email', 'name', 'notes', 'phone', 'source']);
-    assert.equal(sent.source, 'landing-page / google / cpc');
-    for (const s of ['דף נחיתה', 'נשלח מהדף: /architecture/', 'utm_campaign=arch', 'gclid: abc123', 'אתר: lp.hagarlushi.com', 'אישור מדיניות פרטיות: כן'])
-      assert.ok(sent.notes.includes(s), `${form}: notes missing ${s}`);
+    assert.deepEqual(Object.keys(sent).sort(), ['consent', 'context', 'contract', 'email', 'lead_source', 'name', 'phone', 'submission_id']);
+    assert.equal(sent.lead_source, form);
+    assert.deepEqual(sent.consent, { given: true, text: CONSENT_TEXT, policy_url: `${LP_ORIGIN}/privacy/`, given_at: LP_LEAD.submitted_at });
+    assert.deepEqual(sent.context, {
+      site: 'lp.hagarlushi.com', page_url: `${LP_ORIGIN}${path}`, form_name: form, submitted_at: LP_LEAD.submitted_at,
+      landing_page: '/architecture/', utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'arch', gclid: 'abc123',
+    });
+    assert.equal(c.calls[0].init.headers['Idempotency-Key'], SID);
   }
 });
 

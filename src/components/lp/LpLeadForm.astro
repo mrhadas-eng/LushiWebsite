@@ -93,10 +93,7 @@ const [unsureBefore, unsureAfter] = DELIVERY_UNCERTAIN_TEXT.split('בטלפון 
         email: String(fd.get('email') || '').trim(),
         consent: fd.get('consent') === 'yes' ? 'yes' : '',
         form: form.dataset.form || '',
-        page_url: location.href.split('#')[0],
-        page_path: decodeURI(location.pathname),
-        submitted_at: new Date().toISOString(),
-        site: location.hostname,
+        page_path: location.pathname,
       };
       for (const k of ATTR) if (a[k]) lead[k] = k === 'landing_page' ? decodeURI(a[k]) : a[k];
       for (const k of Object.keys(lead)) if (!lead[k]) delete lead[k];

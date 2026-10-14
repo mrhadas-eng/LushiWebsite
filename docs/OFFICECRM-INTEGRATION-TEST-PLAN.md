@@ -1,6 +1,6 @@
 # OfficeCRM integration test plan
 
-Status: **2026-10-14, after the owner's decisions (incl. D10 idempotency mandatory, D11 category labels, D12 legacy labels preserved). Not runnable yet.** It needs the OfficeCRM changes (`docs/OFFICECRM-CHANGE-REQUEST.md`, orders 1–6, including B3 idempotency) and the website payload changes (A1, A2, A4) built on the **confirmed** field contract.
+Status: **2026-10-14. The website implements `website-v1`, verified against the fake CRM (results in §5). The real local test (§3) has not run.** Remaining prerequisites: P2 (check OfficeCRM's response schema) and P5 (both apps on one machine).
 Contract and findings: `docs/OFFICECRM-INTEGRATION-CONTRACT.md`.
 
 - **No staging exists.** The integration test runs **locally**: the changed OfficeCRM (`npm run dev`, Firebase emulators, port 3000) with both website Workers (`wrangler dev`).
@@ -29,10 +29,10 @@ Contract and findings: `docs/OFFICECRM-INTEGRATION-CONTRACT.md`.
 
 | # | Item | How to verify |
 |---|---|---|
-| P1 | OfficeCRM has implemented and unit-tested CHANGE-REQUEST orders 1–6 (B1a explicit categories, B1b/B6 visible message, B2 consent and context, B5 validation, B4 safe errors, **B3 idempotency**). The Elementor regression test passes | OfficeCRM workstream report, with file references |
-| P2 | **Final field contract confirmed** by the OfficeCRM workstream (CHANGE-REQUEST §3, or its adjusted version) | Written confirmation; CONTRACT §1 updated from "reported" to the confirmed contract |
-| P3 | Website A1, A2, A4 implemented against P2; the fake CRM and tests switched to it; `npm test` and the e2e suites green | Commit on `cloudflare-migration` |
-| P4 | **B3 idempotency implemented (mandatory, owner D10).** Website A4 implemented (ID reused until confirmed success, cleared on success). The **response-dropping proxy** for T10c is available: `test/e2e/drop-response-proxy.mjs`, to be built with A4/A6. It forwards a request to the CRM, waits for the CRM's answer, then closes the connection without passing the answer back | Proxy self-test; OfficeCRM B3 unit tests |
+| P1 | ✅ **reported done** (OfficeCRM `website-lead-contract-v2`, `76b99cc`: unit and emulator tests pass, per the OfficeCRM workstream). OfficeCRM has implemented and unit-tested CHANGE-REQUEST orders 1–6 (B1a explicit categories, B1b/B6 visible message, B2 consent and context, B5 validation, B4 safe errors, **B3 idempotency**). The Elementor regression test passes | OfficeCRM workstream report, with file references |
+| P2 | ◐ **Request side confirmed** (owner, 2026-10-14). **Response side not yet checked:** the success/duplicate bodies, the 400 body, 409 vs waiting, the edited-resend answer, and the email rule must be read from OfficeCRM `76b99cc` (repo access or its contract doc). The final field contract is confirmed by the OfficeCRM workstream (CHANGE-REQUEST §3, or its adjusted version) | Written confirmation; CONTRACT §1 updated from "reported" to the confirmed contract |
+| P3 | ✅ **done 2026-10-14**: website A1, A2, A4 implemented against P2; the fake CRM and tests switched to it; `npm test` and the e2e suites green | Commit on `cloudflare-migration` |
+| P4 | ✅ website side done; OfficeCRM B3 reported done. **B3 idempotency (mandatory, owner D10).** Website A4 implemented (ID reused until confirmed success, cleared on success). The **response-dropping proxy** for T10c is built and tested (`test/e2e/drop-response-proxy.mjs`, `test/e2e/lost-response.e2e.mjs` 5/5 against the fake CRM). It forwards a request to the CRM, waits for the CRM's answer, then closes the connection without passing the answer back | Proxy self-test; OfficeCRM B3 unit tests |
 | P5 | **One machine runs both**: the owner's computer, or this session if it gets access to the OfficeCRM repo and the emulators (Java for Firestore) | `curl -s http://localhost:3000/api/leads/webhook` (GET **without** parameters) returns the status text. Never call GET with parameters |
 | P6 | OfficeCRM: `LEADS_WEBHOOK_API_KEY=local-test npm run dev` | Emulator UI shows `leads` |
 | P7 | Website `.dev.vars` (git-ignored): `CRM_WEBHOOK_URL=http://localhost:3000/api/leads/webhook`, `LEADS_WEBHOOK_API_KEY=local-test` | T0 |
@@ -191,17 +191,20 @@ Across T5–T10: no `generate_lead` except on confirmed leads. Opening or refres
 3. One POST each, no retries.
 4. Confirm against §2 in the production lead screen, including the response time in the Worker log. An admin deletes both leads immediately.
 
-## 5. Automated coverage today (fake CRM)
+## 5. Automated coverage (fake CRM; 2026-10-14)
 
 | Area | Status |
 |---|---|
 | Validation, inline messages, focus, no request on invalid input | ✅ |
-| Confirmed → thank-you page + one `generate_lead`; none on failure | ✅ |
-| Not saved (401/503/400…) → retry message; unknown (500, 500-after-save, slow-after-save, timeout, reset, malformed, browser offline) → uncertain message; never success | ✅ (`npm test` 79/79; e2e 240/240 and 44/44, 2026-10-13) |
-| 20 s timeout and response-time logging | ✅ |
-| Payload `{lead_source, message, consent, context, submission_id}` + `Idempotency-Key` | ⏸ waits for P2 (current tests still assert today's `{name, phone, email, source, notes}`) |
-| ID reuse / renewal rules (A4) and an idempotent fake CRM; lost-response proxy | ⏸ built with A4/A6 after P2 |
-| Real CRM | ⏸ §3 |
+| `website-v1` request for all **six** form ids: `contract`, `lead_source`, `name/phone/email`, `message` (www), `context` (site, page_url without query, form_name, submitted_at, UTMs), `consent` (lp: exact wording, policy URL, time); no `source`/`notes` | ✅ unit (`test/worker.test.mjs`) + browser |
+| `Idempotency-Key` header = body `submission_id` (UUID) | ✅ |
+| One ID per enquiry: reused after not-saved / uncertain / reload / edit; cleared on confirmed lead; new enquiry → new ID; per-form IDs; blocked `sessionStorage` fallback | ✅ unit (`test/lead-client.test.mjs`) + browser |
+| **Lost response** (the CRM saves, the answer is lost) → uncertain → resend → **one lead**, thank-you, **one** `generate_lead` | ✅ browser (fake-CRM mode and through the proxy) |
+| **Edited resend** → one lead plus a revision; one conversion | ✅ browser |
+| CRM 400 → "not saved" (retry message), never uncertain; 409 and 5xx → uncertain; never success | ✅ |
+| Confirmed → exactly one `generate_lead`; none on any failure; WhatsApp/phone never leads | ✅ |
+| Results | `npm test` **89/89**; forms **336/336**; main site **44/44**; lost-response proxy **5/5** |
+| Real OfficeCRM | ⏸ §3 (needs P2 response check and P5) |
 
 ## 6. Results log
 

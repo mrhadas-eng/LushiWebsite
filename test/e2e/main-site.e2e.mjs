@@ -33,10 +33,11 @@ for (const [vp, viewport] of [['desktop', { width: 1280, height: 800 }], ['mobil
   check(p.url().endsWith('/thankyou'), t('success: redirected to /thankyou'));
   check(c.count === before + 1, t('success: OfficeCRM got exactly one request'));
   check(c.last?.auth === 'Bearer local-test-key' && /^application\/json/.test(c.last?.type), t('success: Bearer auth + JSON content type'));
-  check(JSON.stringify(Object.keys(sent).sort()) === '["email","name","notes","phone","source"]', t('success: exactly the OfficeCRM fields'), Object.keys(sent).join(','));
+  check(JSON.stringify(Object.keys(sent).sort()) === '["context","contract","email","lead_source","message","name","phone","submission_id"]', t('success: exactly the website-v1 fields (no source/notes)'), Object.keys(sent).join(','));
   check(sent.name === 'בדיקה אתר חדש' && sent.phone === '050-1234567' && sent.email === 'test@example.com', t('success: name/phone/email mapped'));
-  check(sent.source === 'website / facebook / paid', t('success: source from acquisition'), sent.source);
-  check(/utm_campaign=autumn/.test(sent.notes) && /fbclid/.test(sent.notes) && /דף הבית/.test(sent.notes), t('success: notes carry form, campaign, message'));
+  check(sent.lead_source === 'website-home' && c.last?.idempotencyKey === sent.submission_id, t('success: lead_source website-home, Idempotency-Key = submission_id'), sent.lead_source);
+  check(sent.context?.utm_campaign === 'autumn' && sent.context?.fbclid === 'xyz' && sent.context?.form_name === 'website-home' && sent.message === 'בדיקת חיבור ל-OfficeCRM',
+    t('success: context carries campaign data; message mapped'));
   check((await leads(p)) === 1, t('success: generate_lead fired once'));
   await p.reload();
   check((await leads(p)) === 0, t('refresh of thank-you page: no second conversion'));
@@ -45,6 +46,7 @@ for (const [vp, viewport] of [['desktop', { width: 1280, height: 800 }], ['mobil
   for (const [m, sel] of [['not-configured', '.status:not(.status-uncertain)'], ['success-false', '.status-uncertain'], ['missing-success', '.status-uncertain'], ['malformed', '.status-uncertain'], ['500', '.status-uncertain']]) {
     await mode(m);
     await p.goto(`${B}/${encodeURI('יצירת-קשר')}`);
+    await p.evaluate(() => Object.keys(sessionStorage).filter((k) => k.startsWith('hl_submission:')).forEach((k) => sessionStorage.removeItem(k)));
     await fill(p, '');
     await p.click('.send');
     await p.waitForSelector(`${sel}:not([hidden])`, { timeout: 15000 }).catch(() => {});

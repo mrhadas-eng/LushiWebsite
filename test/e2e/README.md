@@ -8,8 +8,17 @@ node test/e2e/mock-office.mjs &                        # mock OfficeCRM on 127.0
 # .dev.vars: CRM_WEBHOOK_URL=http://127.0.0.1:8799/api/leads/webhook  LEADS_WEBHOOK_API_KEY=local-test-key
 npm run build
 npx wrangler dev --port 8787 --inspector-port 9231 &   # www
-npx wrangler dev -c wrangler.lp.jsonc --port 8788 --inspector-port 9232 &   # lp.
-node test/e2e/forms.e2e.mjs       # validation, delivery failures, conversions, WhatsApp — both sites (240 checks)
+npx wrangler dev -c wrangler.lp.jsonc --port 8788 --inspector-port 9232 --persist-to <own folder> &   # lp. (own state folder, or the two Workers clash)
+node test/e2e/forms.e2e.mjs       # validation, website-v1 payload, delivery outcomes, idempotency, WhatsApp — both sites (336 checks)
 node test/e2e/main-site.e2e.mjs   # main-site OfficeCRM round trip (44 checks)
 ```
-The fake CRM models today's real OfficeCRM (no 400, real 401/503 bodies, every POST saved). Modes (`GET /mode/…`): `ok`, `not-configured`, `500`, `500-after-save`, `slow-after-save`, `hang`, `reset`, `malformed`, `missing-success`, `success-false`; `GET /leads` lists stored leads.
+The fake CRM models OfficeCRM's `website-v1` contract (request validation, idempotent saves with duplicate replays and revisions). Modes (`GET /mode/…`): `ok`, `not-configured`, `force-400`, `in-progress` (409), `500`, `500-after-save`, `slow-after-save`, `drop-after-save-once`, `hang`, `reset`, `malformed`, `missing-success`, `success-false`. `GET /leads` lists stored leads; `GET /reset` clears them. The request rules are the confirmed contract; the response bodies follow the proposed schema (CHANGE-REQUEST §5), not yet checked against OfficeCRM's code.
+
+Lost-response test through the response-dropping proxy (test plan T10c):
+```bash
+node test/e2e/drop-response-proxy.mjs 8798 http://127.0.0.1:8799 &
+npx wrangler dev -c wrangler.lp.jsonc --port 8786 --inspector-port 9233 --persist-to <own folder> \
+  --var CRM_WEBHOOK_URL:http://127.0.0.1:8798/api/leads/webhook &
+node test/e2e/lost-response.e2e.mjs   # 5 checks
+```
+The same proxy and script are used against a **local** OfficeCRM (`npm run dev` + emulators) for the real end-to-end test. Never point them at production.

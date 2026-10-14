@@ -14,7 +14,7 @@ CRM webhook URL secret on the free plan; every branch gets a preview URL.
 |---|---|---|
 | C1 Worker + config | ✅ Done | `wrangler.jsonc`, `worker/index.js`. `npx wrangler deploy --dry-run` succeeds (1,421 assets, 5 KB Worker). Under `wrangler dev` all 25 pages return 200 at their Wix URLs, `/אודות/` returns 307 to `/אודות`, and unknown URLs return the 404 page with status 404 |
 | C2 Redirects + headers | ✅ Done | `public/_redirects` (16 rules) and `public/_headers`. All 16 redirects verified under `wrangler dev` with Hebrew sources. Images and fonts send `max-age=31536000, immutable`; HTML sends `must-revalidate` |
-| C3 Lead endpoint → OfficeCRM | ⚠️ Code done for the original contract; **OfficeCRM changes required** (CHANGE-REQUEST), then the payload update and a local emulator test. ⏳ Live test lead (O3) after that | `POST /api/lead` translates to the OfficeCRM contract (Bearer auth, `name/phone/email/source/notes`) and succeeds only on `success: true`. `npm test`: 41 tests including a mock OfficeCRM server. Browser test on the local Cloudflare runtime with a mock OfficeCRM: 40/40 checks, desktop and mobile |
+| C3 Lead endpoint → OfficeCRM | ✅ `website-v1` implemented and tested against a fake CRM (2026-10-14). ⏳ Real local end-to-end test with OfficeCRM's emulators (test plan), then the O3 test lead | `POST /api/lead` translates to the OfficeCRM contract (Bearer auth, `name/phone/email/source/notes`) and succeeds only on `success: true`. `npm test`: 41 tests including a mock OfficeCRM server. Browser test on the local Cloudflare runtime with a mock OfficeCRM: 40/40 checks, desktop and mobile |
 | C4 Docs + tracking guard | ✅ Done | GTM loads only on `hagarlushi.com` hosts (verified: not requested on the local host) |
 | C5 Deploy pipeline | ⏳ Owner (dashboard) | See O3 below |
 | C6 Landing pages (`lp.`) rebuilt | ✅ Done (code). ⏳ Preview + acceptance (O6); open: D5 (privacy policy, pending the owner's review on the preview), D8 (text approval) | Second Worker `hagarlushi-lp` (`wrangler.lp.jsonc`, `dist-lp/`). All 7 WordPress pages at their exact URLs, same copy/images/layout, forms → `/api/lead`. `npm test` 59/59; browser 66/66 (desktop + mobile, mock OfficeCRM); `wrangler deploy -c wrangler.lp.jsonc --dry-run` valid (258 assets). Full URL list and decisions: **docs/LANDING-PAGE-INVENTORY.md** |
@@ -67,36 +67,53 @@ from lp. is served on www and vice versa. In `npm run dev` the landing pages are
 
 ### Lead endpoint (`POST /api/lead`) → OfficeCRM
 
-**Browser → Worker.** The forms send the website payload (docs/MIGRATION-REVIEW.md §7) to `/api/lead`. The Worker accepts
+**Browser → Worker.** The forms send their fields to `/api/lead`: `full_name, phone, email, message (www), consent (lp), form, page_path`, attribution fields, plus `submission_id` and `submitted_at` added by `submitLead()`. The Worker accepts
 only same-origin `POST` (`Origin` equals the Worker's own origin; `Sec-Fetch-Site` same-origin),
-`Content-Type: application/json`, body ≤ 10 KB. Validation: **name, phone and email required** (OfficeCRM requires them;
-both forms now require all three), email format, phone: a valid Israeli number (or +country code from abroad), formatting ignored (`isValidPhone` in `src/lib/lead-rules.js`); empty and invalid phone are separate errors (`missing_phone`, `invalid_phone`), `form` is `home`, `contact` or one of the `lp-*` forms,
-length limit per field. Landing-page forms (`form` = `lp-home`, `lp-architecture`, `lp-interior-design`, `lp-renovation`) must also send `consent: "yes"` (else 400 `missing_consent`); their `source` starts with `landing-page /` instead of `website /`. If the honeypot field `website` is filled, the Worker replies `{ok:true}` and sends **nothing**.
+`Content-Type: application/json`, body ≤ 10 KB.
 
-**Worker → OfficeCRM** (the existing OfficeCRM leads webhook; OfficeCRM itself isn't changed):
+**Validation:**
+- name, phone and email are required.
+- The phone must be a valid Israeli number, or a `+` country code from abroad; formatting is ignored. Empty and invalid phone are separate errors (`missing_phone`, `invalid_phone`).
+- `form` must be one of the six form ids.
+- `submission_id` must be a UUID.
+- `page_path` must start with `/`, with no query string.
+- Length limits per field (OfficeCRM's: name 200, phone 40, email 254, message 5,000).
+- Landing-page forms must also send `consent: "yes"`, else 400 `missing_consent`.
+
+If the honeypot field `website` is filled, the Worker replies `{ok:true}` and sends **nothing**.
+
+**Worker → OfficeCRM: contract `website-v1`** (confirmed by the OfficeCRM workstream, branch `website-lead-contract-v2`, commit `76b99cc`; details and status in `docs/OFFICECRM-INTEGRATION-CONTRACT.md`):
 ```
 POST <CRM_WEBHOOK_URL>
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer <LEADS_WEBHOOK_API_KEY>
+Idempotency-Key: <submission_id>
 ```
 ```json
 {
-  "name":   "ישראל ישראלי",
-  "phone":  "050-1234567",
-  "email":  "test@example.com",
-  "source": "website / google / cpc",
-  "notes":  "הודעה: מעוניין בתכנון מטבח\n\nטופס: דף יצירת קשר\nנשלח מהדף: /יצירת-קשר\nדף כניסה לאתר: /\nקמפיין: utm_source=google, utm_medium=cpc, utm_campaign=autumn\nGoogle Ads gclid: abc123\nהגיע מ: https://www.google.com/\nנשלח: 2026-10-11T09:00:00.000Z"
+  "contract": "website-v1",
+  "submission_id": "3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c",
+  "lead_source": "lp-architecture",
+  "name": "ישראל ישראלי",
+  "phone": "050-1234567",
+  "email": "test@example.com",
+  "context": { "site": "lp.hagarlushi.com", "page_url": "https://lp.hagarlushi.com/architecture/",
+               "form_name": "lp-architecture", "submitted_at": "2026-10-14T09:00:00.000Z",
+               "landing_page": "/architecture/", "utm_source": "google", "utm_medium": "cpc", "gclid": "abc123" },
+  "consent": { "given": true, "text": "קראתי ומאשר/ת את מדיניות הפרטיות",
+               "policy_url": "https://lp.hagarlushi.com/privacy/", "given_at": "2026-10-14T09:00:00.000Z" }
 }
 ```
-| OfficeCRM field | Filled from |
+| Field | Filled from |
 |---|---|
-| `name` (required) | the form's name (`full_name`) |
-| `phone` (required) | the form's phone, as typed |
-| `email` (required) | the form's email |
-| `source` (required) | acquisition channel, always starting with `website`: `website / <utm_source>[ / <utm_medium>]` if there are campaign tags, else `website / google-ads` (gclid), `website / facebook` (fbclid), `website / <referring site>` (e.g. `instagram.com`), or `website / direct` |
-| `notes` (optional) | the visitor's message, which form, the page it was sent from, the landing page, all utm tags, gclid/fbclid, the referring URL, and the time, with Hebrew labels; max 4,000 characters |
-| `referrerName` (optional) | **never sent**: the website has no "who referred you" field, and a referring website isn't a person's name |
+| `lead_source` | The form id only (`home`→`website-home`, `contact`→`website-contact`, `lp-*` unchanged). Never from the URL or campaign data. OfficeCRM maps it to `Website – General Enquiry` / `Landing Page – General Enquiry` / `Architecture` / `Interior Design` / `Renovation` |
+| `name`, `phone`, `email` | The form, as typed |
+| `message` | The visitor's message (main-site forms), omitted when empty |
+| `context` | `site` and `page_url` (origin + path, no query string) from the Worker's own origin; `form_name` = `lead_source`; `submitted_at` from the browser, kept with the submission ID; landing page, referrer, UTMs, gclid/fbclid when present |
+| `consent` | Landing-page forms only: `given: true`, the exact displayed wording (`CONSENT_TEXT` in `src/lib/lead-rules.js`), the site's `/privacy/` URL, and `given_at` = submission time |
+| `submission_id` / `Idempotency-Key` | One UUID per enquiry, reused on every resend until OfficeCRM confirms it, then cleared (`currentSubmission()` in `src/lib/lead-client.js`) |
+| `source`, `notes`, `referrerName` | **Not sent** |
 
 **Success rule** (updated 2026-10-13). The Worker replies `{ok:true}` only when OfficeCRM answers **HTTP 2xx with JSON `success: true`**
 (real OfficeCRM: 200 `{"success":true,"leadId":"…","message":"Lead created successfully"}`, sent after the lead is written).
@@ -173,13 +190,20 @@ The payload below is today's and will change to the confirmed contract. The firs
    1. Open the address with a campaign tag, e.g. `…workers.dev/?utm_source=test&utm_campaign=migration`.
    2. Fill the **home page** form with clearly marked test data: name `בדיקה – אתר חדש`, your own phone and email,
       message `בדיקת חיבור לאתר החדש – למחוק`. Send. Expected: the thank-you page appears.
-   3. In **OfficeCRM**, find the new lead. Check: name, phone and email are correct; source is `website / test`;
-      the notes show the message, `טופס: דף הבית`, the page and `utm_campaign=migration`.
-   4. Repeat from the **contact page** (`/יצירת-קשר`). The notes should say `טופס: דף יצירת קשר`.
-   5. Optional log check: Workers → hagarlushi → **Logs** → each test should show `lead: created in OfficeCRM (leadId …)`
+   3. In **OfficeCRM**, find the new lead. Check:
+      - name, phone and email are correct
+      - the category is `Website – General Enquiry`
+      - the message is shown on the lead
+      - the page and `utm_campaign=migration` are in its submission context
+   4. Repeat from the **contact page** (`/יצירת-קשר`): same category, with its own message.
+   5. Optional log check: Workers → hagarlushi → **Logs** → each test should show `lead: created in OfficeCRM (leadId …, submission …)`
       with the same lead number OfficeCRM shows.
-   6. If the form shows the red error instead: the logs show the reason (`http_401` = wrong key, `http_400` = a field
-      OfficeCRM didn't accept, `not_confirmed` = OfficeCRM replied without `success: true`, `not_configured` = a secret is missing).
+   6. If the form shows a red message instead, the logs show the reason:
+      - `http_401`: wrong key
+      - `http_400`: a field OfficeCRM didn't accept
+      - `not_confirmed`: OfficeCRM replied without `success: true`
+      - `not_configured`: a secret is missing
+      - `unknown`: timeout or 5xx. **Do not resend from another tab**; check OfficeCRM first.
    7. Delete the test leads in OfficeCRM.
 4. Click through the pages on the preview address, including a few old Wix URLs from docs/MIGRATION-REVIEW.md §5.
 
@@ -189,9 +213,8 @@ The payload below is today's and will change to the confirmed contract. The firs
    - Non-production branch deploy command: `npx wrangler versions upload -c wrangler.lp.jsonc`.
 2. Add the same two secrets to **hagarlushi-lp** (steps as in O3.2).
 3. On `https://hagarlushi-lp.<account>.workers.dev/architecture/?utm_source=test&utm_campaign=lp-migration`, send one
-   clearly marked test lead (name `בדיקה – דף נחיתה`), with the privacy box ticked. Expected: `/thankyou/` appears; in OfficeCRM
-   the source is `landing-page / test` and the notes say `טופס: דף נחיתה – אדריכלות`, the page and `אישור מדיניות פרטיות: כן`.
-   Repeat for `/`, `/interior-design/`, `/renovation/`. Delete the test leads.
+   clearly marked test lead (name `בדיקה – דף נחיתה`), with the privacy box ticked. Expected: `/thankyou/` appears. In OfficeCRM the category is `Architecture`, and the lead shows the consent record (given, wording, privacy URL, time) and the submission context.
+   Repeat for `/` (`Landing Page – General Enquiry`), `/interior-design/` (`Interior Design`) and `/renovation/` (`Renovation`). Delete the test leads.
 4. Compare each page side by side with the WordPress page on a phone and a computer.
 
 ### O4. Switch nameservers (zero downtime: records are identical, only the DNS provider changes)
