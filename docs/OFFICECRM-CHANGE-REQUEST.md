@@ -1,6 +1,6 @@
 # OfficeCRM change request: website lead intake (for the OfficeCRM workstream)
 
-From: the website migration (`mrhadas-eng/LushiWebsite`, branch `cloudflare-migration`). Date: 2026-10-13, updated 2026-10-14 with the owner's final decisions on categories and duplicate protection.
+From: the website migration (`mrhadas-eng/LushiWebsite`, branch `cloudflare-migration`). Date: 2026-10-13, updated 2026-10-14 with the owner's final decisions on categories, duplicate protection and legacy labels.
 Status: **REQUESTED, for assessment and implementation in the OfficeCRM repository.** No OfficeCRM code is changed from the website branch.
 Basis: the owner's decisions of 2026-10-13 and 2026-10-14, and the OfficeCRM code report (`claude/website-lead-integration.md` in the OfficeCRM session). Background: `docs/OFFICECRM-INTEGRATION-CONTRACT.md`.
 
@@ -13,7 +13,8 @@ Basis: the owner's decisions of 2026-10-13 and 2026-10-14, and the OfficeCRM cod
 5. **Only information the CRM demonstrably saves**, on the lead or in an associated record, counts as persisted. The 30-day raw `webhook-logs` don't count.
 6. **(2026-10-14) Duplicate protection is mandatory before production cutover.** Repeated requests with the same submission ID must create exactly one lead, including when the first request saved the lead but its response was lost (§6).
 7. **(2026-10-14) Explicit, stable category labels** (§4). Categories are **never** inferred from campaign query parameters or URLs.
-8. **Priorities:**
+8. **(2026-10-14) Legacy labels are preserved.** No relabelling of existing leads and no bulk relabelling. The WordPress/Elementor path and its Hebrew categorisation keep working unchanged until the lp cutover. Legacy and new labels coexist; any unified view is a read-only reporting mapping (§4a).
+9. **Required before production cutover (owner, 2026-10-14):** idempotency, correct category mapping, visible message storage, and lp consent recording. **Order of priority:**
    - source and category handling
    - visible message storage
    - consent recording
@@ -27,6 +28,7 @@ Basis: the owner's decisions of 2026-10-13 and 2026-10-14, and the OfficeCRM cod
 - The webhook was built for Elementor forms. The WordPress landing pages on `lp.hagarlushi.com` **very likely post to it today**. That is assumed; it still needs confirming in WordPress admin → Elementor → form → Actions After Submit.
 - Those pages stay live until the lp cutover, so **the current form-urlencoded / `fields[...][value]` path must keep working unchanged** until the owner retires it.
 - The new behaviour should apply to requests that identify themselves as the new website contract, e.g. JSON with `"contract": "website-v1"`.
+- **(Owner, 2026-10-14)** The legacy path keeps its existing Hebrew categorisation unchanged. Existing leads are **not** relabelled, and there is **no** bulk relabelling. Legacy and new labels coexist (§4a).
 
 ## 3. Proposed request contract: `website-v1`
 
@@ -89,7 +91,27 @@ The mapping is **explicit and stable**: `lead_source` → category label, exactl
 - The labels use an en dash (`–`, U+2013), with spaces around it.
 - `lead_source` values are a fixed vocabulary. Adding a form means adding a row here, with the owner's approval.
 - The website derives `lead_source` **only** from the form's fixed identifier, which the Worker validates against its own list. It never derives it from the URL or campaign data.
-- **Open question for the OfficeCRM workstream and the owner (doesn't block the website):** the legacy Elementor path currently produces Hebrew labels (`אדריכלות`, `עיצוב פנים`, `Elementor / דף נחיתה`). Should those leads keep their labels until the lp cutover, or be mapped to the new labels? Should existing leads be relabelled? Reports that mix both label sets will need a mapping.
+### 4a. Legacy and new labels coexist (owner decision, 2026-10-14)
+
+| Rule | |
+|---|---|
+| **Existing leads** | **Not relabelled.** Every stored lead keeps its historical label. No bulk relabelling or data migration is part of this work |
+| **Legacy WordPress/Elementor path** | **Unchanged** until the landing-page cutover, including its Hebrew keyword-based categorisation (`אדריכלות`, `עיצוב פנים`, `Elementor / דף נחיתה`). Neither broken nor silently changed |
+| **New website path (`website-v1`)** | Only the five English labels above, from explicit `lead_source` identifiers |
+| **During the transition** | Both label sets appear in OfficeCRM. After the lp cutover, new leads arrive only through `website-v1`; legacy labels remain on historical leads |
+
+**Reporting-level mapping (read-only).** For reports that need one category per lead, apply this mapping **when reading or exporting**, e.g. in a report query, an export script or a computed display field. **Never write it back** to stored records.
+
+| Stored label (legacy, Elementor path) | Report as (new category) | Confidence |
+|---|---|---|
+| `אדריכלות` | `Architecture` | Exact: the legacy rule assigns it to URLs containing "architect", i.e. lp `/architecture/` |
+| `עיצוב פנים` | `Interior Design` | Exact for lp `/interior-design/`. The legacy rule also matches any URL containing "interior" or "design", so a few legacy leads may be mis-sorted at the source |
+| `Elementor / דף נחיתה` | `Landing Page – General Enquiry` | **Approximate.** This legacy fallback also covers lp `/renovation/` and any page without a keyword. If the legacy lead stored its page URL, a URL containing `/renovation/` can be reported as `Renovation`; otherwise it stays `Landing Page – General Enquiry` |
+| `Website – General Enquiry`, `Landing Page – General Enquiry`, `Architecture`, `Interior Design`, `Renovation` | unchanged | new path |
+| anything else (manual entries, other channels) | shown as stored | not part of the website migration |
+
+Whether legacy leads store their page URL, and where, is **to be confirmed by the OfficeCRM workstream**. It decides whether legacy renovation leads can be separated in reports.
+
 
 ## 5. Responses (safe error semantics)
 
@@ -144,7 +166,8 @@ Requirement: repeated requests with the same submission ID create **exactly one*
 | 5 | B4 | Safe error semantics: no 500 after a write; secondary failures become warnings | Launch |
 | 6 | B3 | Idempotency (§6): atomic create-if-absent on `Idempotency-Key`; same `leadId` with `duplicate: true` on repeats; safe under concurrency and lost responses | **Production cutover (mandatory, owner 2026-10-14)** |
 | 7 | B8 | Webhook security: constant-time key comparison; remove the `?api_key=` query parameter and the GET-with-parameters → POST path (once nothing uses them); restrict CORS (server-to-server needs none); keep the key in Secret Manager; a documented rotation procedure | Before launch (recommended) |
-| 8 | (none) | Tests in OfficeCRM for all of the above, plus a regression test that the Elementor form-urlencoded path is unchanged | with each step |
+| 8 | (none) | Tests in OfficeCRM for all of the above, plus a regression test that the Elementor form-urlencoded path is unchanged, **including its Hebrew category labels**, and that no existing lead is modified | with each step |
+| 9 | (optional) | A **read-only** reporting mapping from legacy to new categories (§4a), applied at read or export time only. Never written to stored leads | not blocking |
 
 ## 8. What the website does once the contract is confirmed
 

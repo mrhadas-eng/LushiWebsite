@@ -1,6 +1,6 @@
 # OfficeCRM integration contract (website ↔ OfficeCRM)
 
-Status: **2026-10-14, after the owner's decisions (D1–D11). NOT compatible yet: the OfficeCRM changes in `docs/OFFICECRM-CHANGE-REQUEST.md` are required first.**
+Status: **2026-10-14, after the owner's decisions (D1–D12). NOT compatible yet: the OfficeCRM changes in `docs/OFFICECRM-CHANGE-REQUEST.md` are required first.**
 - Done on the website (doesn't depend on CRM field names): definite vs uncertain outcomes with the approved text, the 20 s timeout, response-time logging, and a fake CRM that models today's real behaviour.
 - Waiting for the confirmed field contract: the payload changes (A1, A2, A4).
 
@@ -84,7 +84,7 @@ Both keep the typed values, show this site's phone and WhatsApp, and record no c
 
 ## 4. `page_url` and `form_name` for each form (today's CRM)
 
-> **Superseded by D1/D2/D11:** OfficeCRM is asked to read an explicit `lead_source` and map it to fixed labels (`Website – General Enquiry`, `Landing Page – General Enquiry`, `Architecture`, `Interior Design`, `Renovation`; CHANGE-REQUEST §4). It must never infer the category from URLs or campaign parameters. This section describes how **today's** CRM categorises the forms, kept for the transition and for checking that the Elementor path is unchanged.
+> **Superseded by D1/D2/D11:** OfficeCRM is asked to read an explicit `lead_source` and map it to fixed labels (`Website – General Enquiry`, `Landing Page – General Enquiry`, `Architecture`, `Interior Design`, `Renovation`; CHANGE-REQUEST §4). It must never infer the category from URLs or campaign parameters. This section describes how **today's** CRM categorises the forms, kept for the transition and for checking that the Elementor path is unchanged. Under D12 this legacy categorisation stays as it is for the WordPress/Elementor path until the lp cutover, and historical leads keep their labels.
 
 The CRM rule, as reported: the URL contains `interior` or `design` → `עיצוב פנים`; contains `architect` → `אדריכלות`; else `Elementor / דף נחיתה`.
 
@@ -175,6 +175,7 @@ What the WordPress Elementor form sends as `form_name` today is **UNKNOWN** (Wor
 | D8 | OfficeCRM changes B1–B8 requested for the OfficeCRM workstream, prioritised: source/category, visible message, consent, validation, duplicate protection, safe error semantics, security. CRM code stays out of this branch (`docs/OFFICECRM-CHANGE-REQUEST.md`). |
 | D10 (2026-10-14) | **Duplicate protection is mandatory before production cutover.** OfficeCRM enforces idempotency (B3): repeated requests with the same submission ID create exactly one lead. The website reuses the ID for resends of the same enquiry and creates a new ID for a genuinely new one. The lost-response case (the first request saves, its response is lost) must be tested. |
 | D11 (2026-10-14) | **Explicit, stable category labels:** main website → `Website – General Enquiry`; lp homepage → `Landing Page – General Enquiry`; architecture → `Architecture`; interior design → `Interior Design`; renovation → `Renovation`. Never inferred from campaign query parameters; the mapping is fixed (`lead_source` → label). |
+| D12 (2026-10-14) | **Legacy labels preserved; labels coexist.** Existing OfficeCRM leads are **not** relabelled, and there is no bulk relabelling in this migration. The WordPress/Elementor integration keeps working, with its Hebrew categorisation unchanged, until the lp cutover. Only leads from the new website integration use the five English labels with explicit form identifiers. A unified view, if needed, is a **read-only reporting mapping** (CHANGE-REQUEST §4a) that never modifies stored records. |
 | D9 | Stop relying on `webhook-logs` or discarded text. Information counts as persisted **only** when the CRM demonstrably saves it on the lead or an associated record. |
 
 ## 9. Recommendation

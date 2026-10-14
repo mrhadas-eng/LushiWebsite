@@ -1,6 +1,6 @@
 # OfficeCRM integration test plan
 
-Status: **2026-10-14, after the owner's decisions (incl. D10 idempotency mandatory, D11 category labels). Not runnable yet.** It needs the OfficeCRM changes (`docs/OFFICECRM-CHANGE-REQUEST.md`, orders 1–6, including B3 idempotency) and the website payload changes (A1, A2, A4) built on the **confirmed** field contract.
+Status: **2026-10-14, after the owner's decisions (incl. D10 idempotency mandatory, D11 category labels, D12 legacy labels preserved). Not runnable yet.** It needs the OfficeCRM changes (`docs/OFFICECRM-CHANGE-REQUEST.md`, orders 1–6, including B3 idempotency) and the website payload changes (A1, A2, A4) built on the **confirmed** field contract.
 Contract and findings: `docs/OFFICECRM-INTEGRATION-CONTRACT.md`.
 
 - **No staging exists.** The integration test runs **locally**: the changed OfficeCRM (`npm run dev`, Firebase emulators, port 3000) with both website Workers (`wrangler dev`).
@@ -175,10 +175,14 @@ Across T5–T10: no `generate_lead` except on confirmed leads. Opening or refres
 - **Worker:** only `created … (leadId, ms)` / `did not confirm … (reason, outcome, ms)`. No personal data, URL or key.
 - **CRM:** check its request logging for `Authorization` headers.
 
-### T14: Elementor regression (until the lp cutover)
-- **Action:** POST an Elementor-style form-urlencoded payload to the **local** CRM.
-- **Expected:** handled exactly as before the CRM changes (CHANGE-REQUEST §2).
-- **Cleanup:** delete.
+### T14: Legacy path and historical labels unchanged (D12)
+- **Setup:** before the run, export the emulator's `leads` collection, or seed a few legacy-style leads labelled `אדריכלות`, `עיצוב פנים` and `Elementor / דף נחיתה`.
+- **T14a:** POST Elementor-style form-urlencoded payloads to the **local** CRM with `page_url` `…/architecture/`, `…/interior-design/` and `…/renovation/`.
+  - **Expected:** handled exactly as before the CRM changes, with the **Hebrew** labels `אדריכלות`, `עיצוב פנים` and `Elementor / דף נחיתה`. Not the new English labels.
+- **T14b:** after the whole run, compare the pre-existing or seeded leads with the export.
+  - **Expected:** **no stored lead's label or other field changed.** No relabelling happened.
+- **T14c (if the reporting mapping is built):** the mapping shows legacy leads under the new categories in the report or export only. The stored documents are unchanged (same check as T14b).
+- **Cleanup:** delete the leads created by the run; leave seeded and pre-existing data as it was.
 
 ## 4. Production verification (only after §3 passes, with explicit owner approval)
 
