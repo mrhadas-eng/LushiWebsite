@@ -15,6 +15,8 @@ Legend: `[x]` verified complete; `[ ]` open; `[?]` not yet verified. Do not mark
 - [x] Website `npm run check-launch` executed on 2026-10-15: repository/configuration checks passed except one intentional launch blocker, owner review of copied landing-page privacy policy at `/privacy/`. The script reports 12 out-of-scope Wix redirects awaiting approval as non-blocking; check active campaigns before approving the three old landing-page redirects.
 - [x] Website `npm test` executed on 2026-10-15: 89 tests passed, 0 failed, 0 skipped. Coverage includes form validation, consent wording, duplicate/replay handling, failure and uncertain outcomes, Worker routing, and mock CRM HTTP round trips. This is automated/mock-based evidence, not proof of live OfficeCRM delivery.
 - [x] Website `npm run build` executed on 2026-10-15: Astro built 35 pages successfully; split script produced `dist` (1,403 files for www) and `dist-lp` (251 files for lp), with no build error.
+- [x] Main Worker Wrangler dry-run executed on 2026-10-15: Wrangler 4.151.0 read 1,431 files from `dist`, reported `env.ASSETS`, and exited normally without deploying.
+- [ ] Verify landing-page Worker Wrangler dry-run.
 - [ ] Verify OfficeCRM's merged `dev` version is actually deployed to the production Firebase App Hosting backend. A Git merge does not prove deployment.
 - [ ] Complete real HTTP end-to-end test from the website Cloudflare Worker through OfficeCRM.
 - [ ] Resolve and verify Cloudflare Worker secret configuration. Earlier local `.dev.vars` output showed a malformed Markdown-style `CRM_WEBHOOK_URL`; do not trust the website-to-CRM test until verified.
@@ -31,9 +33,9 @@ Legend: `[x]` verified complete; `[ ]` open; `[?]` not yet verified. Do not mark
 - [x] Ran `npm run check-launch` on 2026-10-15. All repository checks passed except the privacy-policy owner-review blocker described above.
 - [x] Ran `npm test` on 2026-10-15: 89/89 pass, 0 failures.
 - [x] Ran `npm run build` on 2026-10-15: 35 pages; `dist` has 1,403 files and `dist-lp` has 251 files.
+- [x] Ran `npx wrangler deploy --dry-run` on 2026-10-15: main Worker config/assets accepted; no deployment performed.
 - [ ] Verify the current website PR #1 status and decide separately whether/when to merge it. Do not merge or deploy automatically as part of these checks.
 - [ ] Verify the latest website build and tests from the exact intended release commit.
-- [ ] Verify `npx wrangler deploy --dry-run` for the main Worker.
 - [ ] Verify `npx wrangler deploy -c wrangler.lp.jsonc --dry-run` for the landing-page Worker.
 - [ ] Verify `office.hagarlushi.com` will remain untouched.
 
