@@ -12,6 +12,7 @@ Legend: `[x]` verified complete; `[ ]` open; `[?]` not yet verified. Do not mark
 - [x] OfficeCRM website lead deduplication PR #2 merged to `dev` on 2026-10-15 (merge commit `fb4e4c0b2aea0b0618ad9936c8ee3604a686c9f1`).
 - [x] Reported OfficeCRM tests: 183 unit tests, TypeScript clean, isolated emulator suite 17/17 across three runs. GitHub PR checks were not configured/reported; do not describe these as CI results.
 - [x] Local direct CRM webhook synthetic duplicate test returned `duplicate: true`, `outcome: replay`, and the same lead ID.
+- [x] Website `npm run check-launch` executed on 2026-10-15: repository/configuration checks passed except one intentional launch blocker, owner review of copied landing-page privacy policy at `/privacy/`. The script reports 12 out-of-scope Wix redirects awaiting approval as non-blocking; check active campaigns before approving the three old landing-page redirects.
 - [ ] Verify OfficeCRM's merged `dev` version is actually deployed to the production Firebase App Hosting backend. A Git merge does not prove deployment.
 - [ ] Complete real HTTP end-to-end test from the website Cloudflare Worker through OfficeCRM.
 - [ ] Resolve and verify Cloudflare Worker secret configuration. Earlier local `.dev.vars` output showed a malformed Markdown-style `CRM_WEBHOOK_URL`; do not trust the website-to-CRM test until verified.
@@ -19,14 +20,15 @@ Legend: `[x]` verified complete; `[ ]` open; `[?]` not yet verified. Do not mark
 - [ ] Check WordPress/Elementor form delivery settings before moving `lp`.
 - [ ] Export and compare the Wix DNS zone, preserve mail records and `office`, and verify the Cloudflare zone.
 - [ ] Owner approval of any production deploy or DNS change remains outstanding.
+- [ ] Local main Worker was not running at `127.0.0.1:8787` when checked (curl returned HTTP 000); this only confirms no local server was listening at that moment, not a production outage.
 
 ## A. Repository and release readiness
 
 - [x] Website migration code and launch documentation exist on branch `cloudflare-migration`.
 - [x] OfficeCRM website-v1 implementation has been merged into `dev`.
+- [x] Ran `npm run check-launch` on 2026-10-15. All repository checks passed except the privacy-policy owner-review blocker described above.
 - [ ] Verify the current website PR #1 status and decide separately whether/when to merge it. Do not merge or deploy automatically as part of these checks.
 - [ ] Verify the latest website build and tests from the exact intended release commit.
-- [ ] Run `npm run check-launch` and resolve every blocking item.
 - [ ] Verify `npx wrangler deploy --dry-run` for the main Worker.
 - [ ] Verify `npx wrangler deploy -c wrangler.lp.jsonc --dry-run` for the landing-page Worker.
 - [ ] Verify `office.hagarlushi.com` will remain untouched.
