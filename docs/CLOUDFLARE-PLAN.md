@@ -57,11 +57,11 @@ from lp. is served on www and vice versa. In `npm run dev` the landing pages are
 | Command | What it does |
 |---|---|
 | `npm run dev` | Astro dev server (fast; **no** `/api/lead`, so the form shows its error message) |
-| `npm run preview:cf` | Build + run on the local Cloudflare runtime, with `/api/lead` (needs `.dev.vars`) |
+| `npm run preview:cf` | Build + run on the local Cloudflare runtime, with `/api/lead` (needs `.dev.vars`). Always **http://localhost:8787** (port pinned in `wrangler.jsonc`) |
 | `npm test` | Worker unit tests + checks on the built site (run `npm run build` first) |
 | `npm run check-launch` | Repository launch checks + list of manual dashboard checks |
 | `npx wrangler deploy --dry-run` | Validates the Cloudflare config without uploading |
-| `npm run preview:cf:lp` | Same for the landing pages (`wrangler dev -c wrangler.lp.jsonc`) |
+| `npm run preview:cf:lp` | Same for the landing pages, always on **http://localhost:8788** (pinned in `wrangler.lp.jsonc`, own local state folder). Pages are at the root as on lp.hagarlushi.com, e.g. **http://localhost:8788/privacy/**; `/lp/...` exists only under `npm run dev`. Both previews can run at once; if a port is taken, wrangler now stops with "Address already in use" instead of silently moving to another port |
 | `npx wrangler deploy -c wrangler.lp.jsonc --dry-run` | Validates the landing-page Worker |
 | `npm run deploy` / `npm run deploy:lp` | Build + deploy www / lp. **Only with the owner's approval** |
 

@@ -15,5 +15,8 @@
     "not_found_handling": "404-page",
     "run_worker_first": ["/api/*"]
   },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Local preview only (`npm run preview:cf:lp`): http://localhost:8788/privacy/ etc. (lp pages are at the root,
+  // as on lp.hagarlushi.com; /lp/... exists only under `npm run dev`). Distinct from the main preview (8787).
+  "dev": { "port": 8788, "inspector_port": 9230 }
 }

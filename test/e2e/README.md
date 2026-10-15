@@ -11,7 +11,10 @@ npx wrangler dev --port 8787 --inspector-port 9231 &   # www
 npx wrangler dev -c wrangler.lp.jsonc --port 8788 --inspector-port 9232 --persist-to <own folder> &   # lp. (own state folder, or the two Workers clash)
 node test/e2e/forms.e2e.mjs       # validation, website-v1 payload, delivery outcomes, idempotency, WhatsApp — both sites (336 checks)
 node test/e2e/main-site.e2e.mjs   # main-site OfficeCRM round trip (44 checks)
+node test/e2e/preview-routing.e2e.mjs   # both previews route to the right Worker; lp /privacy/ on 8788 (6 checks)
 ```
+`npm run preview:cf` (8787) and `npm run preview:cf:lp` (8788, own state folder) use the same fixed ports, so
+`preview-routing.e2e.mjs` also works against them.
 The fake CRM models OfficeCRM's `website-v1` contract (request validation, idempotent saves with duplicate replays and revisions). Modes (`GET /mode/…`): `ok`, `not-configured`, `force-400`, `in-progress` (409), `500`, `500-after-save`, `slow-after-save`, `drop-after-save-once`, `hang`, `reset`, `malformed`, `missing-success`, `success-false`. `GET /leads` lists stored leads; `GET /reset` clears them. The request rules are the confirmed contract; the response bodies follow the proposed schema (CHANGE-REQUEST §5), not yet checked against OfficeCRM's code.
 
 Lost-response test through the response-dropping proxy (test plan T10c):

@@ -13,7 +13,7 @@ Static Astro 5 site replacing the Wix site at https://www.hagarlushi.com (Hebrew
 - Agreed scope: only the 7 lp pages are migrated as landing pages; old Wix landing/obsolete pages are not recreated (their redirects are `scope: 'out'`, non-blocking). WhatsApp clicks are never leads (no CRM, no thank-you, no `generate_lead`). Contact numbers: lp 052-431-7164 (`972524317164`), www 050-578-8634. Form rules and Hebrew messages live in `src/lib/lead-rules.js`, shared by the forms and the Worker.
 - Pre-launch / DNS-migration review brief (every setting, ID, URL, redirect, tracking event and the lead payload): `docs/MIGRATION-REVIEW.md`.
 - Owner-facing checklist (Hebrew): `LAUNCH.md`.
-- Commands: `npm install`, `npm run dev`, `npm run build`, `npm test` (after a build), `npm run check-launch`, `npm run preview:cf` (local Cloudflare runtime; needs a git-ignored `.dev.vars`), `npx wrangler deploy --dry-run`.
+- Commands: `npm install`, `npm run dev`, `npm run build`, `npm test` (after a build), `npm run check-launch`, `npm run preview:cf` (local Cloudflare runtime on :8787; needs a git-ignored `.dev.vars`), `npm run preview:cf:lp` (lp Worker on :8788, pages at the root, e.g. `/privacy/`), `npx wrangler deploy --dry-run`.
 - Never run `npm run deploy` / `wrangler deploy`, or change DNS, without the owner's explicit approval.
 
 ## Rules
