@@ -1,7 +1,7 @@
 # hagarlushi.com: מסמך בדיקה לפני מעבר מ-Wix
 
 המסמך מתאר את כל מה שבודק חיצוני, למשל ChatGPT, צריך כדי לוודא שהאתר החדש מוכן למעבר ה-DNS ושלא אבדה שום פונקציונליות מאתר ה-Wix.
-עודכן לאחרונה: 2026-10-11 (הוחלט לארח ב-Cloudflare). הממצאים על אתר ה-Wix נאספו ב-2026-10-08.
+עודכן לאחרונה: 2026-10-11 (קוד Cloudflare הושלם ונבדק מקומית; טרם נפרס). הממצאים על אתר ה-Wix נאספו ב-2026-10-08.
 
 ---
 
@@ -45,23 +45,27 @@
 |---|---|
 | מאגר | `github.com/mrhadas-eng/LushiWebsite`, ענף `main` |
 | טכנולוגיה | Astro 5, פלט סטטי מלא (`dist/`), עברית, RTL |
-| אחסון | **Cloudflare Workers (static assets) + Cloudflare DNS**, בתוכנית החינמית. הוחלט ב-2026-10-11. עדיין לא הוגדר: התוכנית והמשימות ב-`docs/CLOUDFLARE-PLAN.md` |
+| אחסון | **Cloudflare Workers (static assets) + Cloudflare DNS**, בתוכנית החינמית. הקוד וההגדרות מוכנים (C1–C4), ועדיין לא נפרס (C5 ושלבי O1–O5 ב-`docs/CLOUDFLARE-PLAN.md`) |
 | דומיין קנוני | `https://www.hagarlushi.com` (עם www) |
-| הרצה מקומית | `npm install`, `npm run dev`, ואז `http://localhost:4321` |
+| הרצה מקומית | `npm install`, ואז `npm run dev` (מהיר, בלי `/api/lead`), או `npm run preview:cf` (סביבת Cloudflare מקומית, כולל `/api/lead`, דורש `.dev.vars`) |
+| בדיקות | `npm test` (Worker וקבצי האתר, אחרי `npm run build`), `npx wrangler deploy --dry-run` (תקינות הגדרות Cloudflare) |
 | בדיקת מוכנות | `npm run check-launch` (מחזיר שגיאה אם חסר משהו קריטי) |
 
 ### מפת קבצים
 
 | מה | איפה |
 |---|---|
-| כל התוכן וההגדרות: טלפון, מייל, וואטסאפ, GTM, webhook | `src/data/content.mjs` (האובייקט `site`) |
+| כל התוכן וההגדרות: טלפון, מייל, וואטסאפ, GTM | `src/data/content.mjs` (האובייקט `site`) |
+| הגדרות Cloudflare | `wrangler.jsonc` |
+| נקודת הקצה `/api/lead` (העברה ל-CRM) | `worker/index.js` |
+| בדיקות אוטומטיות | `test/worker.test.mjs`, `test/site.test.mjs` |
 | תבנית עמוד בסיסית: head, meta, canonical, noindex | `src/layouts/Base.astro` |
 | אנליטיקס ואירועי לידים | `src/components/Tracking.astro` |
 | טופס יצירת קשר ושליחה ל-CRM | `src/components/ContactForm.astro` |
 | דף תודה וספירת ליד | `src/pages/thankyou.astro` |
 | כפתור וואטסאפ צף | `src/components/WhatsAppButton.astro` |
 | sitemap ו-robots | `src/pages/sitemap.xml.js`, `src/pages/robots.txt.js` |
-| הפניות 301 וכותרות cache | כרגע `firebase.json`. יעברו ל-`public/_redirects` ו-`public/_headers` (משימה C2) |
+| הפניות 301 וכותרות cache | `public/_redirects`, `public/_headers` |
 | תוכנית האחסון ב-Cloudflare | `docs/CLOUDFLARE-PLAN.md` |
 | בדיקת מוכנות | `scripts/check-launch.mjs` |
 | משימות פתוחות | `LAUNCH.md` |
@@ -108,7 +112,7 @@
 | 26 דפים (בית, אודות, 2 קטגוריות, 18 פרויקטים, עיתונות, יצירת קשר, נגישות) | כל הדפים, אותן כתובות | ✅ |
 | תפריט עם תתי-תפריטים | `Header.astro`, תפריט המבורגר במובייל | ✅ |
 | מצגת תמונות בדף הבית, גלריה נגללת, גלריות פרויקטים ותצוגת תמונה מוגדלת | `Slideshow.astro`, `Gallery.astro`, `src/lib/lightbox.js` | ✅ |
-| טפסי Wix | שליחה ישירה ל-webhook של ה-CRM, ואז מעבר ל-`/thankyou` | ⏳ חסרה כתובת ה-webhook |
+| טפסי Wix | שליחה ל-`/api/lead` (Cloudflare Worker) שמתרגם ושולח ל-OfficeCRM, ומעבר ל-`/thankyou` רק אחרי `success: true` | ✅ קוד ונבדק מול OfficeCRM מדומה. ⏳ ליד בדיקה מול OfficeCRM האמיתי (O3) |
 | Wix Chat | כפתור וואטסאפ צף, `wa.me/972505788634` | ✅ (לאשר מספר והודעה) |
 | GTM: GA4, Ads, Meta, Clarity | אותו קונטיינר, נטען רק בדומיין האמיתי | ✅ |
 | מעקב לידים מהאתר הראשי | לא היה | ✅ אירועים קיימים. ⏳ צריך להגדיר טריגרים ב-GTM |
@@ -129,13 +133,24 @@
 `/להיות-יפה-שירלי`, `/אור-לעתיד`, `/מיברג`, `/סטון-גלרי`, `/יוניקורן`, `/copy-of-יוניקורן-1`, `/געתון`, `/copy-of-יוניקורן`, `/מסודרים-ליד-ביבי`, `/מנהל-הפרויקט`, `/אבק-כוכבים`, `/דירה-להשכיר`, `/האקדמיים`, `/יפה-להשכרה`, `/עיצוב-מחדש`, `/צאו-לחופשה`, `/פסיכולוגית-אלגנטית`, `/הבן-של-הנגר`.
 **חדש:** `/thankyou` (noindex, לא נכלל ב-sitemap).
 
-**הפניות 301** (כרגע ב-`firebase.json`, ויעברו ל-`public/_redirects`) לטיוטות, לכפילויות ולדפי התבנית של Wix:
-`/home`, `/bio`, `/פרוייקטים`, `/להיות-יפה`, `/copy-of-להיות-יפה`, `/redesign`, `/go-on-vacation`, `/הבן-של-הנגר3`, `/דףנחיתה2`, `/דף-נחיתה-פרטיים`, `/דף-נחיתה-פרטי`, `/coming-soon`, `/portfolio-collections/**`, ו-3 כתובות ה-sitemap הישנות.
+**הפניות 301** (`public/_redirects`) לטיוטות, לכפילויות ולדפי התבנית של Wix:
+`/home`, `/bio`, `/פרוייקטים`, `/להיות-יפה`, `/copy-of-להיות-יפה`, `/redesign`, `/go-on-vacation`, `/הבן-של-הנגר3`, `/דףנחיתה2`, `/דף-נחיתה-פרטיים`, `/דף-נחיתה-פרטי`, `/coming-soon`, `/portfolio-collections/*`, ו-3 כתובות ה-sitemap הישנות.
 
-**לבדיקה:**
-- שההפניות בעברית עובדות ב-`_redirects` של Cloudflare (גם בכתובת מקודדת `%D7…`). לבדוק ב-`wrangler dev` ובקישור תצוגה מקדימה לפני המעבר.
-- `html_handling: "drop-trailing-slash"` ב-`wrangler.jsonc`: כל דף נטען בכתובת בלי לוכסן בסוף (200), ו-`/אודות/` מופנה ל-`/אודות`. ברירת המחדל של Cloudflare הפוכה, ותשבור את הכתובות.
-- דומיין ללא www (`hagarlushi.com`) צריך הפניה 301 ל-`www`, דרך Redirect Rule ב-Cloudflare (פירוט ב-`docs/CLOUDFLARE-PLAN.md`, שלב O4).
+**נבדק ב-`wrangler dev` (2026-10-11):**
+- כל 25 הדפים מחזירים 200 בכתובת של Wix, בלי הפניה.
+- כל 16 ההפניות מחזירות 301 ליעד הנכון, כולל מקורות בעברית.
+- `/אודות/` מחזיר 307 ל-`/אודות` (בזכות `html_handling: "drop-trailing-slash"`; ברירת המחדל של Cloudflare הפוכה ותשבור את הכתובות).
+- כתובת לא קיימת מחזירה את דף ה-404 עם סטטוס 404. דף ה-404 ודף התודה הם noindex ובלי canonical.
+- `sitemap.xml` כולל 25 דפים, בלי `lastmod` (תאריך בנייה היה מציג כל דף כ"עודכן" בכל פריסה).
+
+**עוד לבדוק אחרי הפריסה:** אותן בדיקות בכתובת `workers.dev`, והפניית `hagarlushi.com` ל-`www` (Redirect Rule, שלב O5).
+
+**עדכון 2026-10-11 (בדיקת תוכן):**
+- `/דף-נחיתה-פרטיים`, `/דף-נחיתה-פרטי` ו-`/דףנחיתה2` הם **דפי נחיתה חיים** ולא טיוטות. הם מחוץ להיקף ולא נבנים מחדש; ההפניה שלהם ממתינה לאישור אחרי בדיקת קמפיינים פעילים, ולא עוצרת את המעבר (D3).
+- `/copy-of-להיות-יפה` הוא עותק של "דירה להשכיר", וההפניה שלו תוקנה.
+- כל ההפניות מסומנות "ממתינות לאישור" ב-`src/data/url-inventory.mjs`.
+
+**דפי הנחיתה lp.hagarlushi.com** נבנו מחדש. כל 7 הכתובות נשמרו, כולל הלוכסן בסוף. הרשימה המלאה של כל הכתובות, ההחלטות D1–D8 ותוכנית ה-DNS נמצאות ב-`docs/LANDING-PAGE-INVENTORY.md`.
 
 ---
 
@@ -158,58 +173,62 @@
 
 ---
 
-## 7. לידים ושליחה ל-CRM
+## 7. לידים ושליחה ל-OfficeCRM
 
-הגדרות ב-`site.leadWebhook` שבקובץ `content.mjs`:
+> **עדכון 2026-10-14:** האתר שולח עכשיו לפי החוזה `website-v1` שאושר מול OfficeCRM:
+> - `lead_source` קבוע לכל טופס
+> - `message`
+> - `context`
+> - `consent` בדפי הנחיתה
+> - מזהה פנייה אחד לכל פנייה, שנשלח גם ככותרת `Idempotency-Key`
+>
+> השדות `source` ו-`notes` כבר לא נשלחים. הפירוט והתוצאות: `docs/OFFICECRM-INTEGRATION-CONTRACT.md` §0b. הטבלה שלמטה מתארת את המצב הקודם.
 
-| שדה | ערכים | משמעות |
-|---|---|---|
-| `url` | כתובת https של ה-webhook | ריק = מצב בדיקה (פותח את תוכנת המייל) |
-| `format` | `json` (ברירת מחדל) או `form` | JSON, או `application/x-www-form-urlencoded` |
-| `mode` | `no-cors` (ברירת מחדל) או `cors` | `no-cors` עובד עם כל CRM, אבל אי אפשר לדעת אם ה-CRM החזיר שגיאה. `cors` דורש שה-CRM יאשר את המקור `https://www.hagarlushi.com`, ואז שגיאה מוצגת לגולש |
+**הארכיטקטורה:** הטופס שולח JSON לכתובת באותו אתר, `POST /api/lead`. שם Cloudflare Worker (`worker/index.js`) בודק את הבקשה, מתרגם אותה למבנה ש-OfficeCRM מצפה לו, ושולח אותה ל-webhook הקיים של OfficeCRM. OfficeCRM עצמו לא שונה.
 
-**תהליך:** בדיקת שדות חובה, ואז מלכודת ספאם (השדה הנסתר `website`; אם מולא, מעבר לדף תודה בלי שליחה ובלי ספירה), ואז `fetch` (POST, `keepalive`), ואז מעבר ל-`/thankyou`. בשגיאת רשת, או בשגיאה ממצב `cors`, מוצגת הודעה עם הטלפון והוואטסאפ, והגולש נשאר בדף.
+**סודות ב-Cloudflare** (Workers ← hagarlushi ← Settings ← Variables and Secrets, סוג **Secret**):
 
-**מבנה הנתונים שנשלח** (מפתחות באנגלית; ערכים ריקים לא נשלחים):
-```json
-{
-  "full_name": "ישראל ישראלי",
-  "email": "test@example.com",
-  "phone": "050-1234567",
-  "message": "מעוניין בתכנון מטבח",
-  "form": "home",
-  "page_url": "https://www.hagarlushi.com/?utm_source=facebook&utm_campaign=autumn&fbclid=xyz",
-  "page_path": "/",
-  "source_summary": "utm_source=facebook | utm_campaign=autumn | Facebook / Instagram (fbclid) | landing: /",
-  "submitted_at": "2026-10-09T09:09:00.796Z",
-  "site": "www.hagarlushi.com",
-  "utm_source": "facebook",
-  "utm_campaign": "autumn",
-  "fbclid": "xyz",
-  "landing_page": "/"
-}
-```
-במצב `json` + `no-cors` הגוף נשלח עם `Content-Type: text/plain`. הדפדפן לא מאפשר JSON מפורש בלי CORS. **לבדוק שה-CRM מפענח גוף כזה,** או לעבור ל-`cors` או ל-`form`.
+| שם | ערך |
+|---|---|
+| `CRM_WEBHOOK_URL` | הכתובת המלאה של ה-webhook ב-OfficeCRM: `https://<כתובת OfficeCRM>/api/leads/webhook` |
+| `LEADS_WEBHOOK_API_KEY` | אותו ערך כמו `LEADS_WEBHOOK_API_KEY` ב-OfficeCRM: המפתח בלבד, בלי `Bearer` |
 
-**נבדק אוטומטית** (דפדפן headless מול webhook מדומה): JSON מדף הבית, form מדף יצירת קשר, שגיאת 500 במצב cors (הודעת שגיאה מוצגת, אין מעבר), בוט (לא נשלח ולא נספר), רענון דף התודה (לא נספר שוב).
+שני הערכים לא נמצאים במאגר (שהוא ציבורי), לא בקוד האתר ולא ביומנים. `npm test` נכשל אם כתובת ה-webhook מופיעה בקובץ כלשהו במאגר או באתר הבנוי.
 
-**מגבלות ידועות:**
-- כרגע כתובת ה-webhook גלויה בקוד הדף, וההגנה היא מלכודת הספאם בלבד. **זה ייפתר במשימה C3:** הטופס ישלח לנקודת קצה באותו אתר, `/api/lead` (Cloudflare Worker), והיא תעביר את הליד ל-CRM. הכתובת תישמר כסוד (`CRM_WEBHOOK_URL`) ולא תופיע בקוד, ונוכל גם להציג לגולש שגיאה אמיתית כשה-CRM נכשל.
-- במצב `no-cors` שגיאה בצד ה-CRM לא נראית לגולש. לכן חשוב לבדוק בעלייה שכל ליד באמת נכנס ל-CRM.
+**הבקשה ל-OfficeCRM:** `POST`, `Content-Type: application/json`, `Authorization: Bearer <מפתח>`.
+
+| שדה ב-OfficeCRM | מאיפה |
+|---|---|
+| `name` (חובה) | השם מהטופס |
+| `phone` (חובה) | הטלפון מהטופס |
+| `email` (חובה) | האימייל מהטופס |
+| `source` (חובה) | ערוץ ההגעה, תמיד מתחיל ב-`website`: `website / google / cpc` (לפי utm), `website / google-ads` (gclid), `website / facebook` (fbclid), `website / instagram.com` (אתר מפנה), או `website / direct` |
+| `notes` | ההודעה של הגולש, איזה טופס, מאיזה דף נשלח, דף הכניסה, כל תגי ה-utm, gclid/fbclid, האתר המפנה והשעה |
+| `referrerName` | **לא נשלח.** באתר אין שדה "מי המליץ", ולא ממציאים ערך |
+
+שם, טלפון ואימייל הם חובה ב-OfficeCRM, ולכן **שני הטפסים מחייבים עכשיו את שלושתם**. בעבר בדף יצירת קשר רק האימייל היה חובה.
+
+**מתי ליד נחשב הצלחה:** רק אם OfficeCRM החזיר HTTP 2xx עם JSON שבו `success: true` (צפוי: 200 עם `leadId`). כל תשובה אחרת נחשבת כישלון: `success: false`, בלי `success`, JSON שבור או ריק, 4xx/5xx, timeout של 10 שניות או שגיאת רשת. בכישלון הגולש נשאר בדף, מה שהקליד נשמר, ומוצגת הודעה עם הטלפון והוואטסאפ. **אין מעבר לדף תודה ואין `generate_lead`.** ביומן נרשם רק קוד הסיבה, או ה-`leadId` בהצלחה.
+
+**נבדק (2026-10-11, בלי לגעת ב-OfficeCRM האמיתי):**
+- `npm test`: 41 בדיקות, כולל שרת מדומה שמתנהג כמו ה-webhook של OfficeCRM. הן מכסות: כתובת, Bearer, JSON, מיפוי שדות, `success:true` עם `leadId`, `success:false`, בלי `success`, JSON שבור, 401/400/500, timeout, שגיאת רשת, סודות חסרים, מקור זר, honeypot, קלט לא תקין, אין redirect ואין `generate_lead` בכישלון, ואין כתובת או מפתח באתר ובמאגר.
+- סביבת Cloudflare מקומית (`wrangler dev`) עם OfficeCRM מדומה, בדפדפן במחשב ובמובייל: 40/40 בדיקות. הבדיקה הזו גם מצאה ותיקנה באג שהיה מפיל את ה-Worker ב-Cloudflare.
+
+**עדכון 2026-10-13:** לפי דוח שנכתב מהקוד של OfficeCRM, החוזה הנוכחי לא תואם: `source` לא נקרא, `notes` נזרק, ואין מניעת כפילויות. ראו `docs/OFFICECRM-INTEGRATION-CONTRACT.md`. **לא נבדק:** OfficeCRM האמיתי. הקוד של OfficeCRM לא היה זמין לבדיקה, ולכן החוזה מומש כפי שנמסר. מאמתים אותו בליד בדיקה אחרי הפריסה (`docs/CLOUDFLARE-PLAN.md`, שלב O3). שם גם רשומות 4 נקודות לבדיקה: ערכי `source`, אורך `notes`, כפילויות, וחסימת רשת.
 
 ---
 
 ## 8. תוכנית DNS ומעבר
 
 **לפני כל שינוי:**
-1. בממשק Wix (Domains ← hagarlushi.com ← Manage DNS Records) לייצא או לצלם את **כל** הרשומות: A, AAAA, CNAME (`www`, **`lp`**), MX, TXT (כולל `google-site-verification`, SPF, DKIM, DMARC אם קיימים).
+1. בממשק Wix (Domains ← hagarlushi.com ← Manage DNS Records) לייצא או לצלם את **כל** הרשומות: A, AAAA, CNAME (`www`, **`lp`**, **`office`**), MX, TXT (כולל `google-site-verification`, SPF, DKIM, DMARC אם קיימים). **`office` הוא OfficeCRM:** אם הרשומה שלו תאבד, ה-CRM ושליחת הלידים מהאתר יפסיקו לעבוד.
 2. לבדוק איפה הדומיין רשום (registrar): ב-Wix או במקום אחר. זה קובע אם מעבירים את הדומיין או רק משנים שרתי שמות.
 
 **סדר מומלץ:**
-1. לפרוס את האתר ל-Cloudflare Workers ולבדוק אותו בכתובת `*.workers.dev` (משימות C1–C5).
-2. להוסיף את `hagarlushi.com` לחשבון Cloudflare, ולוודא שכל הרשומות מ-Wix הועתקו. רשומות MX, מייל ו-`lp` מגדירים "DNS only" (ענן אפור). `www` והדומיין הראשי ממשיכים בשלב הזה להצביע ל-Wix.
-3. להחליף את שרתי השמות ל-Cloudflare ולחכות שהאזור יהיה Active. אין השבתה, כי הרשומות זהות.
-4. לחבר את `www.hagarlushi.com` ל-Worker (Custom Domain), להגדיר Redirect Rule מ-`hagarlushi.com` ל-`www`, ולהגדיר את הסוד `CRM_WEBHOOK_URL`.
+1. **O2:** להוסיף את `hagarlushi.com` לחשבון Cloudflare, ולוודא שכל הרשומות מ-Wix הועתקו. רשומות MX, מייל, `lp` ו-`office` מגדירים "DNS only" (ענן אפור). `www` והדומיין הראשי ממשיכים בשלב הזה להצביע ל-Wix.
+2. **O3:** לחבר את GitHub ל-Cloudflare, להגדיר את הסוד `CRM_WEBHOOK_URL`, ולבדוק את האתר בכתובת `*.workers.dev`, כולל ליד בדיקה מכל טופס שמגיע ל-CRM. **לפני כל שינוי DNS.**
+3. **O4:** להחליף את שרתי השמות ל-Cloudflare ולחכות שהאזור יהיה Active. אין השבתה, כי הרשומות זהות.
+4. **O5:** לחבר את `www.hagarlushi.com` ל-Worker (Custom Domain) ולהגדיר Redirect Rule מ-`hagarlushi.com` ל-`www`.
 5. להשאיר את מנוי Wix פעיל עד שהכול נבדק.
 
 פירוט מלא, צעד אחר צעד: `docs/CLOUDFLARE-PLAN.md`, משימות O1–O5.
@@ -220,6 +239,7 @@ dig +short NS hagarlushi.com       # שרתי השמות של Cloudflare
 dig +short www.hagarlushi.com      # כתובות Cloudflare
 dig +short hagarlushi.com          # כתובות Cloudflare
 dig +short lp.hagarlushi.com       # אותו יעד כמו לפני המעבר
+dig +short office.hagarlushi.com   # אותו יעד כמו לפני המעבר (OfficeCRM)
 dig +short MX hagarlushi.com       # זהה לרשומות שהיו ב-Wix
 dig +short TXT hagarlushi.com      # כולל google-site-verification
 curl -sI https://hagarlushi.com | grep -i location   # הפניה ל-https://www.hagarlushi.com
@@ -243,7 +263,11 @@ curl -s https://www.hagarlushi.com/sitemap.xml | grep -c "<url>"   # 25
 | אישור מספר הוואטסאפ וההודעה הפותחת | בעל האתר | לא |
 | ייצוא רשומות DNS מ-Wix, כולל `lp` ו-MX | בעל האתר | **כן** |
 | טריגרים ב-GTM לאירועי הלידים החדשים | בעל האתר / Claude עם גישה | לא, אבל בלעדיהם הלידים לא נספרים |
-| הגדרת Cloudflare: Worker, `_redirects`, `/api/lead`, פריסה מ-GitHub (C1–C5) | Claude | כן |
-| חשבון Cloudflare, העברת DNS וחיבור הדומיין (O1–O5) | בעל האתר, בהדרכת Claude | כן |
+| ~~הגדרת Cloudflare בקוד: Worker, `_redirects`, `/api/lead` (C1–C4)~~ | Claude | הושלם |
+| חיבור GitHub ל-Cloudflare ופריסה ל-`workers.dev` (C5/O3) | בעל האתר, בהדרכת Claude | כן |
+| חשבון Cloudflare, העברת DNS וחיבור הדומיין (O1, O2, O4, O5) | בעל האתר, בהדרכת Claude | כן |
+| הגדרת הסודות `CRM_WEBHOOK_URL` ו-`LEADS_WEBHOOK_API_KEY` ב-Cloudflare, וליד בדיקה מכל טופס (O3) | בעל האתר | כן |
+| שינויים ב-OfficeCRM לפי `docs/OFFICECRM-CHANGE-REQUEST.md` (מקור לאתר הראשי, קטגוריית שיפוץ, שמירת ההודעה, תיעוד הסכמה, ולידציה, מניעת כפילויות, שגיאות בטוחות, אבטחה) ואחריהם בדיקה מקומית | צוות OfficeCRM, ואז Claude | **כן** |
+| דפי הנחיתה lp.hagarlushi.com: נבנו מחדש (C6). החלטות ב-`docs/LANDING-PAGE-INVENTORY.md` §7; פתוח: בדיקת מדיניות הפרטיות על ידי בעלת האתר (בתצוגה המקדימה), אישור נוסח הטפסים; בדיקה ב-WordPress admin של יעד הטפסים; ליד בדיקה מכל טופס (O3b) | בעל האתר | כן, למעבר של `lp` בלבד (O6). WordPress נשאר עד אז |
 | מדיניות פרטיות ובאנר עוגיות | בעל האתר | החלטה |
 | ייצוא אנשי קשר, פניות וצ'אטים מ-Wix | בעל האתר | לפני ביטול Wix |

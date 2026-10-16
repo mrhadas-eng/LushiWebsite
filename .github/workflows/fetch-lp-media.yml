@@ -1,0 +1,34 @@
+# Copies the landing pages' images and page content from the WordPress site (lp.hagarlushi.com)
+# into this repository. Runs automatically when the fetch script changes on the migration branch,
+# or manually: Actions tab -> "Copy landing-page media from WordPress" -> Run workflow.
+name: Copy landing-page media from WordPress
+on:
+  workflow_dispatch:
+  push:
+    branches: [cloudflare-migration]
+    paths:
+      - scripts/fetch-lp-media.mjs
+      - .github/workflows/fetch-lp-media.yml
+permissions:
+  contents: write
+concurrency:
+  group: fetch-lp-media
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: node scripts/fetch-lp-media.mjs
+      - name: Commit media
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          git add originals/lp public/lp-media src/data/lp
+          git diff --cached --quiet && echo "Nothing new" && exit 0
+          git commit -m "Copy landing-page media and content from lp.hagarlushi.com"
+          for i in 1 2 3; do git pull --rebase origin "${GITHUB_REF_NAME}" && git push && exit 0; sleep 5; done
+          exit 1

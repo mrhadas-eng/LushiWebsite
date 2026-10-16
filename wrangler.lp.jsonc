@@ -1,0 +1,22 @@
+// Cloudflare Worker for the landing pages on lp.hagarlushi.com (see docs/CLOUDFLARE-PLAN.md, "Landing pages").
+// Same code as the main site (worker/index.js → /api/lead), separate static assets: ./dist-lp,
+// produced by `npm run build` (scripts/split-lp.mjs). WordPress used trailing-slash URLs
+// (/architecture/), so this Worker keeps them: force-trailing-slash.
+// Secrets (set on this Worker too, never in the repo): CRM_WEBHOOK_URL, LEADS_WEBHOOK_API_KEY.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "hagarlushi-lp",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist-lp",
+    "binding": "ASSETS",
+    "html_handling": "force-trailing-slash",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true },
+  // Local preview only (`npm run preview:cf:lp`): http://localhost:8788/privacy/ etc. (lp pages are at the root,
+  // as on lp.hagarlushi.com; /lp/... exists only under `npm run dev`). Distinct from the main preview (8787).
+  "dev": { "port": 8788, "inspector_port": 9230 }
+}
