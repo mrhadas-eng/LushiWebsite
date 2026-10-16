@@ -31,7 +31,8 @@ This file intentionally contains **only work still outstanding**. Completed chec
 
 ## 3. Owner decisions and WordPress/analytics
 
-- [ ] Review and approve the copied landing-page privacy policy at `/privacy/` on preview. This blocks the `lp` cutover.
+- [ ] Replace the legacy copied privacy-policy content with the owner's updated document on both intended site surfaces; render as plain Hebrew RTL text with no Elementor/legacy styling. Remove the internal note before publishing and ensure the publication-date placeholder is not shown to visitors.
+- [ ] Review the updated privacy policy at `/privacy/` on preview for RTL layout, mobile readability, plain styling, links, and correct rendering on both domains. Privacy policy is considered near-ready and is not a launch blocker by itself; any factual corrections identified by the post-launch technical audit should be tracked separately.
 - [ ] In WordPress admin, inspect Elementor form “Actions After Submit” and document the current lead-delivery destinations.
 - [ ] Review old Wix redirect groups C–D and check active advertising destinations before approving redirects for `/דף-נחיתה-פרטיים`, `/דף-נחיתה-פרטי`, and `/דףנחיתה2`. Twelve out-of-scope redirects remain listed in `docs/REDIRECT-APPROVALS.md`; they are currently classified as non-blocking.
 - [ ] Verify GTM triggers for `generate_lead`, `whatsapp_click`, `phone_click`, and `email_click` are published.
@@ -72,6 +73,8 @@ This file intentionally contains **only work still outstanding**. Completed chec
 - [ ] Re-test public forms and duplicate handling with synthetic data.
 - [ ] Verify `office.hagarlushi.com` and email continue working.
 - [ ] Verify GA4 realtime/events and GTM behavior.
+- [ ] Post-launch: audit Cookies and browser storage separately on `hagarlushi.com` and `lp.hagarlushi.com` (clean state, after accept, after reject if available); record cookie names, providers, purposes, lifetimes, and whether non-essential tags load before choice. Update section 6 of the privacy policy to reflect verified behavior.
+- [ ] Post-launch: replace the privacy-policy date placeholder with the actual publication/update date, then verify the date is visible and the internal editorial note is absent.
 - [ ] Submit the updated sitemap in Google Search Console.
 - [ ] Monitor Worker logs, CRM errors, response times and lead delivery during the first days.
 - [ ] Decide separately on TTL, legacy-lead handling and rate limiting.
