@@ -120,6 +120,10 @@ test('the redirect approval list is up to date (npm run redirect-list)', async (
   assert.equal(fs.readFileSync('docs/REDIRECT-APPROVALS.md', 'utf8'), render());
 });
 
-test('privacy policy: still pending the owner\'s review (never marked done automatically)', () => {
-  assert.deepEqual(ownerReviewPending().map((e) => `${e.host} ${e.url}`), ['lp /privacy/']);
+test('privacy policy: owner approval is recorded; cookie/storage audit and policy update remain post-launch tasks', () => {
+  assert.deepEqual(ownerReviewPending(), []);
+  const privacy = inventory.find((e) => e.host === 'lp' && e.url === '/privacy/');
+  assert.equal(privacy?.status, 'implemented');
+  assert.match(privacy?.note ?? '', /approved by the owner for launch/);
+  assert.match(privacy?.note ?? '', /post-launch tasks/);
 });
