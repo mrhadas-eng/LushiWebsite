@@ -14,7 +14,6 @@
 // scope: 'out' – an obsolete Wix page outside the agreed landing-page migration scope (owner,
 //                 2026-10-11): not recreated; its redirect awaits approval but does NOT block launch.
 // ownerReview:true – content copied unchanged that the owner reviews on the preview site before lp cutover.
-//                    Pending until the owner says it is reviewed; never mark it done on their behalf.
 // host: www (www.hagarlushi.com), lp (lp.hagarlushi.com), apex, en, he, office
 
 const www = (url, extra = {}) => ({ host: 'www', url, ...extra });
@@ -65,15 +64,15 @@ export const inventory = [
   lp('/interior-design/', { status: 'implemented', wpId: 321 }),
   lp('/renovation/', { status: 'implemented', wpId: 406 }),
   lp('/thankyou/', { status: 'implemented', wpId: 244, note: 'Google Ads conversion fires on this page view (GTM)' }),
-  lp('/privacy/', { status: 'implemented', wpId: 378, ownerReview: true, note: 'Text exported unchanged (contact email lushi.office@gmail.com). Pending the owner\'s review, to be done on the preview site; blocks lp cutover (D5)' }),
+  lp('/privacy/', { status: 'implemented', wpId: 378, note: 'Privacy policy approved by the owner for launch on 2026-10-18; cookie/storage audit and policy update are post-launch tasks.' }),
   lp('/accessibility-statement/', { status: 'implemented', wpId: 9 }),
   lp('/sitemap.xml', { status: 'implemented', technical: true }),
   lp('/robots.txt', { status: 'implemented', technical: true }),
 
   // ------------------------------------------------ lp – WordPress artifacts
-  // Author archives: no redirect needed (owner, 2026-10-13). Not recreated; they return the 404 page (noindex).
-  lp('/author/gal/', { status: 'retired', reason: 'WordPress author archive (listed in the old sitemap), no content. No redirect needed (owner, 2026-10-13): 404' }),
-  lp('/author/roy/', { status: 'retired', reason: 'WordPress author archive (via the public users API), no content. No redirect needed (owner, 2026-10-13): 404' }),
+  // Author archives: no redirect needed (owner decision, 2026-10-13). Not recreated; they return the 404 page (noindex).
+  lp('/author/gal/', { status: 'retired', reason: 'WordPress author archive (listed in the old sitemap), no content. No redirect needed (owner decision, 2026-10-13): 404' }),
+  lp('/author/roy/', { status: 'retired', reason: 'WordPress author archive (via the public users API), no content. No redirect needed (owner decision, 2026-10-13): 404' }),
   lp('/wp-sitemap.xml', { status: 'redirect', to: '/sitemap.xml', approved: true, technical: true }),
   lp('/wp-sitemap-posts-page-1.xml', { status: 'redirect', to: '/sitemap.xml', approved: true, technical: true }),
   lp('/wp-sitemap-users-1.xml', { status: 'redirect', to: '/sitemap.xml', approved: true, technical: true }),
