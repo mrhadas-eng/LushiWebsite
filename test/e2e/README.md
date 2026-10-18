@@ -12,6 +12,9 @@ npx wrangler dev -c wrangler.lp.jsonc --port 8788 --inspector-port 9232 --persis
 node test/e2e/forms.e2e.mjs       # validation, website-v1 payload, delivery outcomes, idempotency, WhatsApp — both sites (336 checks)
 node test/e2e/main-site.e2e.mjs   # main-site OfficeCRM round trip (44 checks)
 node test/e2e/preview-routing.e2e.mjs   # both previews route to the right Worker; lp /privacy/ on 8788 (6 checks)
+node test/e2e/responsive.e2e.mjs        # every page of both sites at 9 phone/tablet sizes (315 page views): no sideways
+                                         # scrolling, nothing off-screen, no distorted images, readable text, no iOS input
+                                         # zoom, tap targets ≥ 40px on touch screens, main menu on one row
 ```
 `npm run preview:cf` (8787) and `npm run preview:cf:lp` (8788, own state folder) use the same fixed ports, so
 `preview-routing.e2e.mjs` also works against them.

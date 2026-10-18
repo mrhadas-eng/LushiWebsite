@@ -74,6 +74,11 @@ button, input, textarea { font: inherit; color: inherit; }
 }
 .link-caps:hover { border-color: currentColor; }
 
+/* ---------- Touch screens: comfortable tap areas for small text links (layout unchanged) */
+@media (pointer: coarse) {
+  .link-caps, .tap { display: inline-block; padding-block: 11px; margin-block: -11px; }
+}
+
 /* ---------- Headings */
 .h-spaced { font-size: 30px; letter-spacing: 4.5px; line-height: 1.4; }
 .h-section { font-size: 30px; letter-spacing: 4.5px; color: var(--heading); text-align: center; }
