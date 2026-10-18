@@ -71,5 +71,5 @@ Owner decision: no redirect needed, and the pages are not recreated. The 404 pag
 
 | # | Site | Old URL | Why |
 |---|---|---|---|
-| 1 | lp.hagarlushi.com | `/author/gal/` | WordPress author archive (listed in the old sitemap), no content. No redirect needed (owner, 2026-10-13): 404 |
-| 2 | lp.hagarlushi.com | `/author/roy/` | WordPress author archive (via the public users API), no content. No redirect needed (owner, 2026-10-13): 404 |
+| 1 | lp.hagarlushi.com | `/author/gal/` | WordPress author archive (listed in the old sitemap), no content. No redirect needed (owner decision, 2026-10-13): 404 |
+| 2 | lp.hagarlushi.com | `/author/roy/` | WordPress author archive (via the public users API), no content. No redirect needed (owner decision, 2026-10-13): 404 |
