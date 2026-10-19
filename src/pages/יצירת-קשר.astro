@@ -75,12 +75,9 @@ const mark = img(site.mark);
     .cp-text :global(.cp-social) { gap: calc(15 * var(--m)); }
     .cp-text :global(.cp-social svg) { width: calc(35 * var(--m)); height: calc(35 * var(--m)); }
     .cp-col :global(.contact-form) { width: calc(260 * var(--m)); margin-top: calc(44 * var(--m)); }
-    .cp-col :global(.cf-page .f-email), .cp-col :global(.cf-page .f-phone), .cp-col :global(.cf-page .f-msg) { margin-top: calc(10 * var(--m)); }
-    .cp-col :global(.cf-page .send) { justify-self: center; margin-top: calc(10 * var(--m)); }
-    .cp-col :global(.cf-page .f-name input) { height: calc(45 * var(--m)); }
-    .cp-col :global(.cf-page .f-email input), .cp-col :global(.cf-page .f-phone input) { height: calc(42 * var(--m)); }
-    .cp-col :global(.cf-page .f-msg textarea) { height: calc(126 * var(--m)); }
-    .cp-col :global(.cf-page .send) { width: calc(120 * var(--m)); height: calc(42 * var(--m)); min-height: 44px; font-size: calc(16 * var(--m)); }
+    /* Form on phones: labelled 44px fields (ContactForm.astro), 18px apart, the button centred */
+    .cp-col :global(.cf-page .f-email), .cp-col :global(.cf-page .f-phone), .cp-col :global(.cf-page .f-msg) { margin-top: 18px; }
+    .cp-col :global(.cf-page .send) { justify-self: center; margin-top: 22px; width: calc(120 * var(--m)); height: 48px; font-size: max(16px, calc(16 * var(--m))); }
     .cp-img { width: calc(280 * var(--m)); height: auto; margin-top: calc(75.5 * var(--m)); }
   }
 </style>

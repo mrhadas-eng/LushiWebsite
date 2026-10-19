@@ -151,6 +151,27 @@ Still open:
   originals.
 - Tablet: Wix has no tablet layout (see above).
 
+## Forms: usability pass (2026-10-19, intentional deviations from Wix/WordPress)
+
+Six forms, two components: `ContactForm.astro` (home page, boxed fields; contact page, underline fields) and
+`LpLeadForm.astro` (the same form on the 4 landing pages). No other forms are rendered (the WordPress export's
+Elementor forms are not output). Shared rules: `src/styles/forms.css`. Submission, validation, consent, CRM payload,
+field names, tracking and phone/WhatsApp links are unchanged (the forms' scripts are byte-identical).
+
+| Change | Why | Before |
+|---|---|---|
+| Explicit direction per field: name and message `dir="rtl"`; phone and email `dir="ltr"`; all right-aligned; the form, labels and messages RTL | Digits, `+972` and addresses keep their order while lining up with the RTL form | Phone fields left-aligned (LTR, start); email fields RTL |
+| A visible label above every field (the existing field names), placeholders removed | Field names stayed visible only until typing (main site) or shrank to 11px inside the field (landing pages) | Main site: placeholder only; landing pages: floating label |
+| Message field marked "(לא חובה)" | It is the only optional field; required fields keep the hidden "(שדה חובה)" and `aria-required` (no asterisks) | Not marked |
+| Main site: 40px fields (44px on phones), 16px text, labels in `--ink`; 44–54px buttons | Comfortable to tap and read; iOS does not zoom into 16px fields | 30px (home) / 42–45px (contact) fields, 15px text |
+| Visible focus: thicker border/underline (main site), white ring (landing pages), focus ring on the buttons | The contact page showed no change on focus | No visible focus on the contact page |
+| Landing pages: source order name → phone → email → consent → button (desktop grid unchanged: button at the end of the row, consent under it) | Keyboard and screen-reader order now matches what is on screen | The consent checkbox came after the button |
+
+Effect on page heights (footer top vs Wix, measured): home +45px desktop / +67px phone; contact page +14px desktop /
++115px phone; every other www page unchanged (±1px). The landing-page form band grows by the label row. Tests: `test/forms.test.mjs` (built HTML/CSS) and the "layout and
+accessibility" checks in `test/e2e/forms.e2e.mjs` (computed direction and alignment, label above each field,
+44px on phones, focus state, keyboard order). New Hebrew text needing the owner's approval: "(לא חובה)".
+
 ## Tests and checks (2026-10-19, after the press removal and number change, on the built output)
 
 - `npm run build`: OK (34 www pages, lp pages split into `dist-lp`).

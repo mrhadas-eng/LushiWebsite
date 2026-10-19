@@ -50,6 +50,42 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
     const go = async (path) => { await p.goto(`${S.base}${encodeURI(path)}?utm_source=google&utm_medium=cpc&utm_campaign=t`); apiCalls = 0; };
     const fields = ['full_name', 'phone', 'email', ...(S.consent ? ['consent'] : [])];
 
+    // 0. layout and accessibility on every form page: explicit direction and right alignment per field type, a visible
+    //    label above each field, touch-sized controls on phones, a visible focus change, keyboard order = reading order.
+    const DIRS = { full_name: 'rtl', message: 'rtl', phone: 'ltr', email: 'ltr' };
+    for (const [path] of S.pages) {
+      await go(path);
+      const L = await p.$$eval(`${S.form} input:not([name=website]):not([type=checkbox]), ${S.form} textarea, ${S.form} button[type=submit]`, (els) => els.map((el) => {
+        const cs = getComputedStyle(el), r = el.getBoundingClientRect();
+        const lab = el.closest('label')?.querySelector('.form-label');
+        const lr = lab?.getBoundingClientRect();
+        return { name: el.name || 'submit', dir: cs.direction, align: cs.textAlign, h: r.height, label: lab ? lab.innerText.trim() : '', labelAbove: !!lr && lr.bottom <= r.top + 1 && lr.height > 0 };
+      }));
+      const fieldsL = L.filter((x) => x.name !== 'submit');
+      check(fieldsL.every((x) => x.dir === DIRS[x.name] && x.align === 'right'), t(`${path}: name/message RTL, phone/email LTR, all right-aligned`), fieldsL.map((x) => `${x.name}:${x.dir}/${x.align}`).join(' '));
+      check(fieldsL.every((x) => x.label.length >= 2 && x.labelAbove), t(`${path}: visible label above every field`), fieldsL.map((x) => `${x.name}:"${x.label}"`).join(' '));
+      if (vp === 'mobile') check(L.filter((x) => x.name !== 'message').every((x) => x.h >= 44), t(`${path}: fields and button at least 44px tall on phones`), L.map((x) => `${x.name}:${Math.round(x.h)}`).join(' '));
+      // phone digits keep their order (LTR) and the value is exactly what was typed
+      await p.fill(F('[name=phone]'), '+972 52-594-9682');
+      check((await p.inputValue(F('[name=phone]'))) === '+972 52-594-9682', t(`${path}: phone value kept as typed`));
+      await p.fill(F('[name=phone]'), '');
+      // focus is visible: the focused field looks different from the unfocused one
+      const look = () => p.$eval(F('[name=email]'), (el) => { const cs = getComputedStyle(el); return [cs.outlineStyle, cs.outlineWidth, cs.boxShadow, cs.borderColor].join('|'); });
+      await p.focus(F('[name=full_name]')); const before = await look();
+      await p.focus(F('[name=email]')); const after = await look();
+      check(before !== after, t(`${path}: focused field has a visible focus state`), `${before} → ${after}`);
+      // keyboard: Tab from the first field follows the reading order and reaches the button
+      await p.focus(F('[name=full_name]'));
+      const seq = ['full_name'];
+      for (let i = 0; i < 6; i++) {
+        await p.keyboard.press('Tab');
+        const a = await p.evaluate(() => { const e = document.activeElement; return e?.name || (e?.type === 'submit' ? 'submit' : e?.tagName === 'A' ? 'link' : e?.tagName); });
+        seq.push(a); if (a === 'submit') break;
+      }
+      const expect = S.consent ? ['full_name', 'phone', 'email', 'consent', 'link', 'submit'] : ['full_name', 'email', 'phone', 'message', 'submit'];
+      check(JSON.stringify(seq) === JSON.stringify(expect), t(`${path}: keyboard order follows the form`), seq.join(' → '));
+    }
+
     // 1. empty form: every required field flagged with its own message, focus on the first, nothing sent
     const [path0] = S.pages[0];
     await go(path0); const c0 = await crmCount();
