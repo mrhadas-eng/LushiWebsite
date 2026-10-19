@@ -21,21 +21,21 @@ const [unsureBefore, unsureAfter] = DELIVERY_UNCERTAIN_TEXT.split('בטלפון 
   <input type="text" name="website" class="visually-hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
   <div class="lp-form-row">
     <div class="lp-fieldwrap" data-field>
-      <label class="lp-field"><input type="text" name="full_name" required aria-required="true" aria-describedby={id('full_name')} autocomplete="name" placeholder=" " /><span>{L.name} <b aria-hidden="true">*</b></span></label>
+      <label class="lp-field"><input type="text" name="full_name" required aria-required="true" aria-describedby={id('full_name')} autocomplete="name" placeholder=" " /><span>{L.name}<span class="visually-hidden"> (שדה חובה)</span></span></label>
       <p class="lp-field-error" id={id('full_name')} data-error-for="full_name" hidden></p>
     </div>
     <div class="lp-fieldwrap" data-field>
-      <label class="lp-field"><input type="tel" name="phone" required aria-required="true" aria-describedby={id('phone')} autocomplete="tel" inputmode="tel" placeholder=" " /><span>{L.phone} <b aria-hidden="true">*</b></span></label>
+      <label class="lp-field"><input type="tel" name="phone" required aria-required="true" aria-describedby={id('phone')} autocomplete="tel" inputmode="tel" placeholder=" " /><span>{L.phone}<span class="visually-hidden"> (שדה חובה)</span></span></label>
       <p class="lp-field-error" id={id('phone')} data-error-for="phone" hidden></p>
     </div>
     <div class="lp-fieldwrap" data-field>
-      <label class="lp-field"><input type="email" name="email" required aria-required="true" aria-describedby={id('email')} autocomplete="email" placeholder=" " /><span>{L.email} <b aria-hidden="true">*</b></span></label>
+      <label class="lp-field"><input type="email" name="email" required aria-required="true" aria-describedby={id('email')} autocomplete="email" placeholder=" " /><span>{L.email}<span class="visually-hidden"> (שדה חובה)</span></span></label>
       <p class="lp-field-error" id={id('email')} data-error-for="email" hidden></p>
     </div>
     <button type="submit" class="lp-submit">{L.submit}</button>
   </div>
   <div class="lp-fieldwrap" data-field>
-    <label class="lp-consent"><input type="checkbox" name="consent" value="yes" required aria-required="true" aria-describedby={id('consent')} /> <span>{lpShared.consentBefore}<a href={lpHref('/privacy/')} target="_blank" rel="noopener">{lpShared.consentLink}</a> <b aria-hidden="true">*</b></span></label>
+    <label class="lp-consent"><input type="checkbox" name="consent" value="yes" required aria-required="true" aria-describedby={id('consent')} /> <span>{lpShared.consentBefore}<a href={lpHref('/privacy/')} target="_blank" rel="noopener">{lpShared.consentLink}</a><span class="visually-hidden"> (שדה חובה)</span></span></label>
     <p class="lp-field-error" id={id('consent')} data-error-for="consent" hidden></p>
   </div>
   <p class="lp-form-error" role="alert" hidden>
@@ -47,8 +47,10 @@ const [unsureBefore, unsureAfter] = DELIVERY_UNCERTAIN_TEXT.split('בטלפון 
 </form>
 
 <style is:global>
-  .lp-form { display: grid; gap: 14px; }
-  .lp-form-row { display: grid; grid-template-columns: repeat(3, 1fr) 25%; gap: 10px; align-items: start; }
+  /* WordPress: name, phone, email (each 278x47) and the 48px round-ended button in one row of four, 10px apart;
+     the consent line under the button, on the left. */
+  .lp-form { display: grid; gap: 18px; }
+  .lp-form-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-items: start; }
   .lp-field { position: relative; display: block; }
   .lp-field input { width: 100%; height: 47px; border: 1px solid rgb(105, 114, 125); border-radius: 4px; background: #fff; padding: 16px 12px 4px; font: inherit; font-size: 16px; color: var(--lp-ink); }
   .lp-field span { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); font-family: 'Noto Sans Hebrew', var(--lp-font); font-size: 17px; color: #111; pointer-events: none; transition: all .15s; }
@@ -57,10 +59,11 @@ const [unsureBefore, unsureAfter] = DELIVERY_UNCERTAIN_TEXT.split('בטלפון 
   .lp-field input[aria-invalid="true"] { border: 2px solid #ffb4ab; box-shadow: 0 0 0 1px #8c1d18; }
   .lp-field-error { margin: 6px 2px 0; color: #fff; font-size: 14px; font-weight: 600; line-height: 1.3; }
   .lp-field-error::before { content: '⚠ '; color: #ffd8d4; }
-  .lp-submit { height: 47px; border: 0; border-radius: 36px; background: var(--lp-ink); color: #fff; font-family: 'Noto Sans Hebrew', var(--lp-font); font-size: 18px; font-weight: 600; cursor: pointer; }
+  .lp-submit { height: 48px; border: 0; border-radius: 36px; background: var(--lp-ink); color: #fff; font-family: 'Noto Sans Hebrew', var(--lp-font); font-size: 18px; font-weight: 600; cursor: pointer; }
   .lp-submit:hover { background: #333; }
   .lp-submit[disabled] { opacity: .6; cursor: wait; }
-  .lp-consent { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+  .lp-form > .lp-fieldwrap { justify-self: end; width: calc(25% - 7.5px); }
+  .lp-consent { display: flex; gap: 8px; align-items: center; font-size: 17px; line-height: 17px; }
   .lp-consent input { width: 16px; height: 16px; margin: 0; }
   .lp-consent input[aria-invalid="true"] { outline: 2px solid #ffb4ab; outline-offset: 2px; }
   .lp-consent a { text-decoration: underline; }
@@ -72,7 +75,17 @@ const [unsureBefore, unsureAfter] = DELIVERY_UNCERTAIN_TEXT.split('בטלפון 
   }
   .lp-form-error { margin: 0; background: #fff; color: #b3261e; padding: 8px 12px; border-radius: 4px; font-size: 15px; }
   .lp-form-error a { color: inherit; text-decoration: underline; }
-  @media (max-width: 767px) { .lp-form-row { grid-template-columns: 1fr; } }
+  @media (max-width: 1024px) { .lp-form > .lp-fieldwrap { width: auto; } }
+  /* WordPress at 390px: one column, fields 35px tall 10px apart, the consent line, then the full-width button. */
+  @media (max-width: 767px) {
+    .lp-form { gap: 10px; }
+    .lp-form-row { display: contents; }
+    .lp-field input { height: 44px; }
+    .lp-submit { order: 2; }
+    .lp-form > .lp-fieldwrap { justify-self: stretch; }
+    .lp-consent { font-size: 16px; line-height: 1.4; }
+    .lp-form-error { order: 3; }
+  }
 </style>
 
 <script>

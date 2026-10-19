@@ -12,14 +12,14 @@ Claude then sets `approved: true` in the inventory.
 |---|---|---|
 | A. Technical: no visitor content is lost | 12 | No (pre-approved; tell us if you object) |
 | B. Content, lp.hagarlushi.com | 0 | No (none left) |
-| C. Content, main site: obsolete Wix pages (out of migration scope) | 9 | No. Without approval, the redirect proposed here goes live with the main site |
+| C. Content, main site: obsolete Wix pages (out of migration scope) | 10 | No. Without approval, the redirect proposed here goes live with the main site |
 | D. Main site: old Wix landing pages (out of scope, not recreated) | 3 | No, but **check active campaigns first** (below) |
 
 ## A. Technical redirects
 
 | # | Site | Old URL | Redirects to (301) | Why |
 |---|---|---|---|---|
-| 1 | www.hagarlushi.com | `/portfolio-collections/*` | `/portfolio` | Wix template demo items (stock photos), not studio content |
+| 1 | www.hagarlushi.com | `/portfolio-collections/*` | `/` | Wix template demo items (stock photos), not studio content |
 | 2 | www.hagarlushi.com | `/pages-sitemap.xml` | `/sitemap.xml` | Old Wix sitemap file |
 | 3 | www.hagarlushi.com | `/portfolio-projects-sitemap.xml` | `/sitemap.xml` | Old Wix sitemap file |
 | 4 | www.hagarlushi.com | `/portfolio-collections-sitemap.xml` | `/sitemap.xml` | Old Wix sitemap file |
@@ -40,15 +40,16 @@ None. The WordPress author archives are not redirected (see "No redirect" below)
 
 | # | Site | Old URL | Redirects to (301) | Why | Approved |
 |---|---|---|---|---|---|
-| 1 | www.hagarlushi.com | `/copy-of-להיות-יפה` | `/דירה-להשכיר` | Duplicate of the "דירה להשכיר" project page | ☐ pending |
-| 2 | www.hagarlushi.com | `/להיות-יפה` | `/להיות-יפה-שירלי` | Older copy of the "להיות יפה" project page | ☐ pending |
-| 3 | www.hagarlushi.com | `/redesign` | `/עיצוב-מחדש` | Duplicate of the "עיצוב מחדש" project page | ☐ pending |
-| 4 | www.hagarlushi.com | `/go-on-vacation` | `/צאו-לחופשה` | Duplicate of the "צאו לחופשה" project page | ☐ pending |
-| 5 | www.hagarlushi.com | `/הבן-של-הנגר3` | `/הבן-של-הנגר` | Duplicate of the "הבן של הנגר" project page | ☐ pending |
-| 6 | www.hagarlushi.com | `/bio` | `/אודות` | Older version of the About text | ☐ pending |
-| 7 | www.hagarlushi.com | `/home` | `/` | Empty Wix page | ☐ pending |
-| 8 | www.hagarlushi.com | `/פרוייקטים` | `/לקוחות-פרטיים` | Near-empty index ("הפרוייקטים שלי") | ☐ pending |
-| 9 | www.hagarlushi.com | `/coming-soon` | `/` | "האתר בשיפוצים...נשוב בקרוב!" placeholder | ☐ pending |
+| 1 | www.hagarlushi.com | `/portfolio` | `/` | Press page ("מהעיתונות") removed from the site (owner decision, 2026-10-19) | yes |
+| 2 | www.hagarlushi.com | `/copy-of-להיות-יפה` | `/דירה-להשכיר` | Duplicate of the "דירה להשכיר" project page | ☐ pending |
+| 3 | www.hagarlushi.com | `/להיות-יפה` | `/להיות-יפה-שירלי` | Older copy of the "להיות יפה" project page | ☐ pending |
+| 4 | www.hagarlushi.com | `/redesign` | `/עיצוב-מחדש` | Duplicate of the "עיצוב מחדש" project page | ☐ pending |
+| 5 | www.hagarlushi.com | `/go-on-vacation` | `/צאו-לחופשה` | Duplicate of the "צאו לחופשה" project page | ☐ pending |
+| 6 | www.hagarlushi.com | `/הבן-של-הנגר3` | `/הבן-של-הנגר` | Duplicate of the "הבן של הנגר" project page | ☐ pending |
+| 7 | www.hagarlushi.com | `/bio` | `/אודות` | Older version of the About text | ☐ pending |
+| 8 | www.hagarlushi.com | `/home` | `/` | Empty Wix page | ☐ pending |
+| 9 | www.hagarlushi.com | `/פרוייקטים` | `/לקוחות-פרטיים` | Near-empty index ("הפרוייקטים שלי") | ☐ pending |
+| 10 | www.hagarlushi.com | `/coming-soon` | `/` | "האתר בשיפוצים...נשוב בקרוב!" placeholder | ☐ pending |
 
 ## D. Old Wix landing pages: pending the campaign check
 

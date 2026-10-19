@@ -9,54 +9,87 @@ const cards = order.map((s) => projects.find((p) => p.slug === s));
 const mark = img(site.mark);
 ---
 <Base title={title} ogImage={cards[0].card.image}>
-  <section class="cat-head wrap reveal">
-    <img class="mark" src={mark.src} alt="Lushi-Logo-01.png" width="80" height="80" />
-    <h1>
-      <span class="pre big">{c.heading[0]}</span>
-      <span class="small">{c.heading[1]}</span>
-    </h1>
-    <div class="cat-text">
-      <p class="pre">{c.text}</p>
-      {c.lead && <p class="lead">{c.lead}</p>}
-    </div>
-  </section>
+  <div class:list={['cat', `cat-${kind}`]}>
+    <section class="cat-head reveal">
+      <div class="cat-text"><p class="pre">{c.text}{c.lead && `\n${c.lead}`}</p></div>
+      <h1 class="cat-title">
+        <span class="pre big">{c.heading[0]}</span>
+        <span class="small">{c.heading[1]}</span>
+      </h1>
+      <img class="mark" src={mark.src} alt="Lushi-Logo-01.png" width="80" height="80" />
+    </section>
 
-  <section class="cards wrap" aria-label="פרויקטים">
-    {cards.map((p) => {
-      const im = img(p.card.image, 480);
-      return (
-        <a class="card reveal" href={`/${p.slug}`}>
-          <span class="card-img"><img src={im.src} srcset={im.srcset} sizes="(max-width: 760px) 100vw, 479px" alt={p.card.title} width="479" height="478" loading="lazy" /></span>
-          <span class="card-title">{p.card.title}</span>
-          <span class="card-sub">{p.card.subtitle}</span>
-        </a>
-      );
-    })}
-  </section>
+    <section class="cards" aria-label="פרויקטים">
+      {cards.map((p) => {
+        const im = img(p.card.image, 480);
+        return (
+          <a class="card reveal" href={`/${p.slug}`}>
+            <img src={im.src} srcset={im.srcset} sizes="(max-width: 760px) 88vw, 479px" alt={p.card.title} width="479" height="478" loading="lazy" />
+            <span class="card-cap">
+              <span class="card-title">{p.card.title}</span>
+              <span class="card-sub">{p.card.subtitle}</span>
+            </span>
+          </a>
+        );
+      })}
+    </section>
+  </div>
 </Base>
 
 <style>
-  .cat-head { padding: 60px 0 40px; display: grid; grid-template-columns: auto 1fr; gap: 26px 40px; align-items: start; }
-  .mark { width: 80px; height: 80px; grid-row: span 2; }
-  h1 { display: flex; flex-direction: column; gap: 6px; }
-  .big { font-size: 40px; letter-spacing: 6px; line-height: 1.2; }
-  .small { font-size: 22px; letter-spacing: 4px; color: var(--muted); }
-  .cat-text { grid-column: 2; display: grid; gap: 14px; font-size: 18px; line-height: 25.2px; max-width: 760px; }
-  .lead { font-weight: 700; }
+  /* Measured on Wix at 1440px (980px page at x 230), laid out left to right as on Wix:
+     header: intro text right-aligned ending at x 772 (20/28px); the title (50/50px, two lines) and subtitle
+     (30/42px) right-aligned ending at x 1075; the 80px logo mark at x 1097, 54px below the title top.
+     Grid: two 479/478px squares, 23px gaps, first project top-left; title and subtitle in white, centred over
+     a gradient (rgba(99,99,99,.01) to rgba(0,0,0,.54)).
+     Per page (Wix positions): private title at y 339 and the grid 321px below it; commercial title at y 329,
+     grid 278px below. Under the last row Wix leaves empty page (private 1595px, commercial 750px; leftover space
+     in the Wix editor): reproduced by the page's minimum height (src/data/page-heights.mjs). */
+  .cat { --top: 90px; --head-h: 321px; --bottom: 92px; --intro-w: 513px; }
+  .cat-commercial { --top: 80px; --head-h: 278px; --intro-w: 519px; }
+  .cat-head, .cards { width: min(980px, 100% - 32px); margin-inline: auto; }
+  .cat-head {
+    direction: ltr; display: grid; padding-top: var(--top); height: calc(var(--top) + var(--head-h)); align-items: start;
+    grid-template-columns: 23px var(--intro-w) 1fr auto 22px 80px 33px;
+  }
+  /* Rules as on Wix: a 233px horizontal rule (#424242) under the title, ending at its right edge (x 842-1075), 123px
+     below the header padding; a 190px vertical rule (#282626) at x 1096, beside the logo mark, from 1px above the title. */
+  .cat-head { position: relative; }
+  .cat-head::before { content: ''; position: absolute; left: 62.449%; width: 233px; top: calc(var(--top) + 123px); border-top: 1px solid #424242; }
+  .cat-head::after { content: ''; position: absolute; left: 88.367%; height: 190px; top: calc(var(--top) - 1px); border-left: 1px solid #282626; }
+  .cat-text { grid-column: 2; direction: rtl; font-size: 20px; line-height: 28px; padding-top: 8px; }
+  .cat-title { grid-column: 4; direction: rtl; display: flex; flex-direction: column; align-items: flex-start; }
+  .big { font-size: 50px; line-height: 50px; }
+  .small { font-size: 30px; line-height: 42px; margin-top: 38px; }
+  .mark { grid-column: 6; width: 80px; height: 80px; margin-top: 54px; }
 
-  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 46px 22px; padding: 30px 0 110px; }
-  .card { display: flex; flex-direction: column; gap: 6px; }
-  .card-img { display: block; aspect-ratio: 1; overflow: hidden; background: #eee; margin-bottom: 12px; }
-  .card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
-  .card:hover .card-img img { transform: scale(1.04); }
-  .card-title { font-size: 22px; letter-spacing: 2px; color: var(--ink); }
-  .card-sub { font-size: 16px; color: var(--muted); }
+  .cards { direction: ltr; display: grid; grid-template-columns: 1fr 1fr; gap: 23px; padding-bottom: var(--bottom); }
+  .card { position: relative; display: block; aspect-ratio: 479 / 478; overflow: hidden; direction: rtl; }
+  .card img { width: 100%; height: 100%; object-fit: cover; }
+  .card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(rgba(99, 99, 99, .01), rgba(0, 0, 0, .54)); }
+  .card-cap { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; text-align: center; padding: 0 20px; }
+  .card-title { font-size: 30px; line-height: 37px; }
+  .card-sub { font-size: 20px; line-height: 25px; margin-top: 7px; }
 
+  /* Below the 980px page width the composition shrinks with the window instead of scrolling sideways. */
+  @media (max-width: 1012px) {
+    .cat-head { grid-template-columns: 2.3% 52% 1fr auto 2.2% 80px 3.4%; }
+  }
+  /* Wix mobile (320px design, x --m): centred mark, title, subtitle and text, then a 2-column grid of 137px squares
+     7px apart with only the title over each photo (18/22px). Gaps differ per page on Wix. */
   @media (max-width: 760px) {
-    .cat-head { grid-template-columns: 1fr; text-align: center; justify-items: center; padding-top: 36px; }
-    .mark { grid-row: auto; }
-    .cat-text { grid-column: 1; text-align: start; }
-    .big { font-size: 30px; letter-spacing: 4px; }
-    .cards { grid-template-columns: 1fr; gap: 36px; }
+    .cat { --mk: 41; --mt: 43; --g1: 26; --g2: 47; --g3: 77; --ts: 27; }
+    .cat-commercial { --mk: 42; --mt: 7; --g1: 19; --g2: 41; --g3: 53; --ts: 28; }
+    .cat-head::before, .cat-head::after { display: none; }
+    .cat-head { display: flex; flex-direction: column; align-items: center; direction: rtl; text-align: center; padding-top: calc(var(--mt) * var(--m)); height: auto; }
+    .mark { order: -1; margin: 0; width: calc(var(--mk) * var(--m)); height: calc(var(--mk) * var(--m)); }
+    .cat-title { align-items: center; margin-top: calc(-4 * var(--m)); }
+    .big { font-size: calc(var(--ts) * var(--m)); line-height: calc(var(--ts) * var(--m)); }
+    /* Wix mobile: a 172px rule (#424242) between the title and the subtitle */
+    .small { font-size: calc(21 * var(--m)); line-height: calc(29.4 * var(--m)); margin-top: calc((var(--g1) - 14) * var(--m)); padding-top: calc(14 * var(--m)); border-top: 1px solid #424242; width: calc(172 * var(--m)); }
+    .cat-text { order: 3; width: calc(280 * var(--m)); font-size: calc(18 * var(--m)); line-height: calc(25.2 * var(--m)); padding-top: calc(var(--g2) * var(--m)); text-align: center; }
+    .cards { grid-template-columns: 1fr 1fr; width: calc(281 * var(--m)); gap: calc(7 * var(--m)); margin-top: calc(var(--g3) * var(--m)); padding-bottom: calc(40 * var(--m)); }
+    .card-title { font-size: calc(18 * var(--m)); line-height: calc(22 * var(--m)); }
+    .card-sub { display: none; }
   }
 </style>

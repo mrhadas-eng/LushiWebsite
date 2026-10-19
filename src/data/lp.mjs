@@ -9,15 +9,18 @@ export const lpSite = {
   siteName: 'Hagar Lushi | Architecture & Interior Design',
   // Google tag added by WordPress' Site Kit plugin (in addition to GTM-KJRR2DNT); preserved as-is.
   siteKitTagId: 'GT-TQKZV73G',
-  // Landing-page contact number (owner, 2026-10-11): 052-431-7164. The main site keeps 050-578-8634.
-  // The WordPress thank-you page linked to 972544317164; the owner corrected it.
-  phone: '052-431-7164',
-  phoneHref: 'tel:+972524317164',
+  // Landing-page call number (owner, 2026-10-19): 052-594-9682, used by every lp tel: link (the "בטלפון" link in
+  // the form failure and uncertain messages). Calls and WhatsApp use different numbers; never mix them.
+  // The main site keeps 050-578-8634 for both.
+  phone: '052-594-9682',
+  phoneHref: 'tel:+972525949682',
   // A WhatsApp click is not a lead (owner decision D1): the button opens the chat with this message,
   // is tracked as whatsapp_click only, and never sends anything to OfficeCRM or counts generate_lead.
   // (WordPress showed a name/phone pop-up first; it is not recreated because its data was not used.)
+  // WhatsApp number (owner, 2026-10-19): 054-431-7164, as on the WordPress thank-you page. Used by the floating
+  // button, the thank-you button and the form failure message.
   whatsapp: {
-    number: '972524317164',
+    number: '972544317164',
     message: 'היי הגר! יש לי פרוייקט שאני רוצה להתייעץ לגביו.',
   },
   // Contact email shown on the landing pages' legal pages (owner, 2026-10-12). It replaces the addresses

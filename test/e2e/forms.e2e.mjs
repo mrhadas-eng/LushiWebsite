@@ -23,9 +23,9 @@ const VALID = { full_name: 'בדיקה טופס', phone: '050-1234567', email: '
 
 const SITES = [
   { name: 'www', base: 'http://127.0.0.1:8787', pages: [['/', 'home'], ['/יצירת-קשר', 'contact']], form: '.contact-form', submit: '.send', fail: '.status:not(.status-uncertain)', unsure: '.status-uncertain',
-    thanks: '/thankyou', consent: false, wa: { float: '.wa-float', number: '972505788634' }, src: 'website / google / cpc' },
+    thanks: '/thankyou', consent: false, wa: { float: '.wa-float', number: '972505788634' }, tel: '972505788634', src: 'website / google / cpc' },
   { name: 'lp', base: 'http://127.0.0.1:8788', pages: [['/', 'lp-home'], ['/architecture/', 'lp-architecture'], ['/interior-design/', 'lp-interior-design'], ['/renovation/', 'lp-renovation']],
-    form: '.lp-form', submit: '.lp-submit', fail: '.lp-form-error:not(.lp-form-uncertain)', unsure: '.lp-form-uncertain', thanks: '/thankyou/', consent: true, wa: { float: '.lp-wa', number: '972524317164' }, src: 'landing-page / google / cpc' },
+    form: '.lp-form', submit: '.lp-submit', fail: '.lp-form-error:not(.lp-form-uncertain)', unsure: '.lp-form-uncertain', thanks: '/thankyou/', consent: true, wa: { float: '.lp-wa', number: '972544317164' }, tel: '972525949682', src: 'landing-page / google / cpc' },
 ];
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }).catch(() => chromium.launch());
 
@@ -162,7 +162,7 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
         && !p.url().includes('thankyou') && (await ev(p, 'generate_lead')) === 0 && !(await p.$eval(F(S.submit), (el) => el.disabled)),
         t(`CRM ${m}: ${kind === 'not_saved' ? 'retry' : 'uncertain'} message only, values kept, no redirect, no conversion`), txt.slice(0, 30));
       if (m !== 'browser-offline') check((await crmSaved()) - s0 === savedDelta, t(`CRM ${m}: fake CRM stored ${savedDelta} lead(s)${savedDelta ? ' although the visitor saw no success' : ''}`));
-      check(links.includes(`tel:+${S.wa.number}`) && links.some((h) => /whatsapp|wa\.me/.test(h) && h.includes(S.wa.number)) && links.length === 2, t(`CRM ${m}: phone/WhatsApp links use this site's number`), links.join(' '));
+      check(links.includes(`tel:+${S.tel}`) && links.some((h) => /whatsapp|wa\.me/.test(h) && h.includes(S.wa.number)) && links.length === 2, t(`CRM ${m}: phone/WhatsApp links use this site's number`), links.join(' '));
       if (m === 'browser-offline') await p.unroute('**/api/lead');
     }
     await mode('ok');
@@ -229,7 +229,10 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
       for (const [path] of [...S.pages, ['/thankyou/'], ['/privacy/'], ['/accessibility-statement/']]) {
         await p.goto(`${S.base}${path}`);
         const hrefs = await p.$$eval('a[href*="api.whatsapp.com"], a[href*="wa.me"]', (as) => as.map((a) => a.href));
-        check(hrefs.length > 0 && hrefs.every((h) => h.includes('phone=972524317164') && h.includes('text=')), t(`${path}: WhatsApp links use 052-431-7164`), String(hrefs.length));
+        check(hrefs.length > 0 && hrefs.every((h) => h.includes('phone=972544317164') && h.includes('text=')), t(`${path}: WhatsApp links use 054-431-7164`), String(hrefs.length));
+        const tels = await p.$$eval('a[href^="tel:"]', (as) => as.map((a) => a.getAttribute('href')));
+        check(tels.every((h) => h === `tel:+${S.tel}`) && !hrefs.some((h) => h.includes(S.tel)) && !tels.some((h) => h.includes(S.wa.number)),
+          t(`${path}: call links use 052-594-9682, never mixed with WhatsApp`), tels.join(' ') || 'no call links');
         if (path === '/privacy/' || path === '/accessibility-statement/') {
           const mails = await p.$$eval('a[href^="mailto:"]', (as) => as.map((a) => [a.getAttribute('href'), a.textContent.trim()]));
           const body = await p.textContent('main, body');

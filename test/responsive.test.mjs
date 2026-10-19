@@ -26,13 +26,14 @@ test('every page has a mobile viewport and lets visitors zoom', { skip }, () => 
 test('main menu stays on one row on tablets: cells shrink instead of wrapping', { skip }, () => {
   const c = css('dist');
   assert.match(c, /\.menu-list\[[^\]]+\]\{[^}]*flex-wrap:nowrap/);
-  assert.match(c, /\.menu-item\[[^\]]+\]\{[^}]*flex:0 1 130px[^}]*min-width:0/);
+  assert.match(c, /\.menu-item\[[^\]]+\]\{[^}]*flex:0 1 131px[^}]*min-width:0/);
 });
 
 test('touch screens get larger tap areas (desktop layout unchanged)', { skip }, () => {
   const www = css('dist'), lp = css('dist-lp');
   assert.ok(new Set(www.match(/@media\s*\(pointer:\s*coarse\)\{[^@]*/g)).size >= 6, 'www: pointer-coarse rules');
-  assert.match(www, /\.menu-toggle\[[^\]]+\]\{[^}]*width:44px;height:44px/);
+  // mobile menu button: the Wix size (41x40 on the 320px design) but never under 44x44px
+  assert.match(www, /\.menu-toggle\[[^\]]+\]\{[^}]*width:max\(44px,[^}]*height:max\(44px,/);
   // lp styles are global (no Astro scope attribute), so the attribute part is optional
   assert.match(lp, /@media\s*\(pointer:\s*coarse\)\{\.lp-consent(\[[^\]]+\])?\{min-height:44px\}/);
   assert.match(lp, /\.lp-footer a(\[[^\]]+\])?\{display:inline-block;padding-block:12px/);

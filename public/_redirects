@@ -12,8 +12,9 @@
 /דף-נחיתה-פרטיים /לקוחות-פרטיים 301
 /דף-נחיתה-פרטי /לקוחות-פרטיים 301
 /coming-soon / 301
+/portfolio / 301
 /pages-sitemap.xml /sitemap.xml 301
 /portfolio-projects-sitemap.xml /sitemap.xml 301
 /portfolio-collections-sitemap.xml /sitemap.xml 301
 # Catch-all rules last (Cloudflare matches them more slowly)
-/portfolio-collections/* /portfolio 301
+/portfolio-collections/* / 301

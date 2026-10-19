@@ -93,7 +93,9 @@ test('redirects: targets exist, no chains or loops, campaign parameters are not 
 test('no landing-page URL is redirected to a homepage silently', () => {
   for (const e of inventory.filter((x) => x.status === 'redirect' && x.to === '/' && !x.technical)) {
     assert.ok(e.reason, `${e.host} ${e.url}`);
-    assert.equal(e.approved, false, `${e.host} ${e.url}: must stay listed as an owner decision until approved`);
+    // Stays an open owner decision unless the owner approved it explicitly (approval date recorded).
+    if (e.approved) assert.match(e.approvedOn || '', /^\d{4}-\d{2}-\d{2}$/, `${e.host} ${e.url}: approved without an owner decision date`);
+    assert.notEqual(e.host, 'lp', `${e.host} ${e.url}: lp pages are never redirected to the homepage`);
   }
   // Every real lp page keeps its own URL.
   for (const u of ['/', '/architecture/', '/interior-design/', '/renovation/', '/thankyou/', '/privacy/', '/accessibility-statement/'])

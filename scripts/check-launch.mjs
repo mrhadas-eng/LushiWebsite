@@ -2,7 +2,8 @@
 // Fails (exit 1) if anything in the repository that would lose leads, URLs or statistics is missing.
 // Items that live only in a dashboard (Worker secret, DNS, GTM) are listed as manual checks.
 import fs from 'node:fs';
-import { site } from '../src/data/content.mjs';
+import { site, allMedia } from '../src/data/content.mjs';
+import { img } from '../src/lib/media.mjs';
 import { lpSite, lpUsedMedia, lpImg } from '../src/data/lp.mjs';
 import { pendingDecisions, outOfScopePending, ownerReviewPending } from '../src/data/url-inventory.mjs';
 import { render as redirectList } from './redirect-list.mjs';
@@ -59,6 +60,10 @@ check(/^\d{10,15}$/.test(site.whatsapp?.number || ''), 'WhatsApp number is set',
 const media = fs.existsSync('public/media') ? fs.readdirSync('public/media').length : 0;
 check(media > 100, `Images are stored locally (${media} files in public/media)`,
   'Run "npm run fetch-media" or the "Copy images from Wix" GitHub Action');
+// Every image the main site uses must be served from public/media, not from Wix (Wix goes away at launch).
+const onWix = allMedia().filter((m) => !img(m).src.startsWith('/media/'));
+check(onWix.length === 0, `Main-site images stored locally (${onWix.length} still load from Wix)`,
+  'Run the "Copy images from Wix" GitHub Action (or npm run fetch-media where Wix is reachable), then rebuild');
 
 // --- Landing pages (lp.hagarlushi.com, second Worker)
 let wrl = null;
@@ -88,8 +93,10 @@ check(review.length === 0, `Owner review of copied legal text (${review.length} 
   `Pending the owner's review on the preview site (not done yet). After the owner confirms, remove ownerReview from the entry in src/data/url-inventory.mjs:\n${review.map((e) => `      - ${e.host} ${e.url}: ${e.note}`).join('\n')}`);
 check(fs.existsSync('docs/REDIRECT-APPROVALS.md') && fs.readFileSync('docs/REDIRECT-APPROVALS.md', 'utf8') === redirectList(),
   'Redirect approval list is up to date (docs/REDIRECT-APPROVALS.md)', 'Run npm run redirect-list');
-check(lpSite.whatsapp.number === '972524317164' && site.whatsapp.number === '972505788634',
-  'WhatsApp numbers: landing pages 052-431-7164, main site 050-578-8634', 'Fix lpSite.whatsapp / site.whatsapp');
+check(lpSite.phoneHref === 'tel:+972525949682' && !lpSite.phoneHref.includes(lpSite.whatsapp.number),
+  'Landing-page calls: 052-594-9682, separate from the WhatsApp number', 'Fix lpSite.phone / lpSite.phoneHref');
+check(lpSite.whatsapp.number === '972544317164' && site.whatsapp.number === '972505788634',
+  'WhatsApp numbers: landing pages 054-431-7164, main site 050-578-8634', 'Fix lpSite.whatsapp / site.whatsapp');
 const outPending = outOfScopePending();
 
 let failed = 0;

@@ -28,36 +28,35 @@ const uid = variant === 'home' ? 'home' : 'contact';
 const id = (field: string) => `${uid}-${field}-err`;
 const [failBefore, failAfter] = DELIVERY_FAILED_TEXT.split('בטלפון או בוואטסאפ');
 const [unsureBefore, unsureAfter] = DELIVERY_UNCERTAIN_TEXT.split('בטלפון או בוואטסאפ');
-const REQ = ' *';
 ---
-<form class="contact-form" novalidate
+<form class:list={["contact-form", `cf-${variant}`]} novalidate
   data-endpoint={site.leadEndpoint} data-thanks={site.thankYouPath}
   data-location={variant === 'home' ? 'home' : 'contact'}>
   <!-- Spam trap: hidden from people, bots fill it in -->
   <input type="text" name="website" class="visually-hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
 
-  <div class="field-wrap" data-field>
+  <div class="field-wrap f-name" data-field>
     <label class="field">
       <span class="visually-hidden">{f.name} (שדה חובה)</span>
-      <input type="text" name="full_name" placeholder={f.name + REQ} autocomplete="name" required aria-required="true" aria-describedby={id('full_name')} />
+      <input type="text" name="full_name" placeholder={f.name} autocomplete="name" required aria-required="true" aria-describedby={id('full_name')} />
     </label>
     <p class="field-error" id={id('full_name')} data-error-for="full_name" hidden></p>
   </div>
-  <div class="field-wrap" data-field>
+  <div class="field-wrap f-email" data-field>
     <label class="field">
       <span class="visually-hidden">{f.email} (שדה חובה)</span>
-      <input type="email" name="email" placeholder={f.email + REQ} autocomplete="email" required aria-required="true" aria-describedby={id('email')} />
+      <input type="email" name="email" placeholder={f.email} autocomplete="email" required aria-required="true" aria-describedby={id('email')} />
     </label>
     <p class="field-error" id={id('email')} data-error-for="email" hidden></p>
   </div>
-  <div class="field-wrap" data-field>
+  <div class="field-wrap f-phone" data-field>
     <label class="field">
       <span class="visually-hidden">{f.phone} (שדה חובה)</span>
-      <input type="tel" name="phone" placeholder={f.phone + REQ} autocomplete="tel" inputmode="tel" required aria-required="true" aria-describedby={id('phone')} />
+      <input type="tel" name="phone" placeholder={f.phone} autocomplete="tel" inputmode="tel" required aria-required="true" aria-describedby={id('phone')} />
     </label>
     <p class="field-error" id={id('phone')} data-error-for="phone" hidden></p>
   </div>
-  <label class="field">
+  <label class="field f-msg">
     <span class="visually-hidden">{f.msg}</span>
     <textarea name="message" rows="4" placeholder={f.msg}></textarea>
   </label>
@@ -72,25 +71,62 @@ const REQ = ' *';
 </form>
 
 <style>
-  .contact-form { display: grid; gap: 14px; width: 100%; }
+  /* Measured on Wix (desktop): the two forms look different.
+     Contact page: underline-only fields 356px wide, heights 45 / 42 / 42 / 126, gaps 31 / 32 / 32, then 24px to a
+     122x42 black pill button on the left. Home page: boxed fields 460x30 (1px black), textarea 127px with a 2px grey
+     border, gaps 11 / 12 / 15 / 14, centred 149x54 black button. */
+  .contact-form { display: grid; width: 100%; }
   .field input, .field textarea {
-    width: 100%; border: 0; border-bottom: 1px solid var(--muted); background: transparent;
-    padding: 10px 2px; font-size: 16px; font-weight: 300; color: var(--ink); border-radius: 0;
+    display: block; width: 100%; background: #fff; color: var(--ink); border-radius: 0;
+    font-family: var(--font); font-size: 15px; font-weight: 400; line-height: normal; padding: 0 3px; margin: 0;
   }
-  .field textarea { resize: vertical; border: 1px solid var(--muted); padding: 10px; margin-top: 6px; }
+  .field textarea { resize: vertical; padding-top: 6px; }
+  /* iOS zooms the page into fields under 16px: touch screens get 16px (Wix uses 15px) */
+  @media (pointer: coarse) { .field input, .field textarea { font-size: 16px; } }
+  /* As on Wix: no " *" in the placeholders. Required fields are announced by their hidden label "(שדה חובה)" and
+     aria-required, and checked by the form validation. */
+  .field input::placeholder, .field textarea::placeholder { color: var(--ink); opacity: 1; }
   .field input:focus, .field textarea:focus { outline: none; border-color: var(--ink); }
-  .field [aria-invalid="true"] { border-color: #b3261e; border-bottom-width: 2px; }
-  .field input[aria-invalid="true"]:focus { border-color: #b3261e; }
+  .field [aria-invalid="true"] { border-color: #b3261e !important; }
   .field-error { margin: 4px 2px 0; color: #b3261e; font-size: 14px; font-weight: 400; }
   .field-error::before { content: '⚠ '; }
-  .send {
-    justify-self: start; background: var(--dark); color: #fff; border: 0; cursor: pointer;
-    font-size: 20px; line-height: 28px; padding: 8px 48px; transition: background .2s;
-  }
-  .send:hover { background: #4a4848; }
+  .send { cursor: pointer; color: #fff; background: #000; transition: background .2s, opacity .2s; }
   .send[disabled] { opacity: .6; cursor: wait; }
-  .status { font-size: 15px; color: #b3261e; }
+  .status { font-size: 15px; color: #b3261e; margin-top: 12px; }
   .status a { text-decoration: underline; }
+
+  /* contact page */
+  .cf-page .field input, .cf-page .field textarea { border: 0; border-bottom: 1px solid var(--ink); }
+  .cf-page .f-name input { height: 45px; }
+  .cf-page .f-email input, .cf-page .f-phone input { height: 42px; }
+  .cf-page .f-email { margin-top: 31px; }
+  .cf-page .f-phone, .cf-page .f-msg { margin-top: 32px; }
+  .cf-page .f-msg textarea { height: 126px; }
+  .cf-page .send {
+    justify-self: end; margin-top: 24px; width: 122px; height: 42px; border: 2px solid #000; border-radius: 300px;
+    font-family: var(--font-futura); font-size: 16px; line-height: 22.4px;
+  }
+  .cf-page .send:hover { background: #fff; color: #000; }
+
+  /* home page */
+  .cf-home .field input { height: 30px; border: 1px solid #000; }
+  .cf-home .f-email { margin-top: 11px; }
+  .cf-home .f-phone { margin-top: 12px; }
+  .cf-home .f-msg { margin-top: 15px; }
+  .cf-home .f-msg textarea { height: 127px; border: 2px solid #919191; }
+  .cf-home .send {
+    justify-self: center; margin-top: 14px; width: 149px; height: 54px; border: 0;
+    font-family: var(--font); font-size: 20px; line-height: 28px;
+  }
+  .cf-home .send:hover { background: #4a4848; }
+  /* home page, Wix mobile (x --m): 260px column, fields 30px tall 10px apart, textarea 127px, full-width 42px button */
+  @media (max-width: 760px) {
+    .cf-home .field input, .cf-home .field textarea { font-size: max(16px, calc(15 * var(--m))); }
+    .cf-home .field input { height: calc(30 * var(--m)); }
+    .cf-home .f-email, .cf-home .f-phone, .cf-home .f-msg { margin-top: calc(10 * var(--m)); }
+    .cf-home .f-msg textarea { height: calc(127 * var(--m)); }
+    .cf-home .send { justify-self: stretch; width: auto; height: calc(42 * var(--m)); min-height: 44px; margin-top: calc(10 * var(--m)); font-size: calc(19 * var(--m)); line-height: calc(26.6 * var(--m)); }
+  }
 </style>
 
 <script>

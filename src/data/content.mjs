@@ -15,6 +15,7 @@ export const site = {
   instagram: 'https://www.instagram.com/hagarlushiarc/',
   facebook: 'https://www.facebook.com/HagarLushiArc',
   copyright: 'הדס ולושי בע"מ',
+  copyrightYear: 2025,
   credit: 'עיצוב אתר: Kaufman Creative',
   logo: 'aa09a5_d7939921e94643f4a1e99a1b2c815936~mv2.png',
   mark: '3f6e24_745df42b21a242709025b55204aeb634~mv2.png',
@@ -275,7 +276,6 @@ export const nav = [
   { label: 'מסחריים', href: '/מסחריים', children: projects.filter((p) => p.category === 'commercial').map((p) => ({ label: p.menu, href: `/${p.slug}` })) },
   { label: 'פרטיים', href: '/לקוחות-פרטיים', children: projects.filter((p) => p.category === 'private').map((p) => ({ label: p.menu, href: `/${p.slug}` })) },
   { label: 'יצירת קשר', href: '/יצירת-קשר' },
-  { label: 'מהעיתונות', href: '/portfolio' },
 ];
 
 // ---------------------------------------------------------------- home page
@@ -336,6 +336,8 @@ export const categories = {
 // ---------------------------------------------------------------- about
 export const about = {
   title: 'אודות',
+  // Shown on phones only, as on Wix mobile (About and thank-you pages): a round portrait (PNG with transparency)
+  portrait: { id: '3f6e24_7e73ccdf1bfa4a77bc0e96c7f216e1a0~mv2.png', alt: 'LUSHI NEW.png' },
   subtitle: 'הגר לושי - ארכיטקטורה ועיצוב פנים לפרטיים ומסחריים',
   text: `שמי הגר לושי - בת קיבוץ עין השופט,
 הנדסאית אדריכלות ועיצוב פנים בוגרת שנקר.
@@ -355,16 +357,7 @@ export const about = {
   ],
 };
 
-// ---------------------------------------------------------------- press
-// Two items on the Wix page were video clips hosted on Wix (TV segments).
-// They are shown here as cards with their poster image; add a link to the
-// original broadcast in `href` if you have one.
-export const press = [
-  { title: 'קפה עם מסי - וואלה עיצוב', image: 'aa09a5_3f8a274f44944d5eb81c4aa26072ee7c~mv2.jpg', href: 'https://home.walla.co.il/item/3680029' },
-  { title: 'יוקרה בת"א - וואלה עיצוב', image: 'aa09a5_ecad77a1cd084c5e9519fdb47065c4af~mv2.jpg', href: 'https://home.walla.co.il/item/3674671' },
-  { title: 'בתי חופש בישראל - הקומה ה12 - קשת', image: 'aa09a5_c30c23f9b889428d8bd66b4bd2ae89d9f003.jpg', href: '' },
-  { title: 'מעצבים ישראלים בחו"ל - הקומה ה12 - קשת', image: 'aa09a5_01dd4729c44d49c3bcacfcde019af878f003.jpg', href: '' },
-];
+// The press page (/portfolio, "מהעיתונות") was removed (owner, 2026-10-19); /portfolio redirects to the home page.
 
 // ---------------------------------------------------------------- contact
 export const contact = {
@@ -374,19 +367,25 @@ export const contact = {
   image: '3f6e24_154fabcc4ecc400794c0ae6d1387df40~mv2.jpg',
 };
 
-// Page shown after a form is sent (/thankyou). Placeholder text, to be finalized.
+// Page shown after a form is sent (/thankyou). Text and images as on the Wix thank-you page.
 export const thankYou = {
-  title: 'תודה!',
-  text: 'קיבלנו את הפרטים, ונחזור אליך בהקדם.',
+  title: 'תודה',
+  subtitle: 'אני אחזור אליכם בהקדם האפשרי',
+  text: 'מוזמנים להתרשם מהפרוייקטים',
+  linkText: 'האחרונים באתר',
+  images: [
+    { id: '3f6e24_284c7aa1bdaf4e98a7f62bd648dad3c7~mv2.jpg', alt: 'ramot_lushi_ph_NetaCones (29).jpg' },
+    { id: '3f6e24_efa2fe5947b6417d8764ee08e46ededd~mv2.jpg', alt: 'הגר לושי אודות.jpg' },
+  ],
 };
 
 // ---------------------------------------------------------------- every image the site uses
 export function allMedia() {
-  const set = new Set([site.logo, site.mark, contact.image, home.quote.image]);
+  const set = new Set([site.logo, site.mark, contact.image, home.quote.image, about.portrait.id]);
   home.slides.forEach((s) => set.add(s.image));
-  [...home.homes.images, ...home.business.images, ...about.images].forEach((i) => set.add(i.id));
+  [...home.homes.images, ...home.business.images, ...about.images, ...thankYou.images].forEach((i) => set.add(i.id));
   galleries.home.forEach((g) => set.add(g.id));
-  press.forEach((p) => set.add(p.image));
   projects.forEach((p) => { if (p.card) set.add(p.card.image); p.gallery.forEach((g) => set.add(g.id)); });
   return [...set];
 }
+
