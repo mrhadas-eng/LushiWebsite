@@ -43,11 +43,11 @@ export const inventory = [
   // ------------------------------------------------ www – old Wix landing pages (live today, real content)
   // Out of scope (owner, 2026-10-11): NOT recreated. The redirect stays a pending decision until the owner
   // has checked that no active campaign (Google Ads / Meta final URLs, printed material) still uses them.
-  www('/דף-נחיתה-פרטיים', { scope: 'out', campaignCheck: true, status: 'redirect', to: '/לקוחות-פרטיים', approved: false,
+  www('/דף-נחיתה-פרטיים', { scope: 'out', campaignCheck: false, status: 'redirect', to: '/לקוחות-פרטיים', approved: true,
     reason: 'Live Wix landing page with a Wix contact form ("מתכננים עבורכם!")' }),
-  www('/דף-נחיתה-פרטי', { scope: 'out', campaignCheck: true, status: 'redirect', to: '/לקוחות-פרטיים', approved: false,
+  www('/דף-נחיתה-פרטי', { scope: 'out', campaignCheck: false, status: 'redirect', to: '/לקוחות-פרטיים', approved: true,
     reason: 'Live Wix landing page ("משולחן השרטוט - עד לבית מעוצב…", call/mail buttons, no form)' }),
-  www('/דףנחיתה2', { scope: 'out', campaignCheck: true, status: 'redirect', to: '/', approved: false,
+  www('/דףנחיתה2', { scope: 'out', campaignCheck: false, status: 'redirect', to: '/', approved: true,
     reason: 'Live Wix landing page with a form (content not fully captured: mostly Wix widgets)' }),
 
   // ------------------------------------------------ www – technical
