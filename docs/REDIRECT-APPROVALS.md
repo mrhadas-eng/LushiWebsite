@@ -12,8 +12,8 @@ Claude then sets `approved: true` in the inventory.
 |---|---|---|
 | A. Technical: no visitor content is lost | 12 | No (pre-approved; tell us if you object) |
 | B. Content, lp.hagarlushi.com | 0 | No (none left) |
-| C. Content, main site: obsolete Wix pages (out of migration scope) | 9 | No. Without approval, the redirect proposed here goes live with the main site |
-| D. Main site: old Wix landing pages (out of scope, not recreated) | 3 | No, but **check active campaigns first** (below) |
+| C. Content, main site: obsolete Wix pages (out of migration scope) | 12 | No. Without approval, the redirect proposed here goes live with the main site |
+| D. Main site: old Wix landing pages (out of scope, not recreated) | 0 | No (none left) |
 
 ## A. Technical redirects
 
@@ -49,21 +49,13 @@ None. The WordPress author archives are not redirected (see "No redirect" below)
 | 7 | www.hagarlushi.com | `/home` | `/` | Empty Wix page | ☐ pending |
 | 8 | www.hagarlushi.com | `/פרוייקטים` | `/לקוחות-פרטיים` | Near-empty index ("הפרוייקטים שלי") | ☐ pending |
 | 9 | www.hagarlushi.com | `/coming-soon` | `/` | "האתר בשיפוצים...נשוב בקרוב!" placeholder | ☐ pending |
+| 10 | www.hagarlushi.com | `/דף-נחיתה-פרטיים` | `/לקוחות-פרטיים` | Live Wix landing page with a Wix contact form ("מתכננים עבורכם!") | yes (2026-10-20) |
+| 11 | www.hagarlushi.com | `/דף-נחיתה-פרטי` | `/לקוחות-פרטיים` | Live Wix landing page ("משולחן השרטוט - עד לבית מעוצב…", call/mail buttons, no form) | yes (2026-10-20) |
+| 12 | www.hagarlushi.com | `/דףנחיתה2` | `/` | Live Wix landing page with a form (content not fully captured: mostly Wix widgets) | yes (2026-10-20) |
 
-## D. Old Wix landing pages: pending the campaign check
+## D. Old Wix landing pages
 
-These are live Wix pages with their own content (two have a Wix form). They are **not** recreated (owner, 2026-10-11).
-Before the main site moves to Cloudflare, check that no active Google Ads or Meta ad, and no printed material, links to them:
-- Google Ads: Campaigns → Ads → add the "Final URL" column, and search for `נחיתה`.
-- Meta Ads Manager: Ads → the "Website URL" of each active ad.
-
-If none does, approve the redirect. If one does, change the ad's URL to an lp. page first (e.g. `https://lp.hagarlushi.com/`).
-
-| # | Site | Old URL | Redirects to (301) | Why | Approved |
-|---|---|---|---|---|---|
-| 1 | www.hagarlushi.com | `/דף-נחיתה-פרטיים` | `/לקוחות-פרטיים` | Live Wix landing page with a Wix contact form ("מתכננים עבורכם!") | ☐ pending |
-| 2 | www.hagarlushi.com | `/דף-נחיתה-פרטי` | `/לקוחות-פרטיים` | Live Wix landing page ("משולחן השרטוט - עד לבית מעוצב…", call/mail buttons, no form) | ☐ pending |
-| 3 | www.hagarlushi.com | `/דףנחיתה2` | `/` | Live Wix landing page with a form (content not fully captured: mostly Wix widgets) | ☐ pending |
+None left: the owner approved their redirects (group C).
 
 ## No redirect: these URLs return the 404 page
 

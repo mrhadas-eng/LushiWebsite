@@ -93,7 +93,9 @@ test('redirects: targets exist, no chains or loops, campaign parameters are not 
 test('no landing-page URL is redirected to a homepage silently', () => {
   for (const e of inventory.filter((x) => x.status === 'redirect' && x.to === '/' && !x.technical)) {
     assert.ok(e.reason, `${e.host} ${e.url}`);
-    assert.equal(e.approved, false, `${e.host} ${e.url}: must stay listed as an owner decision until approved`);
+    // Stays an open owner decision unless the owner approved it explicitly (approval date recorded).
+    if (e.approved) assert.match(e.approvedOn || '', /^\d{4}-\d{2}-\d{2}$/, `${e.host} ${e.url}: approved without an owner decision date`);
+    assert.notEqual(e.host, 'lp', `${e.host} ${e.url}: lp pages are never redirected to the homepage`);
   }
   // Every real lp page keeps its own URL.
   for (const u of ['/', '/architecture/', '/interior-design/', '/renovation/', '/thankyou/', '/privacy/', '/accessibility-statement/'])
@@ -104,9 +106,12 @@ test('scope: no redirect blocks launch; lp author archives are retired (404, not
   assert.deepEqual(pendingDecisions(), []);
   assert.deepEqual(retired().map((e) => `${e.host} ${e.url}`).sort(), ['lp /author/gal/', 'lp /author/roy/']);
   const out = outOfScopePending();
-  assert.equal(out.length, 12);
+  assert.equal(out.length, 9);
   assert.ok(out.every((e) => e.host === 'www' && !e.technical && e.reason));
-  assert.equal(out.filter((e) => e.campaignCheck).length, 3, 'the 3 old Wix landing pages wait for the campaign check');
+  // The 3 old Wix landing pages were approved by the owner on 2026-10-20: none waits for a campaign check.
+  assert.equal(inventory.filter((e) => e.campaignCheck).length, 0);
+  for (const e of inventory.filter((x) => x.status === 'redirect' && x.approved && !x.technical))
+    assert.match(e.approvedOn || '', /^\d{4}-\d{2}-\d{2}$/, `${e.host} ${e.url}: approved content redirect without an owner decision date`);
   for (const e of inventory.filter((x) => x.technical && x.status === 'redirect')) assert.equal(e.approved, true, `${e.host} ${e.url}`);
 });
 
