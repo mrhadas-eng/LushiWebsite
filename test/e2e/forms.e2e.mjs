@@ -68,7 +68,22 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
       // phone digits keep their order (LTR) and the value is exactly what was typed
       await p.fill(F('[name=phone]'), '+972 52-594-9682');
       check((await p.inputValue(F('[name=phone]'))) === '+972 52-594-9682', t(`${path}: phone value kept as typed`));
-      await p.fill(F('[name=phone]'), '');
+      // What is actually drawn, not the CSS value: screenshot the filled field and find the text's dark pixels.
+      // The text must sit against the right edge (browsers default phone fields to LTR + text-align:start = left).
+      for (const [f, v] of [['phone', '+972 52-594-9682'], ['email', 'test@example.com']]) {
+        await p.fill(F(`[name=${f}]`), v); await p.locator(F(`[name=${f}]`)).blur();
+        const shot = (await p.locator(F(`[name=${f}]`)).screenshot()).toString('base64');
+        const ink = await p.evaluate(async (b64) => {
+          const img = new Image(); img.src = `data:image/png;base64,${b64}`; await img.decode();
+          const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+          const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+          const d = g.getImageData(0, 0, c.width, c.height).data; let min = 1e9, max = -1;
+          for (let y = 4; y < c.height - 4; y++) for (let x = 6; x < c.width - 6; x++) { const i = (y * c.width + x) * 4; if (d[i] + d[i + 1] + d[i + 2] < 300) { min = Math.min(min, x); max = Math.max(max, x); } }
+          return { left: min, right: c.width - 1 - max, width: c.width };
+        }, shot);
+        check(ink.right >= 0 && ink.right * 3 < ink.left && ink.right <= 32, t(`${path}: typed ${f} is drawn against the right edge`), `ink ${ink.left}px from left, ${ink.right}px from right of ${ink.width}`);
+        await p.fill(F(`[name=${f}]`), '');
+      }
       // focus is visible: the focused field looks different from the unfocused one
       const look = () => p.$eval(F('[name=email]'), (el) => { const cs = getComputedStyle(el); return [cs.outlineStyle, cs.outlineWidth, cs.boxShadow, cs.borderColor].join('|'); });
       await p.focus(F('[name=full_name]')); const before = await look();

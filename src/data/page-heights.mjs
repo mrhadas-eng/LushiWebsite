@@ -3,7 +3,7 @@
 // leftovers); it is reproduced as a minimum height so the footer sits where it does on Wix (owner decision
 // 2026-10-19). Pages missing here have no minimum. See docs/VISUAL-PARITY-AUDIT.md.
 export const pageHeights = {
-  '/': { d: 4646, m: 3904 },
+  '/': { d: 4646, m: 3732 },   // phone: Wix 3904 less the 172 units of the gap above "צרו קשר" (owner, 2026-10-20)
   '/אודות': { d: 724, m: 1167 },
   '/יצירת-קשר': { d: 1006, m: 1216 },
   '/לקוחות-פרטיים': { d: 4488, m: 1388 },

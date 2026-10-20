@@ -167,7 +167,16 @@ field names, tracking and phone/WhatsApp links are unchanged (the forms' scripts
 | Visible focus: thicker border/underline (main site), white ring (landing pages), focus ring on the buttons | The contact page showed no change on focus | No visible focus on the contact page |
 | Landing pages: source order name → phone → email → consent → button (desktop grid unchanged: button at the end of the row, consent under it) | Keyboard and screen-reader order now matches what is on screen | The consent checkbox came after the button |
 
-Effect on page heights (footer top vs Wix, measured): home +45px desktop / +67px phone; contact page +14px desktop /
+Phone and email alignment (2026-10-20): browsers' own defaults make phone fields left to right with
+`text-align: start`, i.e. left-aligned; the shared rule overrides that. `forms.e2e.mjs` now checks what is drawn: it
+screenshots each filled phone and email field and fails unless the text sits against the right edge (verified to fail
+when the browser default is forced back).
+
+Home page on phones (2026-10-20, owner): the 220-unit empty space Wix leaves under the business section, before
+"צרו קשר", is reduced to 48 units (268px → 59px at 390px), and the home page's phone minimum height is lowered by the
+same 172 units (3904 → 3732) so the space does not reappear above the footer. Desktop unchanged.
+
+Effect on page heights (footer top vs Wix, measured): home +45px desktop / +67px phone (before the 2026-10-20 gap change); contact page +14px desktop /
 +115px phone; every other www page unchanged (±1px). The landing-page form band grows by the label row. Tests: `test/forms.test.mjs` (built HTML/CSS) and the "layout and
 accessibility" checks in `test/e2e/forms.e2e.mjs` (computed direction and alignment, label above each field,
 44px on phones, focus state, keyboard order). New Hebrew text needing the owner's approval: "(לא חובה)".
