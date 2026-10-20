@@ -26,6 +26,7 @@ const mark = img(site.mark);
   .contact-page { display: grid; grid-template-columns: 1fr 534px; gap: 60px; padding: 50px 0 110px; align-items: start; }
   .cp-text { display: grid; gap: 18px; justify-items: start; }
   .cp-phone, .cp-mail { font-family: var(--font-contact); font-weight: 300; font-size: 20px; letter-spacing: 5px; }
+  @media (pointer: coarse) { .cp-phone, .cp-mail { padding-block: 10px; margin-block: -10px; } }
   .cp-sub { font-size: 20px; }
   .mark { width: 80px; height: 80px; }
   .cp-img { width: 100%; aspect-ratio: 534 / 800; object-fit: cover; }

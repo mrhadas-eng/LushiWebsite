@@ -1,0 +1,20 @@
+---
+// Floating WhatsApp button on every landing page. A WhatsApp click is not a lead (owner decision D1,
+// 2026-10-11): it opens the chat with the landing pages' number and prescribed message, and is tracked
+// as whatsapp_click only (src/components/Tracking.astro, link_location "lp_float"). Nothing is sent to
+// OfficeCRM, there is no thank-you page and no generate_lead.
+import { lpWhatsAppUrl } from '../../data/lp.mjs';
+---
+<a class="lp-wa" href={lpWhatsAppUrl()} target="_blank" rel="noopener" data-track="lp_float" aria-label="פתיחת צ'אט וואטסאפ">
+  <svg viewBox="0 0 32 32" width="59" height="59" aria-hidden="true">
+    <circle cx="16" cy="16" r="16" fill="#4CAF50" />
+    <path fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" d="M16 6.8c-5.2 0-9.3 4-9.3 9 0 1.8.5 3.4 1.4 4.8L7.2 25l4.6-1.3c1.3.7 2.7 1.1 4.2 1.1 5.2 0 9.3-4 9.3-9s-4.1-9-9.3-9z"/>
+    <path fill="#fff" d="M13.1 11.4c.3 0 .5 0 .7.5l.8 1.9c.1.3 0 .5-.1.7l-.6.7c-.2.2-.2.4 0 .7.4.7 1 1.4 1.6 2 .6.5 1.2.9 1.9 1.2.3.1.5.1.7-.2l.6-.8c.2-.2.4-.3.7-.2l1.9.9c.3.1.4.3.3.6-.2 1-1.1 1.8-2.1 1.8-3.1-.2-6.4-3.2-6.9-6.2-.2-1 .5-2.1 1.4-2.5.3-.1.5-.1.8-.1z"/>
+  </svg>
+</a>
+
+<style>
+  .lp-wa { position: fixed; right: 30px; bottom: 30px; z-index: 60; width: 59px; height: 59px; border-radius: 50%; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+  .lp-wa svg { display: block; }
+  @media (max-width: 767px) { .lp-wa { right: 16px; bottom: 16px; } }
+</style>

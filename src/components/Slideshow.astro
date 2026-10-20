@@ -39,6 +39,12 @@ const { slides } = Astro.props;
   .dots { position: absolute; z-index: 2; bottom: 24px; inset-inline: 0; display: flex; justify-content: center; gap: 10px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid #fff; background: #fff; padding: 0; cursor: pointer; opacity: .9; }
   .dot.on { background: transparent; width: 10px; height: 10px; }
+  /* Touch screens: a larger invisible tap area around each dot. */
+  @media (pointer: coarse) {
+    .dots { gap: 24px; }
+    .dot { position: relative; }
+    .dot::after { content: ''; position: absolute; inset: -12px; }
+  }
   @media (max-width: 760px) {
     .slideshow { height: 70vh; min-height: 380px; }
     .caption { bottom: 64px; }

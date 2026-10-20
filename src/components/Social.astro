@@ -19,4 +19,9 @@ const { size = 22, class: cls } = Astro.props;
   .social { list-style: none; margin: 0; padding: 0; display: flex; gap: 14px; align-items: center; }
   .social a { display: inline-flex; color: var(--ink); opacity: .9; transition: opacity .2s; }
   .social a:hover { opacity: .6; }
+  /* Touch screens: 44px tap area around each icon (the icon itself stays the same size). */
+  @media (pointer: coarse) {
+    .social { gap: 26px; }
+    .social a { padding: 13px; margin: -13px; }
+  }
 </style>

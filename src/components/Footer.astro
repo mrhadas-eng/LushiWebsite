@@ -15,5 +15,6 @@ const year = new Date().getFullYear();
   .footer-in { min-height: 144px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding-block: 28px; text-align: center; }
   .copy, .credit { font-size: 14px; font-weight: 300; }
   .credit a { text-decoration: underline; text-underline-offset: 3px; }
+  @media (pointer: coarse) { .credit a { display: inline-block; padding-block: 12px; margin-block: -12px; } }
   .site-footer :global(.social a) { color: #fff; }
 </style>

@@ -23,8 +23,9 @@ const ogAbs = og ? (og.startsWith('http') ? og : new URL(og, site.url).href) : u
     <Tracking />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
-    {noindex && <meta name="robots" content="noindex, follow" />}
+    {noindex
+      ? <meta name="robots" content="noindex, follow" />
+      : <link rel="canonical" href={canonical} />}
     <meta name="google-site-verification" content={site.verification.google} />
     <meta name="msvalidate.01" content={site.verification.bing} />
     <meta property="og:site_name" content={site.name} />

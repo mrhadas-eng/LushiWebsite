@@ -1,0 +1,8 @@
+---
+// lp.hagarlushi.com/  (WordPress page 2, "sample-page" slug, front page)
+import LpBase from '../../layouts/LpBase.astro';
+import LpLanding from '../../components/lp/LpLanding.astro';
+import { lpPages } from '../../data/lp.mjs';
+const page = lpPages.find((p) => p.path === '/')!;
+---
+<LpBase title={page.title} path={page.path}><LpLanding page={page} /></LpBase>

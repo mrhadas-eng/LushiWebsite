@@ -1,0 +1,11 @@
+---
+// lp.hagarlushi.com/architecture/, /interior-design/, /renovation/  (WordPress pages 387, 321, 406)
+import LpBase from '../../layouts/LpBase.astro';
+import LpLanding from '../../components/lp/LpLanding.astro';
+import { lpPages } from '../../data/lp.mjs';
+export function getStaticPaths() {
+  return lpPages.filter((p) => p.slug).map((page) => ({ params: { page: page.slug }, props: { page } }));
+}
+const { page } = Astro.props;
+---
+<LpBase title={page.title} path={page.path}><LpLanding page={page} /></LpBase>

@@ -57,7 +57,7 @@ const logo = img(site.logo);
   .topbar { background: var(--dark); color: #fff; height: 45px; }
   .topbar-in { height: 100%; display: flex; align-items: center; justify-content: space-between; }
   .phone {
-    display: inline-flex; align-items: center; gap: 10px;
+    display: inline-flex; align-items: center; gap: 10px; min-height: 44px;
     font-family: var(--font-contact); font-weight: 300; font-size: 15px; letter-spacing: 3.75px;
     direction: ltr;
   }
@@ -73,9 +73,11 @@ const logo = img(site.logo);
      the current page gets a thicker, softer 4px line. */
   .menu-list {
     list-style: none; margin: 0; padding: 0 0 7px;
-    display: flex; justify-content: center; flex-wrap: wrap; gap: 0;
+    display: flex; justify-content: center; flex-wrap: nowrap; gap: 0;
   }
-  .menu-item { position: relative; display: flex; align-items: center; width: 130px; }
+  /* 130px cells as on Wix; they shrink (instead of wrapping onto a second row) when the six of them
+     don't fit, i.e. on tablets between the 760px mobile breakpoint and 780px. */
+  .menu-item { position: relative; display: flex; align-items: center; flex: 0 1 130px; min-width: 0; }
   .menu-item > a {
     flex: 1; margin: 0 5px; text-align: center;
     font-size: 18px; line-height: 49px; color: #636363;
@@ -103,21 +105,21 @@ const logo = img(site.logo);
     .brand { padding: 16px 0 8px; }
     .brand img { width: 230px; }
     .menu-toggle {
-      display: block; position: absolute; top: -66px; inset-inline-start: 16px;
-      width: 36px; height: 36px; background: none; border: 0; cursor: pointer;
+      display: block; position: absolute; top: -70px; inset-inline-start: 12px;
+      width: 44px; height: 44px; background: none; border: 0; cursor: pointer;
     }
     .bars, .bars::before, .bars::after { display: block; width: 24px; height: 1.5px; background: var(--ink); position: relative; margin: auto; content: ''; }
     .bars::before { position: absolute; top: -7px; }
     .bars::after { position: absolute; top: 7px; }
     .menu-list { display: none; flex-direction: column; gap: 0; padding: 4px 24px 18px; border-top: 1px solid var(--line); }
     .menu.open .menu-list { display: flex; }
-    .menu-item { width: auto; flex-wrap: wrap; justify-content: space-between; border-bottom: 1px solid var(--line); }
+    .menu-item { flex: none; width: auto; flex-wrap: wrap; justify-content: space-between; border-bottom: 1px solid var(--line); }
     .menu-item > a, .menu-item.active > a { flex: 0 1 auto; margin: 0; text-align: start; line-height: 48px; padding: 0; border: 0; }
-    .sub-toggle { display: block; }
+    .sub-toggle { display: grid; place-items: center; min-width: 44px; min-height: 48px; }
     .sub { position: static; transform: none; box-shadow: none; opacity: 1; visibility: visible; display: none; width: 100%; padding: 0 0 8px; }
     .has-sub:hover .sub { display: none; }
     .has-sub.open .sub { display: block; }
-    .sub a { padding: 6px 12px; }
+    .sub a { padding: 11px 12px; }
   }
 </style>
 

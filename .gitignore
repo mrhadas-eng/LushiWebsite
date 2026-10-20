@@ -4,3 +4,8 @@ dist/
 .firebase/
 *.log
 .DS_Store
+
+# Local Cloudflare secrets for `wrangler dev` (never commit)
+.dev.vars
+.wrangler/
+dist-lp/

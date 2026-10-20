@@ -130,6 +130,7 @@ const tasting = galleries.home;
   .contact-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 70px; align-items: start; }
   .contact-info { display: flex; flex-direction: column; gap: 22px; align-items: flex-start; padding-top: 10px; }
   .ci { font-family: var(--font-contact); font-weight: 300; font-size: 20px; letter-spacing: 5px; color: var(--ink); }
+  @media (pointer: coarse) { .ci { padding-block: 10px; margin-block: -10px; } }
 
   @media (max-width: 760px) {
     .intro { padding: 48px 0 36px; }

@@ -18,19 +18,9 @@ export const site = {
   credit: 'עיצוב אתר: Kaufman Creative',
   logo: 'aa09a5_d7939921e94643f4a1e99a1b2c815936~mv2.png',
   mark: '3f6e24_745df42b21a242709025b55204aeb634~mv2.png',
-  // Contact forms send each lead straight to the CRM's webhook, then show /thankyou.
-  // While `url` is empty, the form opens the visitor's email app instead (useful only for testing).
-  leadWebhook: {
-    url: '',
-    // 'json'  -> body is a JSON object (most CRMs, Make, Zapier, n8n)
-    // 'form'  -> body is application/x-www-form-urlencoded (older CRMs / form endpoints)
-    format: 'json',
-    // 'no-cors' works with any CRM, but the browser cannot read the reply, so a CRM-side
-    //           error is invisible to the visitor (network errors are still caught).
-    // 'cors'    use when the CRM allows requests from https://www.hagarlushi.com; then a
-    //           failed submission shows an error with the phone and WhatsApp instead.
-    mode: 'no-cors',
-  },
+  // Contact forms POST each lead to this same-site endpoint (worker/index.js), which forwards it
+  // to the CRM. The CRM webhook URL is a Cloudflare Worker secret (CRM_WEBHOOK_URL), never here.
+  leadEndpoint: '/api/lead',
   thankYouPath: '/thankyou',
   // Google Tag Manager container already used by the Wix site. It loads GA4 (G-4QMWQY3565),
   // the Google Ads conversion linker (AW-16872313549), the Meta Pixel (629224152313207) and

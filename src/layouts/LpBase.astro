@@ -1,0 +1,90 @@
+---
+// Layout for the landing pages served on lp.hagarlushi.com (second Worker, see wrangler.lp.jsonc).
+// Mirrors the WordPress/Elementor pages: transparent header with the logo, black footer, floating
+// WhatsApp button that opens the name/phone pop-up, GTM + the Site Kit Google tag.
+import Tracking from '../components/Tracking.astro';
+import LpWhatsApp from '../components/lp/LpWhatsApp.astro';
+import { lpSite, lpImg } from '../data/lp.mjs';
+import { lpHref } from '../lib/lp-paths.mjs';
+
+interface Props { title: string; path: string; noindex?: boolean; bodyClass?: string }
+const { title, path, noindex = false, bodyClass } = Astro.props;
+const canonical = `${lpSite.origin}${path}`;
+const logo = lpImg('2025/02/LOGO.png');
+const logoWhite = lpImg('2025/02/LOGO-white-2.png');
+const fav = lpImg('2025/02/fav.png');
+const siteKitId = lpSite.siteKitTagId;
+---
+<!doctype html>
+<html lang="he-IL" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <Tracking />
+    <!-- Google tag added by WordPress Site Kit on the old site (GT-TQKZV73G), kept as-is.
+         Loaded on the real domain only, like GTM (?gtm=1 enables it on previews). -->
+    <script is:inline define:vars={{ siteKitId }}>
+      (function () {
+        var live = /(^|\.)hagarlushi\.com$/.test(location.hostname), forced = false;
+        try { forced = sessionStorage.getItem('hl_gtm') === '1'; } catch (e) {}
+        if (!live && !forced) return;
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = window.gtag || function () { dataLayer.push(arguments); };
+        gtag('set', 'linker', { domains: ['lp.hagarlushi.com'] });
+        gtag('js', new Date());
+        gtag('config', siteKitId);
+        var s = document.createElement('script');
+        s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + siteKitId;
+        document.head.appendChild(s);
+      })();
+    </script>
+    <title>{title}</title>
+    <meta name="robots" content={noindex ? 'noindex, follow' : 'max-image-preview:large'} />
+    {!noindex && <link rel="canonical" href={canonical} />}
+    <link rel="icon" href={fav.src} type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&family=Noto+Sans+Hebrew:wght@400;600&display=swap" />
+  </head>
+  <body class:list={['lp', bodyClass]}>
+    <a class="lp-skip" href="#main">לדלג לתוכן הראשי</a>
+    <header class="lp-header">
+      <a href={lpHref('/')} aria-label="הגר לושי – דף הבית">
+        <img src={logo.src} alt="Hagar Lushi" width="250" height={logo.height && logo.width ? Math.round(250 * logo.height / logo.width) : undefined} />
+      </a>
+    </header>
+    <main id="main"><slot /></main>
+    <footer class="lp-footer">
+      <img src={logoWhite.src} alt="Hagar Lushi" width="180" loading="lazy" />
+      <p>{lpSite.footer.rights}</p>
+      <p><a href={lpHref('/accessibility-statement/')}>הצהרת נגישות</a> | <a href={lpHref('/privacy/')}>מדיניות פרטיות</a></p>
+    </footer>
+    <LpWhatsApp />
+  </body>
+</html>
+
+<style is:global>
+  .lp {
+    --lp-ink: #141414; --lp-text: #333; --lp-soft: #f9f9fa; --lp-green: rgb(63, 100, 75);
+    --lp-font: 'Open Sans', 'Noto Sans Hebrew', Arial, sans-serif;
+    margin: 0; background: #fff; color: var(--lp-text); direction: rtl;
+    font-family: var(--lp-font); font-size: 16px; line-height: 1.5;
+  }
+  .lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
+  .lp img { max-width: 100%; display: block; }
+  .lp a { color: inherit; }
+  .lp .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .lp-skip { position: absolute; inset-inline-start: 8px; top: -60px; background: #fff; color: #000; padding: 8px 14px; z-index: 100; }
+  .lp-skip:focus { top: 8px; }
+  .lp :focus-visible { outline: 3px solid #1a73e8; outline-offset: 2px; }
+  .lp-header { min-height: 140px; display: flex; align-items: center; justify-content: center; padding: 0 10px; }
+  .lp-header img { width: 250px; height: auto; }
+  .lp-footer { background: #000; color: #fff; text-align: center; padding: 34px 20px 40px; display: grid; justify-items: center; gap: 10px; }
+  .lp-footer img { width: 180px; height: auto; }
+  .lp-footer p { margin: 0; font-size: 15px; }
+  .lp-footer a { text-decoration: none; }
+  .lp-footer a:hover { text-decoration: underline; }
+  @media (pointer: coarse) { .lp-footer a { display: inline-block; padding-block: 12px; margin-block: -12px; } }
+  @media (max-width: 767px) { .lp-header { min-height: 100px; } .lp-header img { width: 190px; } }
+  @media (prefers-reduced-motion: reduce) { .lp * { transition: none !important; animation: none !important; } }
+</style>

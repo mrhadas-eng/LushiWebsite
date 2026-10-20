@@ -4,15 +4,23 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node scripts/split-lp.mjs",
     "preview": "astro preview",
     "fetch-media": "node scripts/fetch-media.mjs",
-    "check-launch": "node scripts/check-launch.mjs"
+    "check-launch": "node scripts/check-launch.mjs",
+    "preview:cf": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy",
+    "test": "node --test test/*.test.mjs",
+    "preview:cf:lp": "npm run build && wrangler dev -c wrangler.lp.jsonc --persist-to .wrangler/state-lp",
+    "deploy:lp": "npm run build && wrangler deploy -c wrangler.lp.jsonc",
+    "fetch-lp-media": "node scripts/fetch-lp-media.mjs",
+    "redirect-list": "node scripts/redirect-list.mjs"
   },
   "dependencies": {
     "astro": "^5.0.0"
   },
   "devDependencies": {
-    "sharp": "^0.33.0"
+    "sharp": "^0.33.0",
+    "wrangler": "^4.149.0"
   }
 }
