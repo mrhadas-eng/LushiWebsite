@@ -1,6 +1,6 @@
 # Hagar Lushi Website — Remaining Launch Checklist
 
-**Last reviewed:** 2026-10-15  
+**Last reviewed:** 2026-10-20  
 **Website repo:** `mrhadas-eng/LushiWebsite`, branch `cloudflare-migration`  
 **OfficeCRM repo:** `mrhadas-eng/OfficeCRM`, target branch `dev`
 
@@ -34,11 +34,10 @@ This file intentionally contains **only work still outstanding**. Completed chec
 - [ ] Replace the legacy copied privacy-policy content with the owner's updated document on both intended site surfaces; render as plain Hebrew RTL text with no Elementor/legacy styling. Remove the internal note before publishing and ensure the publication-date placeholder is not shown to visitors.
 - [ ] Review the updated privacy policy at `/privacy/` on preview for RTL layout, mobile readability, plain styling, links, and correct rendering on both domains. Privacy policy is considered near-ready and is not a launch blocker by itself; any factual corrections identified by the post-launch technical audit should be tracked separately.
 - [ ] In WordPress admin, inspect Elementor form “Actions After Submit” and document the current lead-delivery destinations.
-- [ ] Review old Wix redirect groups C–D and check active advertising destinations before approving redirects for `/דף-נחיתה-פרטיים`, `/דף-נחיתה-פרטי`, and `/דףנחיתה2`. Twelve out-of-scope redirects remain listed in `docs/REDIRECT-APPROVALS.md`; they are currently classified as non-blocking.
+- [ ] Review the 9 remaining out-of-scope Wix redirects in `docs/REDIRECT-APPROVALS.md` (group C); they are classified as non-blocking. (The 3 old landing-page redirects `/דף-נחיתה-פרטיים`, `/דף-נחיתה-פרטי` and `/דףנחיתה2` were approved by the owner on 2026-10-20, without a campaign check.)
 - [ ] Verify GTM triggers for `generate_lead`, `whatsapp_click`, `phone_click`, and `email_click` are published.
 - [ ] Verify the Google Ads conversion on landing pages still fires as intended (thank-you page view or the approved replacement event).
 - [ ] Verify `whatsapp_click` is not configured as a Google Ads/Meta Lead conversion.
-- [ ] Confirm active Google Ads/Meta URLs do not depend on old landing-page URLs that are being redirected.
 
 ## 4. DNS, domains, email and rollback plan
 
