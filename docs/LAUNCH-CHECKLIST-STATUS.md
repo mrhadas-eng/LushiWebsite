@@ -31,7 +31,7 @@ This file intentionally contains **only work still outstanding**. Completed chec
 
 **Evidence note:** Local synthetic integration and replay/deduplication have already been tested. The replay returned `duplicate: true`, `outcome: replay`, and the same lead ID without creating a second lead. The replay body was reconstructed, so byte-for-byte equality with the original request was not established. This is local evidence, not proof of production deployment or live Cloudflare-to-OfficeCRM delivery. On 2026-10-22, synthetic POSTs to both isolated Cloudflare Preview form endpoints returned `503 not_configured`; no CRM call or lead creation occurred. Successful Cloudflare-to-OfficeCRM delivery remains unverified.
 
-**Preview finding (2026-10-22):** Cloudflare Preview did not match raw Hebrew source paths in `public/_redirects` (local Wrangler did). The source paths were percent-encoded in the local review checkout and then verified against the exact main-site Preview deployment (67/67 routes pass). This fix is not included in GitHub PR #2 yet; include it in the reviewed release commit before DNS cutover.
+**Preview finding (2026-10-22):** Cloudflare Preview did not match raw Hebrew source paths in `public/_redirects` (local Wrangler did). The source paths were percent-encoded in the local review checkout and then verified against the exact main-site Preview deployment (67/67 routes pass). This fix is included in GitHub PR #2 in commit `f9989f3`; verify it remains present in the release commit before DNS cutover.
 
 **Content note (2026-10-22):** The landing-page `<title>` on `/architecture/` and `/renovation/` contains `אדרכלות` (likely intended `אדריכלות`). Confirm the wording before changing copied page metadata.
 
