@@ -12,8 +12,17 @@ const skip = !built && 'run npm run build first';
 const DIR = { www: 'dist', lp: 'dist-lp' };
 
 const rules = (file) => fs.readFileSync(file, 'utf8').split('\n')
-  .filter((l) => l.trim() && !l.startsWith('#')).map((l) => { const [from, to, code] = l.trim().split(/\s+/); return { from, to, code }; });
+  .filter((l) => l.trim() && !l.startsWith('#')).map((l) => { const [from, to, code] = l.trim().split(/\s+/); return { from: decodeURI(from), to, code }; });
 const RULES = { www: rules('public/_redirects'), lp: rules('lp-public/_redirects') };
+
+test('Cloudflare redirect sources percent-encode non-ASCII paths', () => {
+  for (const file of ['public/_redirects', 'lp-public/_redirects']) {
+    for (const line of fs.readFileSync(file, 'utf8').split('\n').filter((l) => l.trim() && !l.startsWith('#'))) {
+      const from = line.trim().split(/\s+/)[0];
+      assert.equal(from, encodeURI(decodeURI(from)), `${file}: ${from}`);
+    }
+  }
+});
 
 /** Does the build serve this URL as a page or file? */
 function served(host, url) {

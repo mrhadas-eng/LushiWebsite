@@ -1,16 +1,17 @@
 # Old Wix URLs -> current pages (301). Ported from firebase.json.
 # Served by Cloudflare Workers static assets; see docs/CLOUDFLARE-PLAN.md (task C2).
+# Percent-encode non-ASCII source paths because Cloudflare matches the encoded request path.
 /home / 301
 /bio /אודות 301
-/פרוייקטים /לקוחות-פרטיים 301
-/להיות-יפה /להיות-יפה-שירלי 301
-/copy-of-להיות-יפה /דירה-להשכיר 301
+/%D7%A4%D7%A8%D7%95%D7%99%D7%99%D7%A7%D7%98%D7%99%D7%9D /לקוחות-פרטיים 301
+/%D7%9C%D7%94%D7%99%D7%95%D7%AA-%D7%99%D7%A4%D7%94 /להיות-יפה-שירלי 301
+/copy-of-%D7%9C%D7%94%D7%99%D7%95%D7%AA-%D7%99%D7%A4%D7%94 /דירה-להשכיר 301
 /redesign /עיצוב-מחדש 301
 /go-on-vacation /צאו-לחופשה 301
-/הבן-של-הנגר3 /הבן-של-הנגר 301
-/דףנחיתה2 / 301
-/דף-נחיתה-פרטיים /לקוחות-פרטיים 301
-/דף-נחיתה-פרטי /לקוחות-פרטיים 301
+/%D7%94%D7%91%D7%9F-%D7%A9%D7%9C-%D7%94%D7%A0%D7%92%D7%A83 /הבן-של-הנגר 301
+/%D7%93%D7%A3%D7%A0%D7%97%D7%99%D7%AA%D7%942 / 301
+/%D7%93%D7%A3-%D7%A0%D7%97%D7%99%D7%AA%D7%94-%D7%A4%D7%A8%D7%98%D7%99%D7%99%D7%9D /לקוחות-פרטיים 301
+/%D7%93%D7%A3-%D7%A0%D7%97%D7%99%D7%AA%D7%94-%D7%A4%D7%A8%D7%98%D7%99 /לקוחות-פרטיים 301
 /coming-soon / 301
 /portfolio / 301
 /pages-sitemap.xml /sitemap.xml 301
