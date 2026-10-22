@@ -3,18 +3,18 @@ import Base from '../layouts/Base.astro';
 ---
 <Base title="הצהרת נגישות">
   <article class="a11y wrap">
-    <h1 class="h-spaced">הצהרת נגישות</h1>
+    <h1>הצהרת נגישות</h1>
 
-    <h2>הצהרת נגישות עבור hagarlushi.com</h2>
+    <h2 class="lead">הצהרת נגישות עבור hagarlushi.com</h2>
     <p>הגר לושי מחויבת להבטחת נגישות דיגיטלית לאנשים עם מוגבלות. אנו משפרים ללא הרף את חווית המשתמש עבור כולם ומיישמים את תקני הנגישות הרלוונטיים.</p>
 
-    <h2>מצב התאמה</h2>
+    <h2 class="sub">מצב התאמה</h2>
     <p>הנחיות הנגישות לתוכן אינטרנט (WCAG) מגדירים דרישות למעצבים ולמפתחים לשיפור הנגישות לאנשים עם מוגבלות. הוא מגדיר שלוש רמות של התאמה: רמה A, רמה AA ורמה AAA.</p>
-    <p>הגר לושי עושה מאמצים מתמידים לשפר את נגישות האתר והשירותים שלו מתוך אמונה שחובתנו המוסרית הקולקטיבית היא לאפשר שימוש חלק, נגיש ובלתי מפריע לבעלי מוגבלויות מאיתנו.</p>
-    <p>אנו שואפים להפוך את כל הדפים והתוכן ב-hagarlushi.com לנגישים, אך ייתכן שחלק מהתוכן עדיין לא עומד במלואו בתקני הנגישות הגבוהים ביותר. זה יכול לנבוע מאתגרים בזיהוי הפתרון הטכנולוגי המתאים ביותר.</p>
+    <p class="gap">הגר לושי עושה מאמצים מתמידים לשפר את נגישות האתר והשירותים שלו מתוך אמונה שחובתנו המוסרית הקולקטיבית היא לאפשר שימוש חלק, נגיש ובלתי מפריע לבעלי מוגבלויות מאיתנו.</p>
+    <p class="gap">אנו שואפים להפוך את כל הדפים והתוכן ב-hagarlushi.com לנגישים, אך ייתכן שחלק מהתוכן עדיין לא עומד במלואו בתקני הנגישות הגבוהים ביותר. זה יכול לנבוע מאתגרים בזיהוי הפתרון הטכנולוגי המתאים ביותר.</p>
     <p>אנו עשויים לשנות הצהרה זו מעת לעת כדי לשקף שיפורים או שינויים בשיטות הנגישות שלנו.</p>
 
-    <h2>פידבק</h2>
+    <h2 class="sub">פידבק</h2>
     <p>נשמח לקבל את המשוב שלך על הנגישות של אתר הגר לושי. אנא הודע לנו אם אתה נתקל במחסומי נגישות באתר האינטרנט שלנו:</p>
     <p>דואר אלקטרוני: <a href="mailto:lushi.office@gmail.com">lushi.office@gmail.com</a></p>
     <p>אנו מנסים להגיב למשוב תוך 3-5 ימי עסקים.</p>
@@ -23,9 +23,25 @@ import Base from '../layouts/Base.astro';
 </Base>
 
 <style>
-  .a11y { max-width: 820px; padding: 56px 0 110px; }
-  .a11y h1 { margin-bottom: 30px; }
-  .a11y h2 { font-size: 21px; font-weight: 400; margin: 30px 0 10px; }
-  .a11y p { font-size: 17px; line-height: 26px; margin-bottom: 12px; }
+  /* Wix (1440px): the 980px page's text column runs from x 250 to 1205 (title to 1210), right-aligned. Title in
+     Brandon Grotesque Light 56px (Hebrew falls back to the browser's sans-serif), 80px below the header; the first
+     heading in Times New Roman 40/56px, 41px below the title; everything else 20/28px, the section headings bold, with
+     empty lines (28px) between blocks as on Wix. */
+  .a11y { width: min(980px, 100% - 32px); margin-inline: auto; padding: 80px 5px 136px 20px; font-family: var(--font-brandon); font-weight: 300; color: var(--ink); }
+  .a11y h1 { font-size: 56px; line-height: 81px; margin-right: -5px; }
+  .a11y h2, .a11y p { font-size: 20px; line-height: 28px; font-weight: 300; }
+  .a11y .lead { font-family: var(--font-times); font-weight: 400; font-size: 40px; line-height: 56px; margin-top: 41px; }
+  .a11y .sub { font-weight: 700; margin-block: 28px; }
+  .a11y .gap { margin-top: 28px; }
   .a11y a { text-decoration: underline; }
+  /* Wix mobile (x --m): the same blocks in a 280px column 20px from the edges; title 30px 50px below the header,
+     the first heading 30/42px, the rest 20/28px. */
+  @media (max-width: 760px) {
+    .a11y { width: 100%; padding: calc(50 * var(--m)) calc(20 * var(--m)) calc(40 * var(--m)); }
+    .a11y h1 { font-size: calc(30 * var(--m)); line-height: normal; margin: 0; }
+    .a11y .lead { font-size: calc(30 * var(--m)); line-height: calc(42 * var(--m)); margin-top: calc(30 * var(--m)); }
+    .a11y h2, .a11y p { font-size: calc(20 * var(--m)); line-height: calc(28 * var(--m)); }
+    .a11y .sub { margin-block: calc(27 * var(--m)); }
+    .a11y .gap { margin-top: calc(27 * var(--m)); }
+  }
 </style>

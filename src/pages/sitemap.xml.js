@@ -3,7 +3,7 @@
 // No <lastmod>: a build date would claim every page changed on every deploy, which is not true.
 import { site, projects } from '../data/content.mjs';
 
-const STATIC = ['/', '/אודות', '/מסחריים', '/לקוחות-פרטיים', '/יצירת-קשר', '/portfolio', '/הצהרתנגישות'];
+const STATIC = ['/', '/אודות', '/מסחריים', '/לקוחות-פרטיים', '/יצירת-קשר', '/הצהרתנגישות'];
 
 export function GET() {
   const paths = [...STATIC, ...projects.map((p) => `/${p.slug}`)];

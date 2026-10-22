@@ -1,29 +1,68 @@
 ---
-// Square-thumbnail grid that opens a full-screen lightbox (replaces the Wix Pro Gallery)
+// Project photo gallery that opens a full-screen lightbox (replaces the Wix Pro Gallery).
+// layout "grid": Wix's grid on the project pages (desktop: 3 columns of 197px squares, 5px apart, left to right).
+// layout "collage": the measured Wix collage on /הבן-של-הנגר (positions from src/data/project-layout.mjs).
 import { img, full } from '../lib/media.mjs';
-interface Props { items: { id: string; w: number; h: number }[]; label?: string }
-const { items, label = 'גלריית תמונות' } = Astro.props;
+interface Item { id: string; w: number; h: number }
+interface Collage { width: number; height: number; visibleHeight?: number; items: [string, number, number, number, number][] }
+interface Props { items: Item[]; label?: string; layout?: 'grid' | 'collage'; collage?: Collage; collageMobile?: Collage }
+const { items, label = 'גלריית תמונות', layout = 'grid', collage, collageMobile } = Astro.props;
+const pos = new Map((collage?.items ?? []).map(([id, x, y, w, h]) => [id, { x, y, w, h }]));
+const mpos = new Map((collageMobile?.items ?? []).map(([id, x, y, w, h]) => [id, { x, y, w, h }]));
+const pct = (v: number, of: number) => `${+(v / of * 100).toFixed(4)}%`;
 ---
-<div class="gallery" data-lightbox aria-label={label}>
-  {items.map((it, n) => {
-    const t = img(it.id, 480);
-    return (
-      <a class="thumb" href={full(it.id)} data-w={it.w} data-h={it.h} aria-label={`פתיחת תמונה ${n + 1} מתוך ${items.length}`}>
-        <img src={t.src} srcset={t.srcset} sizes="(max-width: 760px) 50vw, 240px" alt="" width="240" height="240" loading="lazy" decoding="async" />
-      </a>
-    );
-  })}
-</div>
-
+{layout === 'collage' && collage ? (
+  <div class="collage-clip" style={collage.visibleHeight ? `--clip:${collage.width}/${collage.visibleHeight}` : undefined}>
+  <div class="gallery collage" data-lightbox aria-label={label} style={`--ar:${collage.width}/${collage.height}` + (collageMobile ? `;--mar:${collageMobile.width}/${collageMobile.height}` : '')}>
+    {items.map((it, n) => {
+      const b = pos.get(it.id);
+      if (!b) return null;
+      const mb = mpos.get(it.id) ?? b, M = collageMobile ?? collage;
+      const t = img(it.id, b.w > 500 ? 1600 : 960);
+      return (
+        <a class:list={['thumb', { beyond: collage.visibleHeight && b.y >= collage.visibleHeight }]} href={full(it.id)} data-w={it.w} data-h={it.h} aria-label={`פתיחת תמונה ${n + 1} מתוך ${items.length}`}
+          style={`--x:${pct(b.x, collage.width)};--y:${pct(b.y, collage.height)};--w:${pct(b.w, collage.width)};--h:${pct(b.h, collage.height)};--mx:${pct(mb.x, M.width)};--my:${pct(mb.y, M.height)};--mw:${pct(mb.w, M.width)};--mh:${pct(mb.h, M.height)}`}>
+          <img src={t.src} srcset={t.srcset} sizes={`(max-width: 760px) 100vw, ${b.w}px`} alt="" width={b.w} height={b.h} loading="lazy" decoding="async" />
+        </a>
+      );
+    })}
+  </div>
+  </div>
+) : (
+  <div class="gallery grid" data-lightbox aria-label={label}>
+    {items.map((it, n) => {
+      const t = img(it.id, 480);
+      return (
+        <a class="thumb" href={full(it.id)} data-w={it.w} data-h={it.h} aria-label={`פתיחת תמונה ${n + 1} מתוך ${items.length}`}>
+          <img src={t.src} srcset={t.srcset} sizes="(max-width: 760px) 33vw, 197px" alt="" width="197" height="197" loading="lazy" decoding="async" />
+        </a>
+      );
+    })}
+  </div>
+)}
 <style>
-  .gallery { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
-  .thumb { position: relative; aspect-ratio: 1; overflow: hidden; background: #eee; }
+  .thumb { display: block; overflow: hidden; background: #eee; }
   .thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s ease, opacity .3s; }
   .thumb:hover img { transform: scale(1.04); opacity: .9; }
-  @media (max-width: 900px) { .gallery { grid-template-columns: repeat(3, 1fr); } }
-  @media (max-width: 520px) { .gallery { grid-template-columns: repeat(2, 1fr); } }
+  /* Wix order is left to right, row by row */
+  .grid { direction: ltr; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .grid .thumb { aspect-ratio: 1; }
+  /* Wix shows the first 24 photos of a project gallery on desktop (8 rows) and the first 25 on phones (9 rows); the
+     others open only in the full-screen viewer. Same here: every photo stays in the viewer's sequence. */
+  .grid .thumb:nth-child(n+25) { display: none; }
+  @media (max-width: 760px) { .grid .thumb:nth-child(25) { display: block; } }
+  .collage-clip { aspect-ratio: var(--clip, auto); overflow: hidden; }
+  .collage .beyond { display: none; }
+  .collage { position: relative; width: 100%; aspect-ratio: var(--ar); }
+  .collage .thumb { position: absolute; left: var(--x); top: var(--y); width: var(--w); height: var(--h); }
+  /* Phones: Wix mobile's own arrangement of the collage (a single column with some pairs) */
+  @media (max-width: 760px) {
+    .collage-clip { aspect-ratio: auto; overflow: visible; }
+    .collage .beyond { display: block; }
+    .collage { aspect-ratio: var(--mar, var(--ar)); }
+    .collage .thumb { left: var(--mx); top: var(--my); width: var(--mw); height: var(--mh); }
+  }
 </style>
-
 <script>
   import { initLightbox } from '../lib/lightbox.js';
   document.querySelectorAll('[data-lightbox]').forEach(initLightbox);

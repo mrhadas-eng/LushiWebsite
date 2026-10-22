@@ -1,20 +1,37 @@
 ---
 import { site } from '../data/content.mjs';
 import Social from './Social.astro';
-const year = new Date().getFullYear();
+// Wix shows © 2025: kept as on Wix for now (owner decision 2026-10-18)
+const year = site.copyrightYear;
 ---
 <footer class="site-footer">
   <div class="wrap footer-in">
-    <p class="copy">{site.copyright} © {year}</p>
-    <Social size={18} />
-    <p class="credit">{site.credit} &nbsp;|&nbsp; <a href="/הצהרתנגישות">הצהרת נגישות</a></p>
+    <div class="ft-text">
+      <p class="copy">{site.copyright} © {year}</p>
+      <p class="credit">{site.credit} | <a href="/הצהרתנגישות">הצהרת נגישות</a></p>
+    </div>
+    <Social size={18} gap={8} order="fb-ig" class="ft-social" />
   </div>
 </footer>
 <style>
+  /* Wix desktop: a 144px band; the two lines are right-aligned 20px inside the 980px page at y 28 and 55,
+     the icons (Facebook, Instagram) 20px from its left edge at y 57. */
   .site-footer { background: var(--dark-2); color: #fff; }
-  .footer-in { min-height: 144px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding-block: 28px; text-align: center; }
-  .copy, .credit { font-size: 14px; font-weight: 300; }
+  .footer-in { position: relative; min-height: 144px; }
+  .ft-text { position: absolute; top: 28px; right: 20px; text-align: right; }
+  .copy, .credit { font-size: 14px; line-height: normal; }
+  .credit { margin-top: 8px; }
   .credit a { text-decoration: underline; text-underline-offset: 3px; }
-  @media (pointer: coarse) { .credit a { display: inline-block; padding-block: 12px; margin-block: -12px; } }
+  .footer-in :global(.ft-social) { position: absolute; left: 20px; top: 57px; }
   .site-footer :global(.social a) { color: #fff; }
+  @media (pointer: coarse) { .credit a { display: inline-block; padding-block: 12px; margin-block: -12px; } }
+  /* Wix mobile (x --m): a 122px band, no icons; the copyright centred 27px down, the credit and accessibility link
+     in a 133px right-aligned box (x 109-242) 7px below it. */
+  @media (max-width: 760px) {
+    .footer-in { width: 100%; min-height: calc(122 * var(--m)); padding-top: calc(27 * var(--m)); }
+    .ft-text { position: static; display: flex; flex-direction: column; align-items: center; }
+    .copy, .credit { font-size: calc(14 * var(--m)); }
+    .credit { width: calc(133 * var(--m)); margin: calc(7 * var(--m)) calc(78 * var(--m)) 0 calc(109 * var(--m)); align-self: flex-start; text-align: right; }
+    .footer-in :global(.ft-social) { display: none; }
+  }
 </style>

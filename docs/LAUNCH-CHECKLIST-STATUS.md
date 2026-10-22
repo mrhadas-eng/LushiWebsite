@@ -1,6 +1,6 @@
 # Hagar Lushi Website — Remaining Launch Checklist
 
-**Last reviewed:** 2026-10-20  
+**Last reviewed:** 2026-10-22
 **Website repo:** `mrhadas-eng/LushiWebsite`, branch `cloudflare-migration`  
 **OfficeCRM repo:** `mrhadas-eng/OfficeCRM`, target branch `dev`
 
@@ -16,18 +16,28 @@ This file intentionally contains **only work still outstanding**. Completed chec
 
 ## 2. Preview integration and form acceptance
 
-- [ ] Verify Cloudflare preview deployments for both Workers: `hagarlushi` and `hagarlushi-lp`.
+- [x] Verify isolated Cloudflare Preview deployments for both Workers (`hagarlushi` and `hagarlushi-lp`) on 2026-10-22. Preview URLs: `https://lushi-review-hagarlushi.mr-hadas.workers.dev` and `https://lushi-review-hagarlushi-lp.mr-hadas.workers.dev`. The Preview deployments use the `ASSETS` binding only; CRM secrets are not present.
 - [ ] Verify `CRM_WEBHOOK_URL` and `LEADS_WEBHOOK_API_KEY` are correctly configured as separate secrets on each Cloudflare Worker; never print or paste secret values.
 - [ ] Run the remaining real HTTP end-to-end tests from each preview form to OfficeCRM using clearly synthetic data: main contact form and landing pages home, architecture, interior design, renovation.
 - [ ] Confirm the saved synthetic leads contain the expected contact details, category, message, source/context, and (for landing pages) consent wording, policy URL and timestamp.
 - [ ] Verify invalid submissions are rejected and no thank-you/success conversion occurs unless OfficeCRM confirms success.
 - [ ] Test rejection, timeout and uncertain-response handling against the preview integration. If the outcome is uncertain, inspect OfficeCRM before retrying.
 - [ ] Record evidence, then delete clearly marked synthetic test leads.
-- [ ] Verify all seven landing-page URLs and the 26 main-site URLs return the intended pages/statuses on preview.
-- [ ] Check redirects, 404/noindex pages, sitemap.xml, robots.txt, canonical URLs, HTTPS, Hebrew/English layout, navigation, images, fonts, phone/email links and WhatsApp links on desktop and mobile.
+- [x] Verify all inventoried page, redirect, and retired URLs on both Previews (67 routes, 2026-10-22): all returned the intended status and redirect target.
+- [x] Check Preview home pages, robots.txt, sitemap.xml, canonical URLs, HTTPS and 375px mobile layout (2026-10-22): both home pages and metadata endpoints return 200, canonical/sitemap hosts are correct (24 main URLs, 7 lp URLs), both pages are RTL with no horizontal overflow, and no browser console or loaded-image errors were observed.
+- [x] Verify 404/indexing and campaign-query behavior on Preview (2026-10-22): main and lp unknown paths, lp retired author URLs and main `/thankyou` return the expected noindex status; lp `/thankyou/` remains indexable as on WordPress; sample redirects on both sites preserve `utm_source` and `gclid`.
+- [x] Check navigation and responsive layout on all 32 content pages (2026-10-22): reviewed at 1440×900 and 375×812; no horizontal overflow, no broken in-page anchors, and all 709 internal page links point to implemented routes. Browser console had no errors or warnings. Main desktop dropdown and mobile menu were exercised; the desktop arrow hit-area fix is included in PR #2. All visible social and WhatsApp links opened their intended profiles/chat numbers. No failure was observed among loaded images; repository checks confirm local page-image assets exist.
 - [ ] Verify the correct phone numbers on each site and that the thank-you page appears only after a confirmed CRM save.
 
-**Evidence note:** Local synthetic integration and replay/deduplication have already been tested. The replay returned `duplicate: true`, `outcome: replay`, and the same lead ID without creating a second lead. The replay body was reconstructed, so byte-for-byte equality with the original request was not established. This is local evidence, not proof of production deployment or live Cloudflare-to-OfficeCRM delivery.
+**Evidence note:** Local synthetic integration and replay/deduplication have already been tested. The replay returned `duplicate: true`, `outcome: replay`, and the same lead ID without creating a second lead. The replay body was reconstructed, so byte-for-byte equality with the original request was not established. This is local evidence, not proof of production deployment or live Cloudflare-to-OfficeCRM delivery. On 2026-10-22, synthetic POSTs to both isolated Cloudflare Preview form endpoints returned `503 not_configured`; no CRM call or lead creation occurred. Successful Cloudflare-to-OfficeCRM delivery remains unverified.
+
+**Preview finding (2026-10-22):** Cloudflare Preview did not match raw Hebrew source paths in `public/_redirects` (local Wrangler did). The source paths were percent-encoded in the local review checkout and then verified against the exact main-site Preview deployment (67/67 routes pass). This fix is included in GitHub PR #2 in commit `f9989f3`; verify it remains present in the release commit before DNS cutover.
+
+**Content correction (2026-10-22):** Corrected the landing-page `<title>` on `/architecture/` and `/renovation/` from `אדרכלות` to `אדריכלות` in the copied page metadata.
+
+**Privacy link finding (2026-10-22):** The copied privacy text links to the Internet Explorer 10 cookie instructions at `support.microsoft.com/kb/278835`. Microsoft currently returns an error page for that address. Decide whether to replace or remove the legacy instruction as part of the owner's updated privacy document; the copied legal text was left unchanged during this check.
+
+**Analytics note:** The LP `/thankyou/` page remains indexable, matching WordPress. The existing Google Ads conversion is still based on page views and can count refreshes/direct visits; the project recommends moving it to the confirmed `generate_lead` event in GTM (D6). GTM publication and behavior are still unchecked.
 
 ## 3. Owner decisions and WordPress/analytics
 

@@ -22,11 +22,15 @@ const done = { status: 'implemented' };
 
 export const inventory = [
   // ------------------------------------------------ www.hagarlushi.com (Wix) – pages kept at the same URL
-  ...['/', '/אודות', '/מסחריים', '/לקוחות-פרטיים', '/יצירת-קשר', '/portfolio', '/הצהרתנגישות',
+  ...['/', '/אודות', '/מסחריים', '/לקוחות-פרטיים', '/יצירת-קשר', '/הצהרתנגישות',
     '/להיות-יפה-שירלי', '/אור-לעתיד', '/מיברג', '/סטון-גלרי', '/יוניקורן', '/copy-of-יוניקורן-1', '/געתון',
     '/copy-of-יוניקורן', '/מסודרים-ליד-ביבי', '/מנהל-הפרויקט', '/אבק-כוכבים', '/דירה-להשכיר', '/האקדמיים',
     '/יפה-להשכרה', '/עיצוב-מחדש', '/צאו-לחופשה', '/פסיכולוגית-אלגנטית', '/הבן-של-הנגר'].map((u) => www(u, done)),
   www('/thankyou', { status: 'implemented', noindex: true, note: 'Wix thank-you page (text: "תודה אני אחזור אליכם בהקדם האפשרי…"); new page at the same URL, final text pending' }),
+
+  // Press page ("מהעיתונות") removed from the new site (owner decision, 2026-10-19): its address goes to the home page.
+  www('/portfolio', { status: 'redirect', to: '/', approved: true, approvedOn: '2026-10-19',
+    reason: 'Press page ("מהעיתונות") removed from the site (owner decision, 2026-10-19)' }),
 
   // ------------------------------------------------ www – duplicates / near-empty Wix pages (content verified 2026-10-11)
   // Out of scope (owner, 2026-10-11): not migrated. Redirects proposed so the old addresses don't 404.
@@ -52,7 +56,7 @@ export const inventory = [
 
   // ------------------------------------------------ www – technical
   ...['project-title-1', 'project-title-2', 'project-title-3', 'project-title-4', 'project-title-5', 'project-title-6']
-    .map((s) => www(`/portfolio-collections/my-portfolio/${s}`, { status: 'redirect', to: '/portfolio', approved: true, technical: true, rule: '/portfolio-collections/*', reason: 'Wix template demo items (stock photos), not studio content' })),
+    .map((s) => www(`/portfolio-collections/my-portfolio/${s}`, { status: 'redirect', to: '/', approved: true, technical: true, rule: '/portfolio-collections/*', reason: 'Wix template demo items (stock photos), not studio content' })),
   ...['/pages-sitemap.xml', '/portfolio-projects-sitemap.xml', '/portfolio-collections-sitemap.xml']
     .map((u) => www(u, { status: 'redirect', to: '/sitemap.xml', approved: true, technical: true, reason: 'Old Wix sitemap file' })),
   www('/sitemap.xml', { status: 'implemented', technical: true }),

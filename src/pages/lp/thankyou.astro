@@ -7,7 +7,7 @@ const waUrl = lpWhatsAppUrl();
 ---
 <LpBase title={lpThankYou.title} path={lpThankYou.path}>
   <section class="lp-ty">
-    <svg viewBox="0 0 52 52" width="64" height="64" aria-hidden="true"><circle cx="26" cy="26" r="24" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 27l7 7 15-16" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>
+    <svg class="lp-ty-icon" viewBox="0 0 50 50" width="50" height="50" aria-hidden="true"><path d="M3 21l22-16 22 16v25H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 21l22 15 22-15M3 46l17-13M47 46L30 33" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M11 13h28v14" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M19 19l4 4 8-8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
     <h1>{lpThankYou.heading}</h1>
     <p>{lpThankYou.text}</p>
     <a class="lp-ty-wa" href={waUrl} target="_blank" rel="noopener" data-track="lp_thankyou">{lpThankYou.whatsappButton}</a>
@@ -19,9 +19,14 @@ const waUrl = lpWhatsAppUrl();
   recordLeadConversion(sessionStorage, window.dataLayer);
 </script>
 <style>
-  .lp-ty { min-height: 55vh; display: grid; justify-items: center; align-content: center; gap: 16px; text-align: center; padding: 60px 20px 90px; color: var(--lp-ink); }
-  .lp-ty h1 { margin: 0; font-size: 50px; font-weight: 500; }
-  .lp-ty p { margin: 0; font-size: 20px; }
-  .lp-ty-wa { margin-top: 10px; display: inline-block; background: #4caf50; color: #fff; text-decoration: none; padding: 16px 30px; border-radius: 36px; font-size: 18px; font-weight: 600; }
-  @media (max-width: 767px) { .lp-ty h1 { font-size: 34px; } }
+  /* WordPress: no layout container on this page, so the icon, title and text sit flush against the right edge of the
+     window; system font title 40/40px #333, text Open Sans 17/25.5px, then the grey (#69727d) WhatsApp button centred. */
+  .lp-ty { display: grid; justify-items: start; padding: 23px 0 23px; color: #333; }
+  .lp-ty-icon { width: 50px; height: 50px; color: #141414; }
+  .lp-ty h1 { margin: 6px 0 0; font-family: -apple-system, system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif; font-size: 40px; line-height: 40px; font-weight: 500; }
+  .lp-ty p { margin: 0 0 14.4px; font-size: 17px; line-height: 25.5px; color: var(--lp-ink); }
+  .lp-ty-wa { justify-self: center; display: inline-block; background: #69727d; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 3px; font-family: -apple-system, system-ui, 'Segoe UI', Roboto, Arial, sans-serif; font-size: 15px; line-height: 15px; }
+  .lp-ty-wa:hover { background: #555d66; }
+  @media (pointer: coarse) { .lp-ty-wa { padding-block: 15px; } }
+  @media (max-width: 767px) { .lp-ty h1 { font-size: 32px; line-height: 36px; } }
 </style>

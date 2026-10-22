@@ -3,8 +3,10 @@ import LpBase from '../../layouts/LpBase.astro';
 import { lpHref } from '../../lib/lp-paths.mjs';
 ---
 <LpBase title="העמוד לא נמצא – Hagar Lushi | Architecture & Interior Design" path="/404" noindex>
-  <section style="text-align:center;padding:80px 20px 110px">
-    <h1 style="font-weight:500;font-size:40px;margin:0 0 16px">העמוד לא נמצא</h1>
-    <p><a href={lpHref('/')}>לדף הבית</a></p>
+  <!-- WordPress: the theme's 404 (title 40/48px, system font, #333, right-aligned in the 1140px column). Our text and
+       link to the home page are kept (the WordPress wording is in docs/VISUAL-PARITY-AUDIT.md). -->
+  <section style="max-width:1180px;margin:0 auto;padding:0 20px 14px;color:#333;font-family:-apple-system,system-ui,'Segoe UI',Roboto,Arial,sans-serif">
+    <h1 style="font-weight:500;font-size:40px;line-height:48px;margin:8px 0 16px">העמוד לא נמצא</h1>
+    <p style="font-size:17px;line-height:25.5px;margin:0 0 14.4px"><a href={lpHref('/')}>לדף הבית</a></p>
   </section>
 </LpBase>

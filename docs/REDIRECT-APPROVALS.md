@@ -12,14 +12,14 @@ Claude then sets `approved: true` in the inventory.
 |---|---|---|
 | A. Technical: no visitor content is lost | 12 | No (pre-approved; tell us if you object) |
 | B. Content, lp.hagarlushi.com | 0 | No (none left) |
-| C. Content, main site: obsolete Wix pages (out of migration scope) | 12 | No. Without approval, the redirect proposed here goes live with the main site |
+| C. Content, main site: obsolete Wix pages (out of migration scope) | 13 | No. Without approval, the redirect proposed here goes live with the main site |
 | D. Main site: old Wix landing pages (out of scope, not recreated) | 0 | No (none left) |
 
 ## A. Technical redirects
 
 | # | Site | Old URL | Redirects to (301) | Why |
 |---|---|---|---|---|
-| 1 | www.hagarlushi.com | `/portfolio-collections/*` | `/portfolio` | Wix template demo items (stock photos), not studio content |
+| 1 | www.hagarlushi.com | `/portfolio-collections/*` | `/` | Wix template demo items (stock photos), not studio content |
 | 2 | www.hagarlushi.com | `/pages-sitemap.xml` | `/sitemap.xml` | Old Wix sitemap file |
 | 3 | www.hagarlushi.com | `/portfolio-projects-sitemap.xml` | `/sitemap.xml` | Old Wix sitemap file |
 | 4 | www.hagarlushi.com | `/portfolio-collections-sitemap.xml` | `/sitemap.xml` | Old Wix sitemap file |
@@ -40,18 +40,19 @@ None. The WordPress author archives are not redirected (see "No redirect" below)
 
 | # | Site | Old URL | Redirects to (301) | Why | Approved |
 |---|---|---|---|---|---|
-| 1 | www.hagarlushi.com | `/copy-of-להיות-יפה` | `/דירה-להשכיר` | Duplicate of the "דירה להשכיר" project page | ☐ pending |
-| 2 | www.hagarlushi.com | `/להיות-יפה` | `/להיות-יפה-שירלי` | Older copy of the "להיות יפה" project page | ☐ pending |
-| 3 | www.hagarlushi.com | `/redesign` | `/עיצוב-מחדש` | Duplicate of the "עיצוב מחדש" project page | ☐ pending |
-| 4 | www.hagarlushi.com | `/go-on-vacation` | `/צאו-לחופשה` | Duplicate of the "צאו לחופשה" project page | ☐ pending |
-| 5 | www.hagarlushi.com | `/הבן-של-הנגר3` | `/הבן-של-הנגר` | Duplicate of the "הבן של הנגר" project page | ☐ pending |
-| 6 | www.hagarlushi.com | `/bio` | `/אודות` | Older version of the About text | ☐ pending |
-| 7 | www.hagarlushi.com | `/home` | `/` | Empty Wix page | ☐ pending |
-| 8 | www.hagarlushi.com | `/פרוייקטים` | `/לקוחות-פרטיים` | Near-empty index ("הפרוייקטים שלי") | ☐ pending |
-| 9 | www.hagarlushi.com | `/coming-soon` | `/` | "האתר בשיפוצים...נשוב בקרוב!" placeholder | ☐ pending |
-| 10 | www.hagarlushi.com | `/דף-נחיתה-פרטיים` | `/לקוחות-פרטיים` | Live Wix landing page with a Wix contact form ("מתכננים עבורכם!") | yes (2026-10-20) |
-| 11 | www.hagarlushi.com | `/דף-נחיתה-פרטי` | `/לקוחות-פרטיים` | Live Wix landing page ("משולחן השרטוט - עד לבית מעוצב…", call/mail buttons, no form) | yes (2026-10-20) |
-| 12 | www.hagarlushi.com | `/דףנחיתה2` | `/` | Live Wix landing page with a form (content not fully captured: mostly Wix widgets) | yes (2026-10-20) |
+| 1 | www.hagarlushi.com | `/portfolio` | `/` | Press page ("מהעיתונות") removed from the site (owner decision, 2026-10-19) | yes (2026-10-19) |
+| 2 | www.hagarlushi.com | `/copy-of-להיות-יפה` | `/דירה-להשכיר` | Duplicate of the "דירה להשכיר" project page | ☐ pending |
+| 3 | www.hagarlushi.com | `/להיות-יפה` | `/להיות-יפה-שירלי` | Older copy of the "להיות יפה" project page | ☐ pending |
+| 4 | www.hagarlushi.com | `/redesign` | `/עיצוב-מחדש` | Duplicate of the "עיצוב מחדש" project page | ☐ pending |
+| 5 | www.hagarlushi.com | `/go-on-vacation` | `/צאו-לחופשה` | Duplicate of the "צאו לחופשה" project page | ☐ pending |
+| 6 | www.hagarlushi.com | `/הבן-של-הנגר3` | `/הבן-של-הנגר` | Duplicate of the "הבן של הנגר" project page | ☐ pending |
+| 7 | www.hagarlushi.com | `/bio` | `/אודות` | Older version of the About text | ☐ pending |
+| 8 | www.hagarlushi.com | `/home` | `/` | Empty Wix page | ☐ pending |
+| 9 | www.hagarlushi.com | `/פרוייקטים` | `/לקוחות-פרטיים` | Near-empty index ("הפרוייקטים שלי") | ☐ pending |
+| 10 | www.hagarlushi.com | `/coming-soon` | `/` | "האתר בשיפוצים...נשוב בקרוב!" placeholder | ☐ pending |
+| 11 | www.hagarlushi.com | `/דף-נחיתה-פרטיים` | `/לקוחות-פרטיים` | Live Wix landing page with a Wix contact form ("מתכננים עבורכם!") | yes (2026-10-20) |
+| 12 | www.hagarlushi.com | `/דף-נחיתה-פרטי` | `/לקוחות-פרטיים` | Live Wix landing page ("משולחן השרטוט - עד לבית מעוצב…", call/mail buttons, no form) | yes (2026-10-20) |
+| 13 | www.hagarlushi.com | `/דףנחיתה2` | `/` | Live Wix landing page with a form (content not fully captured: mostly Wix widgets) | yes (2026-10-20) |
 
 ## D. Old Wix landing pages
 
