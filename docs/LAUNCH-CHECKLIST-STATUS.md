@@ -1,6 +1,6 @@
 # Hagar Lushi Website — Remaining Launch Checklist
 
-**Last reviewed:** 2026-10-20  
+**Last reviewed:** 2026-10-22
 **Website repo:** `mrhadas-eng/LushiWebsite`, branch `cloudflare-migration`  
 **OfficeCRM repo:** `mrhadas-eng/OfficeCRM`, target branch `dev`
 
@@ -26,7 +26,7 @@ This file intentionally contains **only work still outstanding**. Completed chec
 - [x] Verify all inventoried page, redirect, and retired URLs on both Previews (67 routes, 2026-10-22): all returned the intended status and redirect target.
 - [x] Check Preview home pages, robots.txt, sitemap.xml, canonical URLs, HTTPS and 375px mobile layout (2026-10-22): both home pages and metadata endpoints return 200, canonical/sitemap hosts are correct (24 main URLs, 7 lp URLs), both pages are RTL with no horizontal overflow, and no browser console or loaded-image errors were observed.
 - [x] Verify 404/indexing and campaign-query behavior on Preview (2026-10-22): main and lp unknown paths, lp retired author URLs and main `/thankyou` return the expected noindex status; lp `/thankyou/` remains indexable as on WordPress; sample redirects on both sites preserve `utm_source` and `gclid`.
-- [ ] Check remaining page-level details: full navigation and links, images/fonts, and layout across all pages on desktop and mobile. (Homepage visuals and all six form placements were checked on 2026-10-22.)
+- [x] Check navigation and responsive layout on all 32 content pages (2026-10-22): reviewed at 1440×900 and 375×812; no horizontal overflow, no broken in-page anchors, and all 709 internal page links point to implemented routes. Browser console had no errors or warnings. Main desktop dropdown and mobile menu were exercised; the desktop arrow hit-area fix is included in PR #2. All visible social and WhatsApp links opened their intended profiles/chat numbers. No failure was observed among loaded images; repository checks confirm local page-image assets exist.
 - [ ] Verify the correct phone numbers on each site and that the thank-you page appears only after a confirmed CRM save.
 
 **Evidence note:** Local synthetic integration and replay/deduplication have already been tested. The replay returned `duplicate: true`, `outcome: replay`, and the same lead ID without creating a second lead. The replay body was reconstructed, so byte-for-byte equality with the original request was not established. This is local evidence, not proof of production deployment or live Cloudflare-to-OfficeCRM delivery. On 2026-10-22, synthetic POSTs to both isolated Cloudflare Preview form endpoints returned `503 not_configured`; no CRM call or lead creation occurred. Successful Cloudflare-to-OfficeCRM delivery remains unverified.
@@ -34,6 +34,8 @@ This file intentionally contains **only work still outstanding**. Completed chec
 **Preview finding (2026-10-22):** Cloudflare Preview did not match raw Hebrew source paths in `public/_redirects` (local Wrangler did). The source paths were percent-encoded in the local review checkout and then verified against the exact main-site Preview deployment (67/67 routes pass). This fix is included in GitHub PR #2 in commit `f9989f3`; verify it remains present in the release commit before DNS cutover.
 
 **Content note (2026-10-22):** The landing-page `<title>` on `/architecture/` and `/renovation/` contains `אדרכלות` (likely intended `אדריכלות`). Confirm the wording before changing copied page metadata.
+
+**Privacy link finding (2026-10-22):** The copied privacy text links to the Internet Explorer 10 cookie instructions at `support.microsoft.com/kb/278835`. Microsoft currently returns an error page for that address. Decide whether to replace or remove the legacy instruction as part of the owner's updated privacy document; the copied legal text was left unchanged during this check.
 
 **Analytics note:** The LP `/thankyou/` page remains indexable, matching WordPress. The existing Google Ads conversion is still based on page views and can count refreshes/direct visits; the project recommends moving it to the confirmed `generate_lead` event in GTM (D6). GTM publication and behavior are still unchecked.
 
