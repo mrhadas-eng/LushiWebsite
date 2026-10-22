@@ -33,7 +33,7 @@ This file intentionally contains **only work still outstanding**. Completed chec
 
 **Preview finding (2026-10-22):** Cloudflare Preview did not match raw Hebrew source paths in `public/_redirects` (local Wrangler did). The source paths were percent-encoded in the local review checkout and then verified against the exact main-site Preview deployment (67/67 routes pass). This fix is included in GitHub PR #2 in commit `f9989f3`; verify it remains present in the release commit before DNS cutover.
 
-**Content note (2026-10-22):** The landing-page `<title>` on `/architecture/` and `/renovation/` contains `אדרכלות` (likely intended `אדריכלות`). Confirm the wording before changing copied page metadata.
+**Content correction (2026-10-22):** Corrected the landing-page `<title>` on `/architecture/` and `/renovation/` from `אדרכלות` to `אדריכלות` in the copied page metadata.
 
 **Privacy link finding (2026-10-22):** The copied privacy text links to the Internet Explorer 10 cookie instructions at `support.microsoft.com/kb/278835`. Microsoft currently returns an error page for that address. Decide whether to replace or remove the legacy instruction as part of the owner's updated privacy document; the copied legal text was left unchanged during this check.
 

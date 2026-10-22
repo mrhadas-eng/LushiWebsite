@@ -79,7 +79,7 @@ export const lpPages = [
   },
   {
     path: '/architecture/', slug: 'architecture', form: 'lp-architecture', wpId: 387,
-    title: 'הגר לושי | אדרכלות – Hagar Lushi | Architecture & Interior Design',
+    title: 'הגר לושי | אדריכלות – Hagar Lushi | Architecture & Interior Design',
     hero: { tag: 'h1', heading: ['אדריכלות יוקרה ועיצוב', 'בהתאמה אישית'], sub: 'תכנון מוקפד. עיצוב מדויק. ליווי מלא.', button: true,
       slides: [WA('10.34.52'), WA('10.34.54'), WA('10.34.54-1'), WA('10.35.03-1'), WA('10.35.06')] },
     intro: INTRO_FULL,
@@ -97,7 +97,7 @@ export const lpPages = [
   },
   {
     path: '/renovation/', slug: 'renovation', form: 'lp-renovation', wpId: 406,
-    title: 'הגר לושי | אדרכלות – Hagar Lushi | Architecture & Interior Design',
+    title: 'הגר לושי | אדריכלות – Hagar Lushi | Architecture & Interior Design',
     hero: { tag: 'h1', heading: ['שיפוץ מהיסוד בהתאמה אישית', 'מהחזון ועד גמר הפרוייקט'], sub: 'ליווי מלא בתכנון, עיצוב וניהול הפרויקט עד גמר.', button: true,
       slides: [WA('10.34.52'), WA('10.34.54'), WA('10.34.54-1'), WA('10.35.03-1'), WA('10.35.06')] },
     intro: INTRO_SHORT,

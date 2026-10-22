@@ -64,7 +64,7 @@ Shared by all 4 landing pages (confirmed):
 | URL (kept exactly) | Title / purpose | Hero | Form id → OfficeCRM notes | WP id | Status |
 |---|---|---|---|---|---|
 | `/` | "Hagar Lushi \| Architecture & Interior Design" (general landing page) | "חללים שמספרים את הסיפור שלכם", scroll arrow, no button | `lp-home` → "דף נחיתה – ראשי" | 2 (slug `sample-page`) | Implemented and tested |
-| `/architecture/` | "הגר לושי \| אדרכלות" (architecture campaign) | Two lines, plus "תכנון מוקפד. עיצוב מדויק. ליווי מלא." and a button | `lp-architecture` → "דף נחיתה – אדריכלות" | 387 | Implemented and tested |
+| `/architecture/` | "הגר לושי \| אדריכלות" (architecture campaign) | Two lines, plus "תכנון מוקפד. עיצוב מדויק. ליווי מלא." and a button | `lp-architecture` → "דף נחיתה – אדריכלות" | 387 | Implemented and tested |
 | `/interior-design/` | Interior-design campaign | Heading and button | `lp-interior-design` → "דף נחיתה – עיצוב פנים" | 321 | Implemented and tested |
 | `/renovation/` | Renovation campaign (shorter intro) | Heading and button | `lp-renovation` → "דף נחיתה – שיפוץ" | 406 | Implemented and tested |
 | `/thankyou/` | "תודה שיצרת קשר" | Check icon, text and a WhatsApp button | none (conversion page) | 244 | Implemented. **The Google Ads conversion fires on this page view** (§5). |
