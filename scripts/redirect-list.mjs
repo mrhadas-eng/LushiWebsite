@@ -24,7 +24,7 @@ function table(list, { approveCol }) {
     : '| # | Site | Old URL | Redirects to (301) | Why |\n|---|---|---|---|---|';
   return [head, ...rows(list).map((e, i) => {
     const cells = [i + 1, HOST[e.host], `\`${e.from}\``, `\`${e.to}\``, e.reason || 'Technical URL with no content of its own'];
-    if (approveCol) cells.push(e.approved ? 'yes' : '☐ pending');
+    if (approveCol) cells.push(e.approved ? (e.approvedOn ? `yes (${e.approvedOn})` : 'yes') : '☐ pending');
     return `| ${cells.join(' | ')} |`;
   })].join('\n');
 }
@@ -49,7 +49,7 @@ Claude then sets \`approved: true\` in the inventory.
 | A. Technical: no visitor content is lost | ${rows(technical).length} | No (pre-approved; tell us if you object) |
 | B. Content, lp.hagarlushi.com | ${rows(lpContent).length} | ${rows(lpContent).length ? '**Yes, the lp. cutover** (\`npm run check-launch\` fails until approved)' : 'No (none left)'} |
 | C. Content, main site: obsolete Wix pages (out of migration scope) | ${rows(wwwObsolete).length} | No. Without approval, the redirect proposed here goes live with the main site |
-| D. Main site: old Wix landing pages (out of scope, not recreated) | ${rows(wixLanding).length} | No, but **check active campaigns first** (below) |
+| D. Main site: old Wix landing pages (out of scope, not recreated) | ${rows(wixLanding).length} | ${rows(wixLanding).length ? 'No, but **check active campaigns first** (below)' : 'No (none left)'} |
 
 ## A. Technical redirects
 
@@ -63,7 +63,7 @@ ${lpContent.length ? table(lpContent, { approveCol: true }) : 'None. The WordPre
 
 ${table(wwwObsolete, { approveCol: true })}
 
-## D. Old Wix landing pages: pending the campaign check
+${wixLanding.length ? `## D. Old Wix landing pages: pending the campaign check
 
 These are live Wix pages with their own content (two have a Wix form). They are **not** recreated (owner, 2026-10-11).
 Before the main site moves to Cloudflare, check that no active Google Ads or Meta ad, and no printed material, links to them:
@@ -72,7 +72,7 @@ Before the main site moves to Cloudflare, check that no active Google Ads or Met
 
 If none does, approve the redirect. If one does, change the ad's URL to an lp. page first (e.g. \`https://lp.hagarlushi.com/\`).
 
-${table(wixLanding, { approveCol: true })}
+${table(wixLanding, { approveCol: true })}` : '## D. Old Wix landing pages\n\nNone left: the owner approved their redirects (group C).'}
 
 ## No redirect: these URLs return the 404 page
 

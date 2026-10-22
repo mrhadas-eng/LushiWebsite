@@ -106,9 +106,12 @@ test('scope: no redirect blocks launch; lp author archives are retired (404, not
   assert.deepEqual(pendingDecisions(), []);
   assert.deepEqual(retired().map((e) => `${e.host} ${e.url}`).sort(), ['lp /author/gal/', 'lp /author/roy/']);
   const out = outOfScopePending();
-  assert.equal(out.length, 12);
+  assert.equal(out.length, 9);
   assert.ok(out.every((e) => e.host === 'www' && !e.technical && e.reason));
-  assert.equal(out.filter((e) => e.campaignCheck).length, 3, 'the 3 old Wix landing pages wait for the campaign check');
+  // The 3 old Wix landing pages were approved by the owner on 2026-10-20: none waits for a campaign check.
+  assert.equal(inventory.filter((e) => e.campaignCheck).length, 0);
+  for (const e of inventory.filter((x) => x.status === 'redirect' && x.approved && !x.technical))
+    assert.match(e.approvedOn || '', /^\d{4}-\d{2}-\d{2}$/, `${e.host} ${e.url}: approved content redirect without an owner decision date`);
   for (const e of inventory.filter((x) => x.technical && x.status === 'redirect')) assert.equal(e.approved, true, `${e.host} ${e.url}`);
 });
 

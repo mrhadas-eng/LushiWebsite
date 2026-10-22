@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { site, allMedia } from '../src/data/content.mjs';
 import { img } from '../src/lib/media.mjs';
 import { lpSite, lpUsedMedia, lpImg } from '../src/data/lp.mjs';
-import { pendingDecisions, outOfScopePending, ownerReviewPending } from '../src/data/url-inventory.mjs';
+import { inventory, pendingDecisions, outOfScopePending, ownerReviewPending } from '../src/data/url-inventory.mjs';
 import { render as redirectList } from './redirect-list.mjs';
 
 const results = [];
@@ -109,6 +109,8 @@ if (outPending.length) {
   for (const e of outPending) console.log(`  · ${e.url} → ${e.to}${e.campaignCheck ? '   [check active campaigns first]' : ''}`);
 }
 
+// Old Wix landing pages whose redirect still waits for the campaign check (none since the owner's approval, 2026-10-20)
+const campaignCheck = inventory.filter((e) => e.campaignCheck);
 console.log(`
 Manual checks (cannot be verified from the repository):
   ☐ Worker secrets set on hagarlushi AND hagarlushi-lp: CRM_WEBHOOK_URL (OfficeCRM leads webhook) and LEADS_WEBHOOK_API_KEY (bare key)
@@ -117,8 +119,7 @@ Manual checks (cannot be verified from the repository):
   ☐ DNS: every Wix record copied to Cloudflare, including lp. and office. (OfficeCRM), MX, SPF/DKIM/DMARC
   ☐ GTM: triggers for generate_lead / whatsapp_click / phone_click / email_click published
   ☐ GTM: Google Ads conversion on lp still fires (lp /thankyou/ page view, or moved to generate_lead)
-  ☐ Google Ads / Meta final URLs checked: no active ad uses /דף-נחיתה-פרטיים, /דף-נחיתה-פרטי, /דףנחיתה2 (REDIRECT-APPROVALS D)
-  ☐ GTM: whatsapp_click is NOT a conversion (not linked to Google Ads / Meta Lead) — docs/ANALYTICS-EVENTS.md
+${campaignCheck.length ? `  ☐ Google Ads / Meta final URLs checked: no active ad uses ${campaignCheck.map((e) => e.url).join(', ')} (REDIRECT-APPROVALS D)\n` : ''}  ☐ GTM: whatsapp_click is NOT a conversion (not linked to Google Ads / Meta Lead) — docs/ANALYTICS-EVENTS.md
   ☐ DNS cutover: delete the en and he records (unused); keep office exactly
 See LAUNCH.md and docs/CLOUDFLARE-PLAN.md.`);
 console.log(failed ? `\n${failed} repository item(s) to fix before launch.` : '\nRepository checks passed.');

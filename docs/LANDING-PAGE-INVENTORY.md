@@ -114,15 +114,13 @@ Live Wix pages that are copies or placeholders (content checked 2026-10-11) **re
 | `/coming-soon` | "האתר בשיפוצים...נשוב בקרוב!" | `/` |
 | `/portfolio-collections/*` (6 items), old `*-sitemap.xml` | Wix template demo items / sitemaps | `/`, `/sitemap.xml` (technical) |
 
-**Old Wix landing pages: out of scope, not recreated (owner, 2026-10-11).** These are live Wix pages with real content. Their proposed redirects stay pending until the owner has checked that no active campaign uses them. That check is not a launch blocker (REDIRECT-APPROVALS group D):
+**Old Wix landing pages: out of scope, not recreated (owner, 2026-10-11).** These are live Wix pages with real content. **The owner approved their redirects on 2026-10-20** (no campaign check needed); they are listed as approved in `docs/REDIRECT-APPROVALS.md` (group C):
 
-| URL | Content | Form | Proposed redirect |
+| URL | Content | Form | Redirect (301, approved 2026-10-20) |
 |---|---|---|---|
 | `/דף-נחיתה-פרטיים` | "מתכננים עבורכם!" landing page for private clients | Yes (Wix form, submits to Wix) | `/לקוחות-פרטיים` |
 | `/דף-נחיתה-פרטי` | "משולחן השרטוט - עד לבית מעוצב…" | No (call and email buttons) | `/לקוחות-פרטיים` |
 | `/דףנחיתה2` | Landing page, mostly Wix widgets | Yes | `/` |
-
-To check: Google Ads final URLs and Meta ad website URLs (steps in `docs/REDIRECT-APPROVALS.md`). If an active ad uses one of these pages, change the ad to an lp. page before the main site moves.
 
 ## 4. Forms → OfficeCRM
 
@@ -200,8 +198,8 @@ Rollback for lp: point `lp` back to `A 69.62.113.1` (WordPress is not touched un
 |---|---|---|
 | D1 | WhatsApp pop-up / WhatsApp leads | **Decided:** a WhatsApp click is not a lead; it opens the chat directly and is tracked as `whatsapp_click` only. Implemented. |
 | D2 | WhatsApp and call numbers | **Decided (owner, 2026-10-19):** landing pages use 054-431-7164 for WhatsApp (`972544317164`) and 052-594-9682 for calls (`tel:+972525949682`), both in the delivery-failure message; the two are never mixed. (Before: 052-431-7164 for both, 2026-10-11.) The main site keeps 050-578-8634. Implemented. |
-| D3 | Old Wix landing pages | **Decided:** out of scope, not recreated. **Open (not blocking):** check active campaigns, then approve the redirects (REDIRECT-APPROVALS group D). |
-| D4 | Redirect approvals | **lp: decided (2026-10-13):** `/author/gal/` and `/author/roy/` need no redirect and are not recreated; they return the 404 page. No lp redirect needs approval any more. **Main site (not blocking):** the obsolete-page redirects (REDIRECT-APPROVALS group C) still await approval. |
+| D3 | Old Wix landing pages | **Done (2026-10-20):** out of scope, not recreated; the owner approved the three redirects `/דף-נחיתה-פרטיים` → `/לקוחות-פרטיים`, `/דף-נחיתה-פרטי` → `/לקוחות-פרטיים` and `/דףנחיתה2` → `/` (no campaign check needed). |
+| D4 | Redirect approvals | **lp: decided (2026-10-13):** `/author/gal/` and `/author/roy/` need no redirect and are not recreated; they return the 404 page. No lp redirect needs approval any more. **Main site (not blocking):** the 9 obsolete-page redirects (REDIRECT-APPROVALS group C) still await approval; the 3 old landing-page redirects in that group are approved (D3). |
 | D5 | lp `/privacy/` text: starts with a duplicated accessibility statement, then a generic template (SEQ Legal / Website Planet credit) | **Pending, blocks lp cutover:** the owner reviews it once the updated site is available to inspect (the workers.dev preview, O3b). **Not reviewed yet.** Copied unchanged until then, except the contact email (D9). It is tracked by the `ownerReview` flag in the inventory, which only the owner's confirmation clears. |
 | D6 | Google Ads conversion trigger (lp `/thankyou/` page view) | **Open (recommendation):** move it in GTM to `generate_lead`. |
 | D7 | `en.` / `he.` | **Decided:** unused; delete both DNS records at cutover. |
@@ -259,5 +257,4 @@ Rollback for lp: point `lp` back to `A 69.62.113.1` (WordPress is not touched un
   - A real test lead into OfficeCRM per form, deleted afterwards.
   - GTM triggers and preview.
   - Check the WordPress main-form action.
-  - The ad campaign URL check.
   - DNS changes, including deleting `en`/`he`, at cutover.
