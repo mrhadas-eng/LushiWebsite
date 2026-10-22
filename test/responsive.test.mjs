@@ -29,6 +29,11 @@ test('main menu stays on one row on tablets: cells shrink instead of wrapping', 
   assert.match(c, /\.menu-item\[[^\]]+\]\{[^}]*flex:0 1 131px[^}]*min-width:0/);
 });
 
+test('desktop submenu toggles stay above neighboring menu links', { skip }, () => {
+  const c = css('dist');
+  assert.match(c, /\.sub-toggle\[[^\]]+\]\{[^}]*position:absolute;z-index:1/);
+});
+
 test('touch screens get larger tap areas (desktop layout unchanged)', { skip }, () => {
   const www = css('dist'), lp = css('dist-lp');
   assert.ok(new Set(www.match(/@media\s*\(pointer:\s*coarse\)\{[^@]*/g)).size >= 6, 'www: pointer-coarse rules');
