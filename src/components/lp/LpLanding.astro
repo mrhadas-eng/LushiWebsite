@@ -58,8 +58,8 @@ const testiBg = lpImg(S.testimonialsBackground, 1600);
         <li class="lp-testi-item" role="group" aria-roledescription="slide" aria-label={`${i + 1} מתוך ${S.testimonials.length}`}>
           <blockquote style={`--quote: url('${quote.src}')`}>
             <p>{t.text}</p>
-            <footer><cite><span class="n">{t.name}</span> <span class="p">{t.place}</span></cite></footer>
           </blockquote>
+          <p class="lp-testi-by"><cite><span class="n">{t.name}</span> <span class="p">{t.place}</span></cite></p>
         </li>
       ))}
     </ul>
@@ -90,73 +90,104 @@ const testiBg = lpImg(S.testimonialsBackground, 1600);
 </section>
 
 <style>
+  /* Measured on the WordPress pages at 1440px: content 1140px wide (Elementor boxed containers), headings Open Sans
+     500 50/50px, text 19/28.5px. Hero 760px with a 40% black veil, title 83/83px, subtitle Tahoma 28px, 20px gaps,
+     button 18px 28px padding (the hero one with a 1px white border). Sections: intro 70px padding; "נעים מאוד"
+     #f9f9fa, 70px padding, 550px text beside a 290x435 photo, 60px apart; testimonials over a photo with a 70%
+     #ededf0 veil, a 939px white card (text 23/36.8px italic, 50px top and left padding, 150px on the right for the
+     quote mark), name and place under the card; the green form band; the gallery band (70px top). */
   .lp-anchor { display: block; position: relative; top: -10px; }
-  .lp-h2 { font-family: 'Open Sans', 'Noto Sans Hebrew', sans-serif; font-weight: 500; font-size: 50px; line-height: 1.1; color: var(--lp-ink); margin: 0 0 22px; text-align: center; }
-  .lp-text { font-size: 19px; line-height: 1.5; color: var(--lp-ink); text-align: center; }
-  .lp-text p { margin: 0 0 6px; }
-  .lp-btn { display: inline-block; background: var(--lp-ink); color: #fff !important; padding: 18px 28px; font-size: 19px; font-weight: 600; text-decoration: none; line-height: 1; }
+  .lp-h2 { font-family: 'Open Sans', 'Noto Sans Hebrew', sans-serif; font-weight: 500; font-size: 50px; line-height: 50px; color: var(--lp-ink); margin: 0 0 40px; text-align: center; }
+  .lp-text { font-size: 19px; line-height: 28.5px; color: var(--lp-ink); text-align: center; }
+  .lp-text p { margin: 0 0 10px; }
+  .lp-btn { display: inline-block; background: var(--lp-ink); color: #fff !important; padding: 18px 28px; font-size: 19px; font-weight: 600; text-decoration: none; line-height: 19px; }
   .lp-btn:hover { background: #333; }
 
-  .lp-hero { position: relative; height: 660px; overflow: hidden; color: #fff; display: grid; place-items: center; padding: 0 10px; }
+  .lp-hero { position: relative; height: 760px; overflow: hidden; color: #fff; display: grid; place-items: center; padding: 0 10px; }
   .lp-slides, .lp-slide { position: absolute; inset: 0; width: 100%; height: 100%; }
   .lp-slide { object-fit: cover; opacity: 0; transition: opacity .5s ease; }
   .lp-slide.on { opacity: 1; }
-  .lp-hero::after { content: ''; position: absolute; inset: 0; background: rgba(0, 0, 0, .36); }
-  .lp-hero-in { position: relative; z-index: 1; text-align: center; display: grid; justify-items: center; gap: 18px; max-width: 1100px; }
-  .lp-hero-title { margin: 0; font-family: 'Open Sans', 'Noto Sans Hebrew', sans-serif; font-weight: 400; font-size: 50px; line-height: 1.1; color: #fff; }
-  .lp-hero-title--big { font-size: 83px; }
-  .lp-hero-sub { margin: 0; font-size: 26px; }
+  .lp-hero::after { content: ''; position: absolute; inset: 0; background: rgba(0, 0, 0, .4); }
+  .lp-hero-in { position: relative; z-index: 1; text-align: center; display: grid; justify-items: center; gap: 20px; max-width: 1140px; }
+  .lp-hero-title, .lp-hero-title--big { margin: 0; font-family: 'Open Sans', 'Noto Sans Hebrew', sans-serif; font-weight: 400; font-size: 83px; line-height: 83px; color: #fff; }
+  .lp-hero-sub { margin: 0; font-family: Tahoma, 'Noto Sans Hebrew', sans-serif; font-size: 28px; line-height: 28px; }
+  .lp-hero .lp-btn { border: 1px solid #fff; }
   .lp-down { color: #fff; position: absolute; bottom: -150px; left: 50%; transform: translateX(-50%); }
 
-  .lp-intro { max-width: 980px; margin: 0 auto; padding: 90px 20px; text-align: center; }
-  .lp-intro .lp-text { margin-bottom: 30px; }
+  .lp-intro { max-width: 1180px; margin: 0 auto; padding: 70px 20px; text-align: center; }
+  .lp-intro .lp-text { margin-bottom: 40px; display: flow-root; }
 
   .lp-about { background: var(--lp-soft); padding: 70px 20px; }
-  .lp-about-in { max-width: 980px; margin: 0 auto; display: flex; gap: 60px; align-items: center; justify-content: center; }
-  .lp-about-text { flex: 1; max-width: 520px; }
+  .lp-about-in { max-width: 1140px; margin: 0 auto; display: flex; gap: 60px; align-items: center; justify-content: center; }
+  .lp-about-text { flex: 0 1 550px; }
+  .lp-about-text .lp-h2 { margin-bottom: 30px; }
   .lp-about-text .lp-h2, .lp-about-text .lp-text { text-align: start; }
-  .lp-about-img { width: 290px; height: 366px; object-fit: cover; flex: none; }
+  .lp-about-img { width: 290px; height: 435px; object-fit: cover; flex: none; }
 
-  .lp-testi { position: relative; padding: 80px 20px; background: #fff var(--testi-bg) center / cover; }
-  .lp-testi::before { content: ''; position: absolute; inset: 0; background: rgba(255, 255, 255, .82); }
+  .lp-testi { position: relative; padding: 100px 20px 70px; background: #fff var(--testi-bg) 0 0 / cover; }
+  .lp-testi::before { content: ''; position: absolute; inset: 0; background: rgba(237, 237, 240, .7); }
   .lp-testi > * { position: relative; }
-  .lp-testi-box { max-width: 940px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+  .lp-testi .lp-h2 { margin-bottom: 30px; }
+  .lp-testi-box { max-width: 1030px; margin: 0 auto; display: flex; align-items: center; gap: 0; }
   .lp-testi-track { list-style: none; margin: 0; padding: 0; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; flex: 1; }
   .lp-testi-track::-webkit-scrollbar { display: none; }
-  .lp-testi-item { flex: 0 0 100%; scroll-snap-align: center; }
-  .lp-testi-item blockquote { margin: 0; padding: 40px 50px 20px; background: var(--quote) no-repeat 95% 10px / 80px auto; text-align: center; }
-  .lp-testi-item p { font-size: 23px; line-height: 1.6; font-style: italic; color: var(--lp-ink); margin: 0 0 16px; }
-  .lp-testi-item cite { font-style: normal; font-size: 14px; display: grid; gap: 2px; }
-  .lp-testi-item .n { font-weight: 600; }
-  .lp-testi-nav { flex: none; border: 0; background: none; color: var(--lp-ink); cursor: pointer; padding: 10px; }
+  .lp-testi-item { flex: 0 0 100%; scroll-snap-align: center; padding: 20px; }
+  .lp-testi-item blockquote { margin: 0; padding: 50px 150px 50px 50px; background: #fff var(--quote) no-repeat 95% 10px / 80px auto; text-align: right; }
+  .lp-testi-item blockquote p { font-size: 23px; line-height: 36.8px; font-style: italic; color: var(--lp-ink); margin: 0; }
+  .lp-testi-by { margin: 25px 0 0; padding-inline: 150px 50px; text-align: right; }
+  .lp-testi-by cite { font-style: normal; display: grid; color: var(--lp-ink); }
+  .lp-testi-by .n { font-size: 20px; line-height: 30px; font-weight: 600; }
+  .lp-testi-by .p { font-family: 'Noto Sans Hebrew', var(--lp-font); font-size: 16px; line-height: 24px; }
+  .lp-testi-nav { flex: none; border: 0; background: none; color: var(--lp-ink); cursor: pointer; padding: 0; width: 26px; display: grid; place-items: center; min-height: 44px; }
 
-  .lp-contact { background: var(--lp-green); color: #fff; padding: 60px 20px 50px; }
-  .lp-contact > * { max-width: 1100px; margin-inline: auto; }
+  .lp-contact { background: var(--lp-green); color: #fff; padding: 70px 20px 98px; }
+  .lp-contact > * { max-width: 1140px; margin-inline: auto; }
   .lp-contact .lp-h2, .lp-contact .lp-text { color: #fff; }
-  .lp-contact .lp-text { margin-top: 0; margin-bottom: 24px; font-size: 16px; }
+  .lp-contact .lp-h2 { margin-bottom: 20px; }
+  .lp-contact .lp-text { margin-top: 0; margin-bottom: 34px; }
 
   .lp-gallery-sec { background: var(--lp-soft); padding: 70px 0 2px; }
   .lp-gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
-  .lp-gallery a { position: relative; display: block; aspect-ratio: 3 / 2; overflow: hidden; }
+  .lp-gallery a { position: relative; display: block; aspect-ratio: 479 / 319; overflow: hidden; }
   .lp-gallery img { width: 100%; height: 100%; object-fit: cover; }
-  .lp-gallery .cap { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, .45); color: #fff; font-size: 20px; opacity: 0; transition: opacity .3s; }
+  .lp-gallery .cap { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, .45); color: #fff; font-size: 17px; font-weight: 600; opacity: 0; transition: opacity .3s; }
   .lp-gallery a:hover .cap, .lp-gallery a:focus-visible .cap { opacity: 1; }
 
-  @media (max-width: 1024px) { .lp-gallery { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+  @media (max-width: 1024px) {
+    .lp-hero-title, .lp-hero-title--big { font-size: 60px; line-height: 64px; }
+    .lp-testi-item blockquote { padding: 50px 110px 40px 40px; }
+    .lp-testi-by { padding-inline: 110px 40px; }
+    .lp-gallery { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  }
+  /* WordPress at 390px: sections padded 40px (20px sides), headings 36/36px (testimonials 38px, form 36/43.2px),
+     text 16/24px; hero 744px, title and subtitle 48/52.8px; "נעים מאוד" centred with the 240x360 photo under the
+     text; testimonials centred, 20/34px text; the gallery 2 columns. */
   @media (max-width: 767px) {
-    .lp-h2 { font-size: 34px; }
-    .lp-text { font-size: 17px; }
-    .lp-hero { height: 520px; }
-    .lp-hero-title { font-size: 34px; }
-    .lp-hero-title--big { font-size: 44px; }
-    .lp-hero-sub { font-size: 20px; }
+    .lp-h2 { font-size: 36px; line-height: 36px; margin-bottom: 30px; }
+    .lp-text { font-size: 16px; line-height: 24px; }
+    .lp-hero { height: 744px; }
+    .lp-hero-title, .lp-hero-title--big { font-size: 48px; line-height: 52.8px; }
+    .lp-hero-sub { font-size: 48px; line-height: 52.8px; }
     .lp-down { bottom: -110px; }
-    .lp-intro { padding: 60px 20px; }
-    .lp-about-in { flex-direction: column-reverse; gap: 28px; }
+    .lp-intro { padding: 40px 20px; }
+    .lp-about { padding: 40px 20px; }
+    .lp-about-in { flex-direction: column; gap: 26px; }
+    .lp-about-text { flex: none; }
+    .lp-about-text .lp-h2 { margin-bottom: 31px; }
     .lp-about-text .lp-h2, .lp-about-text .lp-text { text-align: center; }
-    .lp-testi-item blockquote { padding: 36px 6px 12px; background-size: 50px auto; }
-    .lp-testi-item p { font-size: 18px; }
-    .lp-gallery { gap: 2px; }
+    .lp-about-img { width: 240px; height: 360px; }
+    .lp-testi { padding: 40px 10px; }
+    .lp-testi .lp-h2 { font-size: 38px; line-height: 38px; }
+    .lp-testi-item { padding: 10px; }
+    .lp-testi-item blockquote { padding: 50px 20px 24px; background-size: 50px auto; text-align: center; }
+    .lp-testi-item blockquote p { font-size: 20px; line-height: 34px; }
+    .lp-testi-by { padding-inline: 20px; text-align: center; }
+    .lp-contact { padding: 40px 30px 50px; }
+    .lp-contact .lp-h2 { line-height: 43.2px; }
+    .lp-contact .lp-text { font-size: 19px; line-height: 28.5px; margin-bottom: 24px; }
+    .lp-gallery-sec { padding-top: 40px; }
+    .lp-gallery-sec .lp-h2 { margin-bottom: 30px; }
+    .lp-gallery { grid-template-columns: repeat(2, 1fr); gap: 2px; }
   }
 </style>
 

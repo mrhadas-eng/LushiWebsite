@@ -1,0 +1,31 @@
+// Height of the page body (from the header to the footer) on Wix, measured 2026-10-19: desktop in px at 1440,
+// phone in px of the 320px Wix mobile design. Wix leaves empty page below the content on several pages (editor
+// leftovers); it is reproduced as a minimum height so the footer sits where it does on Wix (owner decision
+// 2026-10-19). Pages missing here have no minimum. See docs/VISUAL-PARITY-AUDIT.md.
+export const pageHeights = {
+  '/': { d: 4646, m: 3732 },   // phone: Wix 3904 less the 172 units of the gap above "צרו קשר" (owner, 2026-10-20)
+  '/אודות': { d: 724, m: 1167 },
+  '/יצירת-קשר': { d: 1006, m: 1216 },
+  '/לקוחות-פרטיים': { d: 4488, m: 1388 },
+  '/מסחריים': { d: 2087, m: 837 },
+  '/הצהרתנגישות': { d: 1010, m: 1661 },
+  '/thankyou': { d: 715, m: 1238 },
+  '/להיות-יפה-שירלי': { d: 2229, m: 2298 },
+  '/אור-לעתיד': { d: 2408, m: 2298 },
+  '/מיברג': { d: 1447, m: 2298 },
+  '/סטון-גלרי': { d: 1953, m: 2298 },
+  '/יוניקורן': { d: 2326, m: 3072 },
+  '/copy-of-יוניקורן-1': { d: 1685, m: 2298 },
+  '/געתון': { d: 2175, m: 2298 },
+  '/copy-of-יוניקורן': { d: 2200, m: 2298 },
+  '/מסודרים-ליד-ביבי': { d: 2330, m: 2948 },
+  '/מנהל-הפרויקט': { d: 2408, m: 3086 },
+  '/אבק-כוכבים': { d: 2305, m: 2298 },
+  '/דירה-להשכיר': { d: 2280, m: 2298 },
+  '/האקדמיים': { d: 2078, m: 2298 },
+  '/יפה-להשכרה': { d: 2331, m: 2298 },
+  '/עיצוב-מחדש': { d: 2177, m: 2298 },
+  '/צאו-לחופשה': { d: 2130, m: 2298 },
+  '/פסיכולוגית-אלגנטית': { d: 2382, m: 2298 },
+  '/הבן-של-הנגר': { d: 9284, m: 9874 },
+};

@@ -16,41 +16,61 @@ const { slides } = Astro.props;
       </div>
     );
   })}
-  <button class="arrow prev" aria-label="הקודם"><svg viewBox="0 0 17 35" width="17" height="35" aria-hidden="true"><path d="M1 1l15 16.5L1 34" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
-  <button class="arrow next" aria-label="הבא"><svg viewBox="0 0 17 35" width="17" height="35" aria-hidden="true"><path d="M16 1L1 17.5 16 34" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
+  <button class="arrow prev" aria-label="הקודם"><svg viewBox="0 0 17 35" width="17" height="35" aria-hidden="true"><path d="M16 1L1 17.5 16 34" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
+  <button class="arrow next" aria-label="הבא"><svg viewBox="0 0 17 35" width="17" height="35" aria-hidden="true"><path d="M1 1l15 16.5L1 34" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
   <div class="dots" role="tablist">
     {slides.map((_, i) => <button class:list={['dot', { on: i === 0 }]} role="tab" aria-label={`שקופית ${i + 1}`} aria-selected={i === 0 ? 'true' : 'false'}></button>)}
   </div>
 </section>
 
 <style>
-  .slideshow { position: relative; height: 643px; overflow: hidden; background: #ddd; }
+  /* Wix (1440px): 643px tall; each photo at 73% opacity over black (no gradient); caption right-aligned, its right
+     edge 574px right of the window centre: title 50px (line 45px), 12px gap, subtitle 30px (line 27px, 3px spacing),
+     63px above the bottom. Five dots centred 26px above the bottom: 7px white, the current one an 11px ring (2px).
+     The arrows sit outside the window on Wix (the slideshow is 1603px wide), so on wide screens they only appear
+     when focused with the keyboard. New slide every 5 seconds. */
+  .slideshow { position: relative; height: 643px; overflow: hidden; background: #000; }
   .slide { position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s ease; }
   .slide.current { opacity: 1; }
-  .slide img { width: 100%; height: 100%; object-fit: cover; }
-  .slide::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.35), rgba(0,0,0,.05) 55%); }
-  .caption { position: absolute; z-index: 1; inset-inline: 0; bottom: 110px; text-align: center; color: #fff; padding: 0 20px; }
-  .title { font-size: 50px; line-height: 1.1; }
-  .subtitle { font-size: 30px; letter-spacing: 3px; margin-top: 10px; }
+  .slide img { width: 100%; height: 100%; object-fit: cover; opacity: .73; }
+  .caption { position: absolute; z-index: 1; right: calc(50% - 574px); bottom: 63px; width: min(679px, 100% - 32px); text-align: right; color: #fff; }
+  .title { font-size: 50px; line-height: 45px; }
+  .subtitle { font-size: 30px; line-height: 27px; letter-spacing: 3px; margin-top: 12px; }
   .arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; background: none; border: 0; color: #fff; cursor: pointer; padding: 10px; opacity: .85; }
   .arrow:hover { opacity: 1; }
-  .prev { right: 24px; }
-  .next { left: 24px; }
-  .dots { position: absolute; z-index: 2; bottom: 24px; inset-inline: 0; display: flex; justify-content: center; gap: 10px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid #fff; background: #fff; padding: 0; cursor: pointer; opacity: .9; }
-  .dot.on { background: transparent; width: 10px; height: 10px; }
+  /* As on Wix: "previous" on the left, "next" on the right */
+  .prev { left: 24px; }
+  .next { right: 24px; }
+  @media (min-width: 1200px) {
+    .arrow:not(:focus-visible) { clip-path: inset(50%); }
+  }
+  .dots { direction: ltr; position: absolute; z-index: 2; bottom: 26px; inset-inline: 0; display: flex; justify-content: center; align-items: center; gap: 16px; height: 11px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; border: 0; background: #fff; padding: 0; cursor: pointer; }
+  .dot.on { background: transparent; width: 11px; height: 11px; border: 2px solid #fff; }
   /* Touch screens: a larger invisible tap area around each dot. */
   @media (pointer: coarse) {
     .dots { gap: 24px; }
     .dot { position: relative; }
-    .dot::after { content: ''; position: absolute; inset: -12px; }
+    .dot::after { content: ''; position: absolute; inset: -13px; }
   }
+  @media (max-width: 1240px) {
+    .caption { right: 72px; }
+  }
+  /* Wix mobile (x --m): 264px tall; caption centred 114px from the top (27px title on 24.3px lines, 17px subtitle
+     with 1.7px spacing); the arrows (15x33) stay visible 15px from the edges; dots 6px (current 9px), 15px apart,
+     21px above the bottom. */
   @media (max-width: 760px) {
-    .slideshow { height: 70vh; min-height: 380px; }
-    .caption { bottom: 64px; }
-    .title { font-size: 34px; }
-    .subtitle { font-size: 20px; letter-spacing: 2px; }
-    .arrow { display: none; }
+    .slideshow { height: calc(264 * var(--m)); }
+    .caption { right: 0; left: 0; width: auto; top: calc(114 * var(--m)); bottom: auto; text-align: center; padding: 0 calc(20 * var(--m)); }
+    .title { font-size: calc(27 * var(--m)); line-height: calc(24.3 * var(--m)); }
+    .subtitle { font-size: calc(17 * var(--m)); line-height: calc(15.3 * var(--m)); letter-spacing: calc(1.7 * var(--m)); margin-top: calc(10 * var(--m)); }
+    .arrow { padding: 0; width: 44px; height: 44px; display: grid; place-items: center; }
+    .arrow svg { width: calc(15 * var(--m)); height: calc(33 * var(--m)); }
+    .prev { left: calc(15 * var(--m) - 14px); }
+    .next { right: calc(15 * var(--m) - 14px); }
+    .dots { bottom: calc(21 * var(--m)); gap: calc(15 * var(--m)); }
+    .dot { width: calc(6 * var(--m)); height: calc(6 * var(--m)); }
+    .dot.on { width: calc(9 * var(--m)); height: calc(9 * var(--m)); border-width: calc(2 * var(--m)); }
   }
 </style>
 

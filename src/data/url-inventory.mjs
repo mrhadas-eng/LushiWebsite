@@ -22,23 +22,28 @@ const done = { status: 'implemented' };
 
 export const inventory = [
   // ------------------------------------------------ www.hagarlushi.com (Wix) – pages kept at the same URL
-  ...['/', '/אודות', '/מסחריים', '/לקוחות-פרטיים', '/יצירת-קשר', '/portfolio', '/הצהרתנגישות',
+  ...['/', '/אודות', '/מסחריים', '/לקוחות-פרטיים', '/יצירת-קשר', '/הצהרתנגישות',
     '/להיות-יפה-שירלי', '/אור-לעתיד', '/מיברג', '/סטון-גלרי', '/יוניקורן', '/copy-of-יוניקורן-1', '/געתון',
     '/copy-of-יוניקורן', '/מסודרים-ליד-ביבי', '/מנהל-הפרויקט', '/אבק-כוכבים', '/דירה-להשכיר', '/האקדמיים',
     '/יפה-להשכרה', '/עיצוב-מחדש', '/צאו-לחופשה', '/פסיכולוגית-אלגנטית', '/הבן-של-הנגר'].map((u) => www(u, done)),
   www('/thankyou', { status: 'implemented', noindex: true, note: 'Wix thank-you page (text: "תודה אני אחזור אליכם בהקדם האפשרי…"); new page at the same URL, final text pending' }),
 
+  // Press page ("מהעיתונות") removed from the new site (owner decision, 2026-10-19): its address goes to the home page.
+  www('/portfolio', { status: 'redirect', to: '/', approved: true, approvedOn: '2026-10-19',
+    reason: 'Press page ("מהעיתונות") removed from the site (owner decision, 2026-10-19)' }),
+
   // ------------------------------------------------ www – duplicates / near-empty Wix pages (content verified 2026-10-11)
-  // Out of scope (owner, 2026-10-11): not migrated. Redirects proposed so the old addresses don't 404.
-  www('/copy-of-להיות-יפה', { scope: 'out', status: 'redirect', to: '/דירה-להשכיר', approved: false, reason: 'Duplicate of the "דירה להשכיר" project page' }),
-  www('/להיות-יפה', { scope: 'out', status: 'redirect', to: '/להיות-יפה-שירלי', approved: false, reason: 'Older copy of the "להיות יפה" project page' }),
-  www('/redesign', { scope: 'out', status: 'redirect', to: '/עיצוב-מחדש', approved: false, reason: 'Duplicate of the "עיצוב מחדש" project page' }),
-  www('/go-on-vacation', { scope: 'out', status: 'redirect', to: '/צאו-לחופשה', approved: false, reason: 'Duplicate of the "צאו לחופשה" project page' }),
-  www('/הבן-של-הנגר3', { scope: 'out', status: 'redirect', to: '/הבן-של-הנגר', approved: false, reason: 'Duplicate of the "הבן של הנגר" project page' }),
-  www('/bio', { scope: 'out', status: 'redirect', to: '/אודות', approved: false, reason: 'Older version of the About text' }),
-  www('/home', { scope: 'out', status: 'redirect', to: '/', approved: false, reason: 'Empty Wix page' }),
-  www('/פרוייקטים', { scope: 'out', status: 'redirect', to: '/לקוחות-פרטיים', approved: false, reason: 'Near-empty index ("הפרוייקטים שלי")' }),
-  www('/coming-soon', { scope: 'out', status: 'redirect', to: '/', approved: false, reason: '"האתר בשיפוצים...נשוב בקרוב!" placeholder' }),
+  // Out of scope (owner, 2026-10-11): not migrated. Redirects approved by the owner on 2026-10-28, so the old
+  // addresses don't 404.
+  www('/copy-of-להיות-יפה', { scope: 'out', status: 'redirect', to: '/דירה-להשכיר', approved: true, approvedOn: '2026-10-28', reason: 'Duplicate of the "דירה להשכיר" project page' }),
+  www('/להיות-יפה', { scope: 'out', status: 'redirect', to: '/להיות-יפה-שירלי', approved: true, approvedOn: '2026-10-28', reason: 'Older copy of the "להיות יפה" project page' }),
+  www('/redesign', { scope: 'out', status: 'redirect', to: '/עיצוב-מחדש', approved: true, approvedOn: '2026-10-28', reason: 'Duplicate of the "עיצוב מחדש" project page' }),
+  www('/go-on-vacation', { scope: 'out', status: 'redirect', to: '/צאו-לחופשה', approved: true, approvedOn: '2026-10-28', reason: 'Duplicate of the "צאו לחופשה" project page' }),
+  www('/הבן-של-הנגר3', { scope: 'out', status: 'redirect', to: '/הבן-של-הנגר', approved: true, approvedOn: '2026-10-28', reason: 'Duplicate of the "הבן של הנגר" project page' }),
+  www('/bio', { scope: 'out', status: 'redirect', to: '/אודות', approved: true, approvedOn: '2026-10-28', reason: 'Older version of the About text' }),
+  www('/home', { scope: 'out', status: 'redirect', to: '/', approved: true, approvedOn: '2026-10-28', reason: 'Empty Wix page' }),
+  www('/פרוייקטים', { scope: 'out', status: 'redirect', to: '/לקוחות-פרטיים', approved: true, approvedOn: '2026-10-28', reason: 'Near-empty index ("הפרוייקטים שלי")' }),
+  www('/coming-soon', { scope: 'out', status: 'redirect', to: '/', approved: true, approvedOn: '2026-10-28', reason: '"האתר בשיפוצים...נשוב בקרוב!" placeholder' }),
 
   // ------------------------------------------------ www – old Wix landing pages (live today, real content)
   // Out of scope (owner, 2026-10-11): NOT recreated. Redirects approved by the owner on 2026-10-20 (no campaign
@@ -52,7 +57,7 @@ export const inventory = [
 
   // ------------------------------------------------ www – technical
   ...['project-title-1', 'project-title-2', 'project-title-3', 'project-title-4', 'project-title-5', 'project-title-6']
-    .map((s) => www(`/portfolio-collections/my-portfolio/${s}`, { status: 'redirect', to: '/portfolio', approved: true, technical: true, rule: '/portfolio-collections/*', reason: 'Wix template demo items (stock photos), not studio content' })),
+    .map((s) => www(`/portfolio-collections/my-portfolio/${s}`, { status: 'redirect', to: '/', approved: true, technical: true, rule: '/portfolio-collections/*', reason: 'Wix template demo items (stock photos), not studio content' })),
   ...['/pages-sitemap.xml', '/portfolio-projects-sitemap.xml', '/portfolio-collections-sitemap.xml']
     .map((u) => www(u, { status: 'redirect', to: '/sitemap.xml', approved: true, technical: true, reason: 'Old Wix sitemap file' })),
   www('/sitemap.xml', { status: 'implemented', technical: true }),

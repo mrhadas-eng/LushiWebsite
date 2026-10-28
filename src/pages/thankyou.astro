@@ -3,18 +3,25 @@
 // The lead is counted here (generate_lead), only when the visitor really arrived from a
 // form, so refreshing the page or opening it directly doesn't count twice.
 import Base from '../layouts/Base.astro';
-import { site, thankYou } from '../data/content.mjs';
+import { site, thankYou, about } from '../data/content.mjs';
+import { img } from '../lib/media.mjs';
 const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` : null;
+const [a, b] = thankYou.images.map((i) => ({ ...img(i.id, 960), alt: i.alt }));
+const mark = img(site.mark);
+const portrait = img(about.portrait.id);
 ---
 <Base title={thankYou.title} noindex>
-  <section class="ty wrap">
-    <h1 class="h-spaced">{thankYou.title}</h1>
-    <p class="ty-text">{thankYou.text}</p>
-    <p class="ty-more">
-      בינתיים אפשר <a href="/לקוחות-פרטיים">לראות עוד פרויקטים</a>
-      {waHref && <>, או <a href={waHref} target="_blank" rel="noopener" data-track="thankyou">לכתוב לנו בוואטסאפ</a></>}.
-    </p>
-    <a class="ty-home" href="/">חזרה לדף הבית</a>
+  <section class="ty">
+    <img class="ty-img" src={a.src} srcset={a.srcset} sizes="(max-width: 760px) 100vw, 28vw" alt={a.alt} width="404" height="715" />
+    <div class="ty-text">
+      <img class="mark" src={mark.src} alt="Lushi-Logo-01.png" width="64" height="64" />
+      <h1 class="ty-title">{thankYou.title}</h1>
+      <p class="ty-sub">{thankYou.subtitle}</p>
+      <img class="ty-portrait" src={portrait.src} alt={about.portrait.alt} width="225" height="206" loading="lazy" />
+      <p class="ty-more">{thankYou.text} <a href="/לקוחות-פרטיים">{thankYou.linkText}</a></p>
+      {waHref && <p class="ty-wa">או <a href={waHref} target="_blank" rel="noopener" data-track="thankyou">לכתוב לנו בוואטסאפ</a></p>}
+    </div>
+    <img class="ty-img" src={b.src} srcset={b.srcset} sizes="(max-width: 760px) 100vw, 28vw" alt={b.alt} width="403" height="715" />
   </section>
 </Base>
 
@@ -26,9 +33,40 @@ const waHref = site.whatsapp?.number ? `https://wa.me/${site.whatsapp.number}` :
 </script>
 
 <style>
-  .ty { text-align: center; padding: 120px 0 140px; display: grid; gap: 22px; justify-items: center; }
-  .ty-text { font-size: 22px; }
-  .ty-more a, .ty-home { text-decoration: underline; text-underline-offset: 3px; }
-  .ty-home { margin-top: 10px; }
-  @media (pointer: coarse) { .ty-home { display: inline-block; padding-block: 10px; margin-block: 0 -10px; } }
+  /* Wix (1440px): the About-page layout, 715px tall: photos filling the left (404px) and right (403px) edges; in the
+     centre the 64px logo mark 34px below the header, "תודה" in Heebo ExtraLight 75px (37.5px lines), the subtitle in
+     Futura 16px (1.6px spacing, #636363), then Times New Roman 32/44.8px with the underlined link to the projects.
+     The WhatsApp line below is not on Wix: kept because it is a tracked contact link (docs/VISUAL-PARITY-AUDIT.md). */
+  .ty { direction: ltr; display: grid; grid-template-columns: 28.056% 1fr 27.986%; height: 715px; }
+  .ty-img { width: 100%; height: 100%; object-fit: cover; }
+  .ty-text { background: #f9f9f9; direction: rtl; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 34px 16px 0; }
+  .mark { width: 64px; height: 64px; }
+  .ty-title { font-family: var(--font-heebo); font-weight: 200; font-size: 75px; line-height: 37.5px; margin-top: 6px; }
+  .ty-sub { font-family: var(--font-futura); font-size: 16px; line-height: 19.2px; letter-spacing: 1.6px; color: var(--muted); margin-top: 20px; }
+  .ty-more { font-family: var(--font-times); font-size: 32px; line-height: 44.8px; margin-top: 27px; }
+  .ty-more a { text-decoration: underline; }
+  .ty-wa { font-size: 18px; margin-top: 18px; }
+  .ty-wa a { text-decoration: underline; text-underline-offset: 3px; }
+  @media (pointer: coarse) { .ty-wa a { display: inline-block; padding-block: 10px; margin-block: -10px; } }
+
+  @media (max-width: 1012px) {
+    .ty-more { font-size: 26px; line-height: 36px; }
+  }
+  .ty-portrait { display: none; }
+  /* Wix mobile (x --m): as the About page: mark, title (33/16.5px), subtitle, round portrait, the projects line in
+     Times New Roman 21/29.4px, then, at the bottom of the 1238px band, the first photo full width. */
+  @media (max-width: 760px) {
+    /* Wix mobile keeps the grey band to the footer, the photo at its bottom and empty space above it */
+    .ty { display: flex; flex-direction: column; height: auto; min-height: calc(1238 * var(--m)); direction: rtl; background: #f9f9f9; }
+    .ty-text { padding: calc(24 * var(--m)) calc(20 * var(--m)) 0; }
+    .mark { width: calc(60 * var(--m)); height: calc(60 * var(--m)); }
+    .ty-title { font-size: calc(33 * var(--m)); line-height: calc(16.5 * var(--m)); margin-top: calc(-5 * var(--m)); padding-block: calc(16 * var(--m)); }
+    .ty-sub { font-size: calc(16 * var(--m)); line-height: calc(19.2 * var(--m)); letter-spacing: calc(1.6 * var(--m)); margin-top: calc(9 * var(--m)); }
+    .ty-portrait { display: block; width: calc(225 * var(--m)); height: auto; margin-top: calc(11 * var(--m)); }
+    .ty-more { font-size: calc(21 * var(--m)); line-height: calc(29.4 * var(--m)); margin-top: calc(10 * var(--m)); }
+    .ty-wa { font-size: calc(16 * var(--m)); }
+    .ty-img:first-child { order: 2; height: calc(200 * var(--m)); margin-top: auto; }
+    .ty-text { padding-bottom: calc(40 * var(--m)); }
+    .ty-img:last-child { display: none; }
+  }
 </style>
