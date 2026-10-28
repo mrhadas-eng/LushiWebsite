@@ -111,12 +111,12 @@ test('no landing-page URL is redirected to a homepage silently', () => {
     assert.equal(inventory.find((e) => e.host === 'lp' && e.url === u)?.status, 'implemented', u);
 });
 
-test('scope: no redirect blocks launch; lp author archives are retired (404, not recreated); out-of-scope Wix pages are listed but do not block', () => {
+test('scope: no redirect blocks launch or awaits approval; lp author archives are retired (404, not recreated); every out-of-scope Wix redirect is owner-approved', () => {
   assert.deepEqual(pendingDecisions(), []);
   assert.deepEqual(retired().map((e) => `${e.host} ${e.url}`).sort(), ['lp /author/gal/', 'lp /author/roy/']);
-  const out = outOfScopePending();
-  assert.equal(out.length, 9);
-  assert.ok(out.every((e) => e.host === 'www' && !e.technical && e.reason));
+  // All out-of-scope Wix redirects are approved (9 on 2026-10-28, the 3 old landing pages on 2026-10-20): none waits.
+  assert.deepEqual(outOfScopePending().map((e) => `${e.host} ${e.url}`), [], 'out-of-scope Wix redirects still awaiting approval');
+  assert.ok(inventory.filter((e) => e.scope === 'out').every((e) => e.host === 'www' && !e.technical && e.reason && e.approved));
   // The 3 old Wix landing pages were approved by the owner on 2026-10-20: none waits for a campaign check.
   assert.equal(inventory.filter((e) => e.campaignCheck).length, 0);
   for (const e of inventory.filter((x) => x.status === 'redirect' && x.approved && !x.technical))

@@ -2,7 +2,7 @@
 
 **Agreed scope (owner, 2026-10-11):**
 - The landing pages being migrated are the **seven WordPress pages on `lp.hagarlushi.com`**. They are recreated at the same URLs.
-- The three old Wix landing pages and the other obsolete Wix pages under `www.hagarlushi.com` are **not recreated** and are **not launch blockers**. Their proposed redirects are listed for approval in `docs/REDIRECT-APPROVALS.md`.
+- The three old Wix landing pages and the other obsolete Wix pages under `www.hagarlushi.com` are **not recreated** and are **not launch blockers**. Their redirects are approved by the owner (the 3 landing pages on 2026-10-20, the other 9 on 2026-10-28) and listed in `docs/REDIRECT-APPROVALS.md`.
 - The main site and the landing pages stay separate, as two Cloudflare Workers.
 - `office.hagarlushi.com` is preserved.
 - `en.` and `he.` are unused; their DNS records are deleted at cutover.
@@ -19,7 +19,7 @@ The machine-readable copy is `src/data/url-inventory.mjs`. `test/inventory.test.
 
 | Host | Today | New | Status |
 |---|---|---|---|
-| `www.hagarlushi.com` | Wix | Worker `hagarlushi` (`dist/`) | 26 pages recreated at the same URLs. 9 obsolete copies or placeholders and 3 old Wix landing pages are out of scope and not recreated; their redirects await approval but don't block launch (§3). |
+| `www.hagarlushi.com` | Wix | Worker `hagarlushi` (`dist/`) | 26 pages recreated at the same URLs. 9 obsolete copies or placeholders and 3 old Wix landing pages are out of scope and not recreated; their redirects are approved (2026-10-20 and 2026-10-28, §3). |
 | `hagarlushi.com` (apex) | 3 A records → Wix, redirects to www | Cloudflare Redirect Rule → www | Planned (CLOUDFLARE-PLAN O5) |
 | `lp.hagarlushi.com` | WordPress 7.1.3 + Elementor Pro 4.0.5 on 69.62.113.1 | Worker `hagarlushi-lp` (`dist-lp/`) | All 7 published pages recreated at the same URLs and tested. The WordPress site stays live until cutover is approved. |
 | `en.` / `he.` | CNAME → Wix, showing the Wix "ConnectYourDomain Error" page | **Delete both records at cutover** | Unused (owner confirmed). Live DNS not changed yet (§6). |
@@ -99,7 +99,7 @@ Copy, images and layout come from the WordPress REST export (`src/data/lp/wp-pag
 - `/thankyou`: noindex, final text pending.
 - Also served: `sitemap.xml` and `robots.txt`.
 
-Live Wix pages that are copies or placeholders (content checked 2026-10-11) **redirect with 301, pending the owner's approval:**
+Live Wix pages that are copies or placeholders (content checked 2026-10-11) **redirect with 301, approved by the owner on 2026-10-28:**
 
 | URL | Content today | Redirect to |
 |---|---|---|
@@ -199,7 +199,7 @@ Rollback for lp: point `lp` back to `A 69.62.113.1` (WordPress is not touched un
 | D1 | WhatsApp pop-up / WhatsApp leads | **Decided:** a WhatsApp click is not a lead; it opens the chat directly and is tracked as `whatsapp_click` only. Implemented. |
 | D2 | WhatsApp and call numbers | **Decided (owner, 2026-10-19):** landing pages use 054-431-7164 for WhatsApp (`972544317164`) and 052-594-9682 for calls (`tel:+972525949682`), both in the delivery-failure message; the two are never mixed. (Before: 052-431-7164 for both, 2026-10-11.) The main site keeps 050-578-8634. Implemented. |
 | D3 | Old Wix landing pages | **Done (2026-10-20):** out of scope, not recreated; the owner approved the three redirects `/דף-נחיתה-פרטיים` → `/לקוחות-פרטיים`, `/דף-נחיתה-פרטי` → `/לקוחות-פרטיים` and `/דףנחיתה2` → `/` (no campaign check needed). |
-| D4 | Redirect approvals | **lp: decided (2026-10-13):** `/author/gal/` and `/author/roy/` need no redirect and are not recreated; they return the 404 page. No lp redirect needs approval any more. **Main site (not blocking):** the 9 obsolete-page redirects (REDIRECT-APPROVALS group C) still await approval; the 3 old landing-page redirects in that group are approved (D3). |
+| D4 | Redirect approvals | **lp: decided (2026-10-13):** `/author/gal/` and `/author/roy/` need no redirect and are not recreated; they return the 404 page. No lp redirect needs approval any more. **Main site: decided (2026-10-28):** the owner approved the 9 obsolete-page redirects (REDIRECT-APPROVALS group C); the 3 old landing-page redirects in that group were approved on 2026-10-20 (D3). No redirect awaits approval. |
 | D5 | lp `/privacy/` text: starts with a duplicated accessibility statement, then a generic template (SEQ Legal / Website Planet credit) | **Pending, blocks lp cutover:** the owner reviews it once the updated site is available to inspect (the workers.dev preview, O3b). **Not reviewed yet.** Copied unchanged until then, except the contact email (D9). It is tracked by the `ownerReview` flag in the inventory, which only the owner's confirmation clears. |
 | D6 | Google Ads conversion trigger (lp `/thankyou/` page view) | **Open (recommendation):** move it in GTM to `generate_lead`. |
 | D7 | `en.` / `he.` | **Decided:** unused; delete both DNS records at cutover. |

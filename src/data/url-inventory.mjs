@@ -33,16 +33,17 @@ export const inventory = [
     reason: 'Press page ("מהעיתונות") removed from the site (owner decision, 2026-10-19)' }),
 
   // ------------------------------------------------ www – duplicates / near-empty Wix pages (content verified 2026-10-11)
-  // Out of scope (owner, 2026-10-11): not migrated. Redirects proposed so the old addresses don't 404.
-  www('/copy-of-להיות-יפה', { scope: 'out', status: 'redirect', to: '/דירה-להשכיר', approved: false, reason: 'Duplicate of the "דירה להשכיר" project page' }),
-  www('/להיות-יפה', { scope: 'out', status: 'redirect', to: '/להיות-יפה-שירלי', approved: false, reason: 'Older copy of the "להיות יפה" project page' }),
-  www('/redesign', { scope: 'out', status: 'redirect', to: '/עיצוב-מחדש', approved: false, reason: 'Duplicate of the "עיצוב מחדש" project page' }),
-  www('/go-on-vacation', { scope: 'out', status: 'redirect', to: '/צאו-לחופשה', approved: false, reason: 'Duplicate of the "צאו לחופשה" project page' }),
-  www('/הבן-של-הנגר3', { scope: 'out', status: 'redirect', to: '/הבן-של-הנגר', approved: false, reason: 'Duplicate of the "הבן של הנגר" project page' }),
-  www('/bio', { scope: 'out', status: 'redirect', to: '/אודות', approved: false, reason: 'Older version of the About text' }),
-  www('/home', { scope: 'out', status: 'redirect', to: '/', approved: false, reason: 'Empty Wix page' }),
-  www('/פרוייקטים', { scope: 'out', status: 'redirect', to: '/לקוחות-פרטיים', approved: false, reason: 'Near-empty index ("הפרוייקטים שלי")' }),
-  www('/coming-soon', { scope: 'out', status: 'redirect', to: '/', approved: false, reason: '"האתר בשיפוצים...נשוב בקרוב!" placeholder' }),
+  // Out of scope (owner, 2026-10-11): not migrated. Redirects approved by the owner on 2026-10-28, so the old
+  // addresses don't 404.
+  www('/copy-of-להיות-יפה', { scope: 'out', status: 'redirect', to: '/דירה-להשכיר', approved: true, approvedOn: '2026-10-28', reason: 'Duplicate of the "דירה להשכיר" project page' }),
+  www('/להיות-יפה', { scope: 'out', status: 'redirect', to: '/להיות-יפה-שירלי', approved: true, approvedOn: '2026-10-28', reason: 'Older copy of the "להיות יפה" project page' }),
+  www('/redesign', { scope: 'out', status: 'redirect', to: '/עיצוב-מחדש', approved: true, approvedOn: '2026-10-28', reason: 'Duplicate of the "עיצוב מחדש" project page' }),
+  www('/go-on-vacation', { scope: 'out', status: 'redirect', to: '/צאו-לחופשה', approved: true, approvedOn: '2026-10-28', reason: 'Duplicate of the "צאו לחופשה" project page' }),
+  www('/הבן-של-הנגר3', { scope: 'out', status: 'redirect', to: '/הבן-של-הנגר', approved: true, approvedOn: '2026-10-28', reason: 'Duplicate of the "הבן של הנגר" project page' }),
+  www('/bio', { scope: 'out', status: 'redirect', to: '/אודות', approved: true, approvedOn: '2026-10-28', reason: 'Older version of the About text' }),
+  www('/home', { scope: 'out', status: 'redirect', to: '/', approved: true, approvedOn: '2026-10-28', reason: 'Empty Wix page' }),
+  www('/פרוייקטים', { scope: 'out', status: 'redirect', to: '/לקוחות-פרטיים', approved: true, approvedOn: '2026-10-28', reason: 'Near-empty index ("הפרוייקטים שלי")' }),
+  www('/coming-soon', { scope: 'out', status: 'redirect', to: '/', approved: true, approvedOn: '2026-10-28', reason: '"האתר בשיפוצים...נשוב בקרוב!" placeholder' }),
 
   // ------------------------------------------------ www – old Wix landing pages (live today, real content)
   // Out of scope (owner, 2026-10-11): NOT recreated. Redirects approved by the owner on 2026-10-20 (no campaign

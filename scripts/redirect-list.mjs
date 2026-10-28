@@ -48,7 +48,7 @@ Claude then sets \`approved: true\` in the inventory.
 |---|---|---|
 | A. Technical: no visitor content is lost | ${rows(technical).length} | No (pre-approved; tell us if you object) |
 | B. Content, lp.hagarlushi.com | ${rows(lpContent).length} | ${rows(lpContent).length ? '**Yes, the lp. cutover** (\`npm run check-launch\` fails until approved)' : 'No (none left)'} |
-| C. Content, main site: obsolete Wix pages (out of migration scope) | ${rows(wwwObsolete).length} | No. Without approval, the redirect proposed here goes live with the main site |
+| C. Content, main site: obsolete Wix pages (out of migration scope) | ${rows(wwwObsolete).length} | ${wwwObsolete.every((e) => e.approved) ? 'No (all approved)' : 'No. Without approval, the redirect proposed here goes live with the main site'} |
 | D. Main site: old Wix landing pages (out of scope, not recreated) | ${rows(wixLanding).length} | ${rows(wixLanding).length ? 'No, but **check active campaigns first** (below)' : 'No (none left)'} |
 
 ## A. Technical redirects
@@ -59,7 +59,7 @@ ${table(technical, { approveCol: false })}
 
 ${lpContent.length ? table(lpContent, { approveCol: true }) : 'None. The WordPress author archives are not redirected (see "No redirect" below).'}
 
-## C. Content redirects: main site, obsolete Wix pages (approval requested, not blocking)
+## C. Content redirects: main site, obsolete Wix pages (${wwwObsolete.every((e) => e.approved) ? 'all approved' : 'approval requested, not blocking'})
 
 ${table(wwwObsolete, { approveCol: true })}
 
