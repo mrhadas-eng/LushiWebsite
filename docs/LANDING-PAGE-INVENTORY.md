@@ -2,7 +2,7 @@
 
 **Agreed scope (owner, 2026-10-11):**
 - The landing pages being migrated are the **seven WordPress pages on `lp.hagarlushi.com`**. They are recreated at the same URLs.
-- The three old Wix landing pages and the other obsolete Wix pages under `www.hagarlushi.com` are **not recreated** and are **not launch blockers**. Their proposed redirects are listed for approval in `docs/REDIRECT-APPROVALS.md`.
+- The three old Wix landing pages and the other obsolete Wix pages under `www.hagarlushi.com` are **not recreated** and are **not launch blockers**. Their redirects are approved by the owner (the 3 landing pages on 2026-10-20, the other 9 on 2026-10-28) and listed in `docs/REDIRECT-APPROVALS.md`.
 - The main site and the landing pages stay separate, as two Cloudflare Workers.
 - `office.hagarlushi.com` is preserved.
 - `en.` and `he.` are unused; their DNS records are deleted at cutover.
@@ -19,7 +19,7 @@ The machine-readable copy is `src/data/url-inventory.mjs`. `test/inventory.test.
 
 | Host | Today | New | Status |
 |---|---|---|---|
-| `www.hagarlushi.com` | Wix | Worker `hagarlushi` (`dist/`) | 26 pages recreated at the same URLs. 9 obsolete copies or placeholders and 3 old Wix landing pages are out of scope and not recreated; their redirects await approval but don't block launch (§3). |
+| `www.hagarlushi.com` | Wix | Worker `hagarlushi` (`dist/`) | 26 pages recreated at the same URLs. 9 obsolete copies or placeholders and 3 old Wix landing pages are out of scope and not recreated; their redirects are approved (2026-10-20 and 2026-10-28, §3). |
 | `hagarlushi.com` (apex) | 3 A records → Wix, redirects to www | Cloudflare Redirect Rule → www | Planned (CLOUDFLARE-PLAN O5) |
 | `lp.hagarlushi.com` | WordPress 7.1.3 + Elementor Pro 4.0.5 on 69.62.113.1 | Worker `hagarlushi-lp` (`dist-lp/`) | All 7 published pages recreated at the same URLs and tested. The WordPress site stays live until cutover is approved. |
 | `en.` / `he.` | CNAME → Wix, showing the Wix "ConnectYourDomain Error" page | **Delete both records at cutover** | Unused (owner confirmed). Live DNS not changed yet (§6). |
@@ -55,16 +55,16 @@ Shared by all 4 landing pages (confirmed):
   - Required checkbox: **"קראתי ומאשר/ת את מדיניות הפרטיות"**, linking to `/privacy/` (opens in a new tab).
   - Submit button: "שליחה".
 - **WhatsApp** (decision D1, 2026-10-11: a WhatsApp click is not a lead):
-  - The button opens the chat with **052-431-7164** (`972524317164`) and the prescribed message "היי הגר! יש לי פרוייקט שאני רוצה להתייעץ לגביו."
+  - The button opens the chat with **054-431-7164** (`972544317164`) and the prescribed message "היי הגר! יש לי פרוייקט שאני רוצה להתייעץ לגביו."
   - It is tracked as `whatsapp_click` only: nothing goes to OfficeCRM, there's no thank-you page and no `generate_lead`.
   - The WordPress pop-up (popup 444, form `ecfe932`: "לפתיחת צ'אט וואטסאפ, נא להשאיר שם וטלפון", name, phone, consent, no email) is **not recreated**, because the details it asked for are no longer used.
-  - The WordPress thank-you page linked to 054-431-7164 (`972544317164`). The owner corrected this to 052-431-7164, which is now used on every lp page.
+  - The WordPress thank-you page linked to 054-431-7164 (`972544317164`). The owner first set 052-431-7164 (2026-10-11), then confirmed 054-431-7164 as the correct WhatsApp number (2026-10-19); it is used by every WhatsApp link on the lp pages.
 - **Main-site contact details stay separate:** phone and WhatsApp 050-578-8634. The tests check that neither site shows the other site's number.
 
 | URL (kept exactly) | Title / purpose | Hero | Form id → OfficeCRM notes | WP id | Status |
 |---|---|---|---|---|---|
 | `/` | "Hagar Lushi \| Architecture & Interior Design" (general landing page) | "חללים שמספרים את הסיפור שלכם", scroll arrow, no button | `lp-home` → "דף נחיתה – ראשי" | 2 (slug `sample-page`) | Implemented and tested |
-| `/architecture/` | "הגר לושי \| אדרכלות" (architecture campaign) | Two lines, plus "תכנון מוקפד. עיצוב מדויק. ליווי מלא." and a button | `lp-architecture` → "דף נחיתה – אדריכלות" | 387 | Implemented and tested |
+| `/architecture/` | "הגר לושי \| אדריכלות" (architecture campaign) | Two lines, plus "תכנון מוקפד. עיצוב מדויק. ליווי מלא." and a button | `lp-architecture` → "דף נחיתה – אדריכלות" | 387 | Implemented and tested |
 | `/interior-design/` | Interior-design campaign | Heading and button | `lp-interior-design` → "דף נחיתה – עיצוב פנים" | 321 | Implemented and tested |
 | `/renovation/` | Renovation campaign (shorter intro) | Heading and button | `lp-renovation` → "דף נחיתה – שיפוץ" | 406 | Implemented and tested |
 | `/thankyou/` | "תודה שיצרת קשר" | Check icon, text and a WhatsApp button | none (conversion page) | 244 | Implemented. **The Google Ads conversion fires on this page view** (§5). |
@@ -92,13 +92,14 @@ Copy, images and layout come from the WordPress REST export (`src/data/lp/wp-pag
 
 ## 3. www.hagarlushi.com (Wix)
 
-**Recreated at the same URL (26):**
-- Pages: `/`, `/אודות`, `/מסחריים`, `/לקוחות-פרטיים`, `/יצירת-קשר`, `/portfolio`, `/הצהרתנגישות`.
+**Recreated at the same URL (25):**
+- Pages: `/`, `/אודות`, `/מסחריים`, `/לקוחות-פרטיים`, `/יצירת-קשר`, `/הצהרתנגישות`.
+- The press page `/portfolio` ("מהעיתונות") is **not** recreated (owner, 2026-10-19): 301 → `/`.
 - The 18 project pages, listed in `url-inventory.mjs`.
 - `/thankyou`: noindex, final text pending.
 - Also served: `sitemap.xml` and `robots.txt`.
 
-Live Wix pages that are copies or placeholders (content checked 2026-10-11) **redirect with 301, pending the owner's approval:**
+Live Wix pages that are copies or placeholders (content checked 2026-10-11) **redirect with 301, approved by the owner on 2026-10-28:**
 
 | URL | Content today | Redirect to |
 |---|---|---|
@@ -111,7 +112,7 @@ Live Wix pages that are copies or placeholders (content checked 2026-10-11) **re
 | `/home` | Empty | `/` |
 | `/פרוייקטים` | "הפרוייקטים שלי" heading only | `/לקוחות-פרטיים` |
 | `/coming-soon` | "האתר בשיפוצים...נשוב בקרוב!" | `/` |
-| `/portfolio-collections/*` (6 items), old `*-sitemap.xml` | Wix template demo items / sitemaps | `/portfolio`, `/sitemap.xml` (technical) |
+| `/portfolio-collections/*` (6 items), old `*-sitemap.xml` | Wix template demo items / sitemaps | `/`, `/sitemap.xml` (technical) |
 
 **Old Wix landing pages: out of scope, not recreated (owner, 2026-10-11).** These are live Wix pages with real content. **The owner approved their redirects on 2026-10-20** (no campaign check needed); they are listed as approved in `docs/REDIRECT-APPROVALS.md` (group C):
 
@@ -149,7 +150,7 @@ Live Wix pages that are copies or placeholders (content checked 2026-10-11) **re
 - While sending, the button is disabled, so a double click sends one lead.
 - The thank-you page and `generate_lead` follow only after OfficeCRM confirms the lead.
 - If OfficeCRM rejects the lead, times out (10 s) or is unreachable, or the visitor's connection fails, the values are kept and a separate message appears: "לא הצלחנו לשלוח את הפרטים כרגע. אפשר לנסות שוב או ליצור קשר בטלפון או בוואטסאפ."
-  - "בטלפון" and "בוואטסאפ" link to the site's own number: www 050-578-8634, lp 052-431-7164.
+  - "בטלפון" and "בוואטסאפ" link to the site's own number: www 050-578-8634 (calls and WhatsApp); lp calls 052-594-9682, WhatsApp 054-431-7164.
 
 What an lp lead carries (`worker/index.js`; no new CRM integration):
 - **The OfficeCRM fields:** `name`, `phone`, `email`, `source`, `notes`.
@@ -196,9 +197,9 @@ Rollback for lp: point `lp` back to `A 69.62.113.1` (WordPress is not touched un
 | # | Topic | Status |
 |---|---|---|
 | D1 | WhatsApp pop-up / WhatsApp leads | **Decided:** a WhatsApp click is not a lead; it opens the chat directly and is tracked as `whatsapp_click` only. Implemented. |
-| D2 | WhatsApp numbers | **Decided:** landing pages use 052-431-7164 for calls (`tel:+972524317164`) and WhatsApp (`972524317164`), including the delivery-failure message. The main site keeps 050-578-8634. Implemented. |
+| D2 | WhatsApp and call numbers | **Decided (owner, 2026-10-19):** landing pages use 054-431-7164 for WhatsApp (`972544317164`) and 052-594-9682 for calls (`tel:+972525949682`), both in the delivery-failure message; the two are never mixed. (Before: 052-431-7164 for both, 2026-10-11.) The main site keeps 050-578-8634. Implemented. |
 | D3 | Old Wix landing pages | **Done (2026-10-20):** out of scope, not recreated; the owner approved the three redirects `/דף-נחיתה-פרטיים` → `/לקוחות-פרטיים`, `/דף-נחיתה-פרטי` → `/לקוחות-פרטיים` and `/דףנחיתה2` → `/` (no campaign check needed). |
-| D4 | Redirect approvals | **lp: decided (2026-10-13):** `/author/gal/` and `/author/roy/` need no redirect and are not recreated; they return the 404 page. No lp redirect needs approval any more. **Main site (not blocking):** the 9 obsolete-page redirects (REDIRECT-APPROVALS group C) still await approval; the 3 old landing-page redirects in that group are approved (D3). |
+| D4 | Redirect approvals | **lp: decided (2026-10-13):** `/author/gal/` and `/author/roy/` need no redirect and are not recreated; they return the 404 page. No lp redirect needs approval any more. **Main site: decided (2026-10-28):** the owner approved the 9 obsolete-page redirects (REDIRECT-APPROVALS group C); the 3 old landing-page redirects in that group were approved on 2026-10-20 (D3). No redirect awaits approval. |
 | D5 | lp `/privacy/` text: starts with a duplicated accessibility statement, then a generic template (SEQ Legal / Website Planet credit) | **Pending, blocks lp cutover:** the owner reviews it once the updated site is available to inspect (the workers.dev preview, O3b). **Not reviewed yet.** Copied unchanged until then, except the contact email (D9). It is tracked by the `ownerReview` flag in the inventory, which only the owner's confirmation clears. |
 | D6 | Google Ads conversion trigger (lp `/thankyou/` page view) | **Open (recommendation):** move it in GTM to `generate_lead`. |
 | D7 | `en.` / `he.` | **Decided:** unused; delete both DNS records at cutover. |
@@ -227,10 +228,10 @@ Rollback for lp: point `lp` back to `A 69.62.113.1` (WordPress is not touched un
   - The OfficeCRM contract with a mock.
   - Inventory coverage both ways; no redirect blocks launch; lp `/author/*` retired (no page, no redirect rule); privacy policy still pending owner review; en./he. planned for removal; the redirect approval list up to date.
   - lp canonicals, tags and form markup (required, `aria-describedby`, messages).
-  - WhatsApp: 052-431-7164 plus the message on every lp page, the main site's 050-578-8634, never mixed; no pop-up form.
+  - WhatsApp: 054-431-7164 plus the message on every lp page, the main site's 050-578-8634, never mixed; no pop-up form.
   - Main-site accessibility statement: `lushi.office@gmail.com` as a `mailto:` link, no `mr.hadas@gmail.com`.
   - lp legal pages: `lushi.office@gmail.com` as text and `mailto:` link, no old address, wording otherwise identical to the WordPress export.
-  - lp delivery-failure links: `tel:+972524317164` and WhatsApp `972524317164` on all 4 forms; main site `tel:+972505788634`.
+  - lp delivery-failure links: `tel:+972525949682` and WhatsApp `972544317164` on all 4 forms; main site `tel:+972505788634`.
   - Sitemap; images all local; no CRM address or key in either build.
 - **Browser, both sites: 188/188 pass** (`test/e2e/forms.e2e.mjs`, desktop 1366px and mobile 375px, local `wrangler dev`, mock OfficeCRM). Covers:
   - An empty form flags every required field; each field missing or invalid on its own; consent unchecked.

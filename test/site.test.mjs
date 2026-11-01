@@ -38,7 +38,8 @@ test('no redirect hides a real page', { skip: !built && 'run npm run build first
 test('sitemap lists only existing public pages, without build-date lastmod', { skip: !built && 'run npm run build first' }, () => {
   const xml = fs.readFileSync(path.join(DIST, 'sitemap.xml'), 'utf8');
   const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
-  assert.equal(locs.length, 25);
+  assert.equal(locs.length, 24);
+  assert.ok(!locs.includes('/portfolio'), 'the removed press page is not in the sitemap');
   assert.ok(!xml.includes('<lastmod>'));
   for (const p of locs) assert.ok(p === '/' ? true : fs.existsSync(page(p)), `sitemap page missing: ${decodeURI(p)}`);
   assert.ok(!locs.includes('/thankyou'));
@@ -87,4 +88,17 @@ test('the CRM webhook address is not committed anywhere in the repository', () =
     assert.ok(!fs.readFileSync(f, 'utf8').includes(OFFICE_WEBHOOK), `CRM address committed in ${f}`);
   }
   assert.ok(!tracked.includes('.dev.vars'), '.dev.vars must stay git-ignored');
+});
+
+test('press page removed (owner, 2026-10-19): /portfolio is a permanent redirect to the home page, no page, menu item or video left', { skip: !built && 'run npm run build first' }, () => {
+  assert.deepEqual(redirects.find(([from]) => from === '/portfolio'), ['/portfolio', '/', '301']);
+  assert.deepEqual(redirects.find(([from]) => from === '/portfolio-collections/*'), ['/portfolio-collections/*', '/', '301'], 'no chain through /portfolio');
+  assert.ok(!fs.existsSync(page('/portfolio')), 'no /portfolio page is built');
+  assert.ok(!fs.existsSync(path.join(DIST, 'media', 'video')), 'no video files are deployed');
+  const html = fs.readdirSync(DIST, { recursive: true }).map(String).filter((f) => f.endsWith('.html'));
+  for (const f of html) {
+    const h = fs.readFileSync(path.join(DIST, f), 'utf8');
+    assert.doesNotMatch(h, /href="\/portfolio"|מהעיתונות/, `${f}: link to the removed press page`);
+    assert.doesNotMatch(h, /<video|\.mp4|video\.wixstatic\.com/, `${f}: press video`);
+  }
 });

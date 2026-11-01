@@ -20,6 +20,12 @@
     "run_worker_first": ["/api/*"]
   },
   "observability": { "enabled": true },
+  // No public <name>.<subdomain>.workers.dev address (owner, 2026-10-28): the site is reached only through the
+  // www Custom Domain, attached in the Cloudflare dashboard (no "routes" here, so deploys leave it in place).
+  // Without this line every `wrangler deploy` re-enables workers.dev. Preview URLs (preview_urls) are left unchanged.
+  "workers_dev": false,
+  // Previews intentionally have no CRM secrets or production bindings.
+  "previews": {},
   // Local preview only (`npm run preview:cf`). Pinned so it never collides with the lp preview (8788):
   // when both use the default 8787, wrangler silently moves the second one to another port.
   "dev": { "port": 8787, "inspector_port": 9229 }

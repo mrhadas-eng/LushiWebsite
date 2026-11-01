@@ -1,55 +1,111 @@
 ---
-// One page per project, at the same address it had on Wix
+// One page per project, at the same address it had on Wix. Layout per page from src/data/project-layout.mjs
+// (measured on Wix); text from content.mjs.
 import Base from '../layouts/Base.astro';
 import Gallery from '../components/Gallery.astro';
 import { projects } from '../data/content.mjs';
+import { projectLayout, collage, collageMobile } from '../data/project-layout.mjs';
 
 export function getStaticPaths() {
   return projects.map((p) => ({ params: { slug: p.slug }, props: { p } }));
 }
 const { p } = Astro.props;
-const list = projects.filter((x) => x.category === p.category);
-const i = list.indexOf(p);
-const prev = list[(i - 1 + list.length) % list.length];
-const next = list[(i + 1) % list.length];
-const back = p.category === 'private' ? { href: '/לקוחות-פרטיים', label: 'פרטיים' } : { href: '/מסחריים', label: 'מסחריים' };
-const description = (p.intro || p.body).split('\n')[0].slice(0, 155);
+const L = projectLayout[p.slug] ?? { titleTop: 329, col: 'a' };
+const description = (p.intro || p.body).split('\n').find((l) => l.trim()).slice(0, 155);
+
+// On Wix every blank-line-separated block is its own paragraph; single line breaks stay inside the paragraph.
+const paras = (text = '') => text.split(/\n\s*\n/).map((t) => t.replace(/^\n+|\n+$/g, '')).filter((t) => t.trim());
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const rich = (t: string) => {
+  let h = esc(t);
+  if (L.boldLabels) h = h.replace(/^([^:\n]+:)/, '<b>$1</b>');
+  for (const w of L.bold ?? []) h = h.replace(w, `<b>${w}</b>`);
+  return h.replace(/\n/g, '<br>');
+};
+const intro = paras(p.intro);
+const body = paras(p.body);
+const subtitle = L.subtitle ? body.shift() : null;
 ---
 <Base title={p.title} description={description} ogImage={p.card?.image ?? p.gallery[0]?.id}>
-  <article class="project wrap">
-    <header class="p-head reveal">
-      <h1 class="h-spaced">{p.title}</h1>
-      {p.intro && <p class="pre p-intro">{p.intro}</p>}
-    </header>
-    <div class="pre p-body reveal">{p.body}</div>
-    <p class="p-credit reveal">צילום: {p.photo}</p>
-
-    <Gallery items={p.gallery} label={`תמונות מהפרויקט ${p.title}`} />
-
-    <nav class="p-nav" aria-label="פרויקטים נוספים">
-      <a href={`/${prev.slug}`}>→ {prev.menu}</a>
-      <a class="back" href={back.href}>כל הפרויקטים ה{back.label}</a>
-      <a href={`/${next.slug}`}>{next.menu} ←</a>
-    </nav>
-  </article>
+  {L.collage ? (
+    <article class="project pj-collage" style={`--title-top:${L.titleTop - 249}px`}>
+      <header class="pjc-head reveal">
+        <h1 class="pjc-title">{p.title}</h1>
+        <p class="pjc-body" set:html={body.map(rich).join('<br>')} />
+      </header>
+      <p class="pjc-credit">צילום: {p.photo}</p>
+      <Gallery items={p.gallery} layout="collage" collage={collage} collageMobile={collageMobile} label={`תמונות מהפרויקט ${p.title}`} />
+    </article>
+  ) : (
+    <article class:list={['project', `col-${L.col}`, { justify: L.justify, small: L.small, brandon: L.brandon }]} style={`--title-top:${L.titleTop - 249}px${L.line ? `;--line:${L.line}px` : ''}`}>
+      {L.line && <span class="pj-rule" aria-hidden="true"></span>}
+      <div class="pj-text reveal">
+        <h1 class="pj-title">{p.title}</h1>
+        {intro.map((t) => <p class="pj-intro" set:html={rich(t)} />)}
+        {subtitle && <p class="pj-subtitle" set:html={rich(subtitle)} />}
+        {!subtitle && <p class="pj-gap" aria-hidden="true"></p>}
+        {body.map((t) => <p class="pj-body" set:html={rich(t)} />)}
+        <p class="pj-credit">צילום: {p.photo}</p>
+      </div>
+      <div class="pj-gallery">
+        <Gallery items={p.gallery} label={`תמונות מהפרויקט ${p.title}`} />
+      </div>
+    </article>
+  )}
 </Base>
 
 <style>
-  .project { padding: 56px 0 100px; }
-  .p-head { display: grid; gap: 18px; max-width: 820px; margin-bottom: 26px; }
-  .p-intro { font-size: 18px; line-height: 25.2px; font-weight: 400; }
-  .p-body { font-size: 18px; line-height: 25.2px; max-width: 820px; }
-  .p-credit { font-size: 15px; color: var(--muted); margin: 22px 0 40px; }
-  .p-nav { display: flex; justify-content: space-between; gap: 16px; margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--line); font-size: 16px; color: var(--muted); }
-  .p-nav a:hover { color: var(--ink); }
-  @media (pointer: coarse) {
-    .p-nav a { display: inline-flex; align-items: center; min-height: 44px; }
-    .back { justify-content: center; }
-  }
-  .back { text-align: center; }
+  /* Measured on Wix at 1440px; the 980px page starts at x 230. Title: 60px, right edge at x 988 (222px inside the
+     page's right edge), top at --title-top below the header. Text column a: x 412-988; b: 441-986; c: 443-988.
+     Intro lines bold 18/25.2px, then an empty line, the body (18/25.2px, or 15/21px), the credit (14/19.6px, after an
+     empty line), and 24px below it the gallery: 3 columns of 197px at x 419-1020, 10px above the footer. */
+  .project { width: min(980px, 100% - 32px); margin-inline: auto; padding: var(--title-top) 0 10px; position: relative; }
+  /* The vertical rule right of the title: x 997 on Wix (767px into the 980px page). */
+  .pj-rule { position: absolute; left: 78.265%; top: calc(var(--title-top) + 26px); height: var(--line); border-left: 1px solid #282626; }
+  .pj-text { margin-right: 22.653%; width: 58.776%; }
+  .col-b .pj-text { margin-right: 22.857%; width: 55.612%; }
+  .col-c .pj-text { width: 55.612%; }
+  .pj-title { font-size: 60px; line-height: normal; margin-bottom: 3px; }
+  .pj-intro, .pj-gap, .pj-body { font-size: 18px; line-height: 25.2px; }
+  .pj-intro { font-weight: 700; }
+  .pj-gap { height: 25.2px; }
+  .small .pj-body { font-size: 15px; line-height: 21px; }
+  .justify .pj-body { text-align: justify; }
+  .pj-subtitle { font-size: 28px; line-height: 39.2px; font-family: var(--font-times); }
+  .brandon .pj-body { font-family: var(--font-brandon); }
+  .pj-body :global(b) { font-weight: 700; }
+  .pj-credit { font-size: 14px; line-height: 19.6px; padding-top: 19.6px; margin-top: 4px; }
+  .pj-gallery { margin: 24px 19.388% 0 0; width: 61.327%; }
+
+  /* /הבן-של-הנגר: centred 28px title (y 276), 16px centred text 650px wide, 15px credit right-aligned at x 1161,
+     then the collage across the whole 980px page, 5px below the credit. */
+  .pj-collage { padding-bottom: 0; }
+  .pjc-head { width: 66.327%; margin-inline: auto; text-align: center; }
+  .pjc-title { font-size: 28px; line-height: normal; font-family: var(--font-times); }
+  .pjc-body { font-size: 16px; line-height: normal; margin-top: 22px; font-family: var(--font-brandon); }
+  .pjc-credit { font-size: 15px; line-height: normal; text-align: right; padding-right: 5%; margin: 54px 0 5px; font-family: var(--font-brandon); }
+
+  /* Wix mobile (320px design, x --m): text 10px from the edges, title 29px 11px below the header, the same
+     paragraph styles scaled, then the gallery: 3 columns of 91px squares, 4px apart, from x 20. The collage page:
+     22px Times title, 16px text, 13px grey credit, then the photos in one 280px column. Wix leaves empty page below
+     the gallery: reproduced by the page's minimum height (src/data/page-heights.mjs). */
   @media (max-width: 760px) {
-    .project { padding-top: 36px; }
-    .p-nav { flex-wrap: wrap; font-size: 15px; }
-    .back { order: 3; width: 100%; }
+    .pj-rule { display: none; }
+    .project { width: 100%; padding: calc(11 * var(--m)) 0 calc(30 * var(--m)); }
+    .pj-text, .col-b .pj-text, .col-c .pj-text { margin: 0 calc(10 * var(--m)); width: auto; }
+    .pj-title { font-size: calc(29 * var(--m)); margin-bottom: calc(13 * var(--m)); }
+    .pj-intro, .pj-gap, .pj-body { font-size: calc(18 * var(--m)); line-height: calc(25.2 * var(--m)); }
+    .pj-gap { height: calc(25.2 * var(--m)); }
+    .small .pj-body { font-size: calc(15 * var(--m)); line-height: calc(21 * var(--m)); }
+    .pj-subtitle { font-size: calc(22 * var(--m)); line-height: calc(30.8 * var(--m)); }
+    .pj-credit { font-size: calc(15 * var(--m)); line-height: calc(21 * var(--m)); padding-top: calc(31 * var(--m)); margin-top: 0; }
+    .pj-gallery { margin: calc(11 * var(--m)) calc(19 * var(--m)) 0 calc(20 * var(--m)); width: auto; }
+    .pj-gallery :global(.grid) { gap: calc(4 * var(--m)); }
+    .pj-collage { padding-top: 0; }
+    .pjc-head { width: calc(280 * var(--m)); }
+    .pjc-title { font-size: calc(22 * var(--m)); }
+    .pjc-body { font-size: calc(16 * var(--m)); margin-top: calc(10 * var(--m)); }
+    .pjc-credit { width: calc(280 * var(--m)); margin: calc(10 * var(--m)) auto calc(14 * var(--m)); padding: 0; font-size: calc(13 * var(--m)); color: var(--muted); }
+    .pj-collage :global(.collage) { width: calc(280 * var(--m)); margin-inline: auto; }
   }
 </style>

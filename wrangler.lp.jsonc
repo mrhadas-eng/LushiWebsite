@@ -16,6 +16,13 @@
     "run_worker_first": ["/api/*"]
   },
   "observability": { "enabled": true },
+  // No public <name>.<subdomain>.workers.dev address and no public Preview URLs for the landing pages
+  // (owner, 2026-10-30). Set explicitly: without workers_dev, Wrangler enables workers.dev on every deploy;
+  // without preview_urls, it keeps the current setting (its initial default follows workers_dev).
+  "workers_dev": false,
+  "preview_urls": false,
+  // Previews intentionally have no CRM secrets or production bindings.
+  "previews": {},
   // Local preview only (`npm run preview:cf:lp`): http://localhost:8788/privacy/ etc. (lp pages are at the root,
   // as on lp.hagarlushi.com; /lp/... exists only under `npm run dev`). Distinct from the main preview (8787).
   "dev": { "port": 8788, "inspector_port": 9230 }

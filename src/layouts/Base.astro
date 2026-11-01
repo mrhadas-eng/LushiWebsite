@@ -6,12 +6,15 @@ import Tracking from '../components/Tracking.astro';
 import WhatsAppButton from '../components/WhatsAppButton.astro';
 import { site } from '../data/content.mjs';
 import { img } from '../lib/media.mjs';
+import { pageHeights } from '../data/page-heights.mjs';
 
 interface Props { title?: string; description?: string; ogImage?: string; noindex?: boolean }
 const { title, description = site.description, ogImage, noindex = false } = Astro.props;
 const fullTitle = title ? `${title} | הגר לושי אדריכלות ועיצוב פנים` : site.title;
 const canonical = new URL(Astro.url.pathname, site.url).href;
 const og = ogImage ? img(ogImage, 1600).src : undefined;
+const H = pageHeights[decodeURI(Astro.url.pathname).replace(/\/$/, '') || '/'];
+const mainStyle = H ? [H.d && `--main-d:${H.d}px`, H.m && `--main-m:${H.m}`].filter(Boolean).join(';') : undefined;
 const ogAbs = og ? (og.startsWith('http') ? og : new URL(og, site.url).href) : undefined;
 ---
 <!doctype html>
@@ -48,7 +51,7 @@ const ogAbs = og ? (og.startsWith('http') ? og : new URL(og, site.url).href) : u
   <body>
     <a class="skip-link" href="#main">לדלג לתוכן הראשי</a>
     <Header />
-    <main id="main"><slot /></main>
+    <main id="main" style={mainStyle}><slot /></main>
     <Footer />
     <WhatsAppButton />
     <script>

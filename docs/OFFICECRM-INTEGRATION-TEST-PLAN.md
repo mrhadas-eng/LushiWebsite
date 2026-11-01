@@ -169,7 +169,7 @@ Across T5–T10: no `generate_lead` except on confirmed leads. Opening or refres
 - **Expected:**
   - No `/api/lead` request; no CRM lead.
   - Only `whatsapp_click` / `phone_click` / `email_click`.
-  - lp `972524317164` / `tel:+972524317164`; www `972505788634` / `tel:+972505788634`.
+  - lp `972544317164` (WhatsApp) / `tel:+972525949682` (calls); www `972505788634` / `tel:+972505788634`.
 
 ### T13: Logs
 - **Worker:** only `created … (leadId, ms)` / `did not confirm … (reason, outcome, ms)`. No personal data, URL or key.

@@ -55,17 +55,20 @@ test('landing pages: form with name, phone, email and the required privacy conse
 });
 
 test('WhatsApp: correct landing-page number and message on every lp page; a link, never a lead', { skip }, () => {
-  assert.equal(lpSite.whatsapp.number, '972524317164');
+  assert.equal(lpSite.whatsapp.number, '972544317164'); // 054-431-7164 (owner, 2026-10-19)
   const msg = encodeURIComponent(lpSite.whatsapp.message);
   for (const p of [...PAGES]) {
     const h = html(p);
     const links = [...h.matchAll(/href="(https:\/\/api\.whatsapp\.com[^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, '&'));
     assert.ok(links.length >= 1, `${p}: WhatsApp link`);
     for (const l of links) {
-      assert.ok(l.startsWith('https://api.whatsapp.com/send/?phone=972524317164&'), `${p}: number ${l}`);
+      assert.ok(l.startsWith('https://api.whatsapp.com/send/?phone=972544317164&'), `${p}: number ${l}`);
       assert.ok(l.includes(`text=${msg}`), `${p}: prescribed message`);
     }
-    assert.ok(!/972544317164|054-431-7164|972505788634|050-578-8634/.test(h), `${p}: wrong number on a landing page`);
+    assert.ok(!/972524317164|052-431-7164|972505788634|050-578-8634/.test(h), `${p}: old or main-site number on a landing page`);
+    // Calls and WhatsApp use separate numbers (owner, 2026-10-19): never mixed.
+    for (const t of h.matchAll(/href="tel:([^"]+)"/g)) assert.equal(t[1], '+972525949682', `${p}: call link ${t[1]}`);
+    assert.doesNotMatch(h, /tel:\+?972544317164|(phone=|wa\.me\/)972525949682/, `${p}: call and WhatsApp numbers mixed`);
     assert.match(h, /class="lp-wa" href="https:\/\/api\.whatsapp\.com/, `${p}: floating button is a plain link`);
     assert.doesNotMatch(h, /lp-wa-dialog/, `${p}: no pop-up form`);
   }
@@ -73,14 +76,14 @@ test('WhatsApp: correct landing-page number and message on every lp page; a link
   assert.doesNotMatch(src, /<script|generate_lead|\/api\/lead|sendLead|submitLead/);
 });
 
-test('landing-page phone fallback: calls go to 052-431-7164 (tel:+972524317164) in every lp form failure message', { skip }, () => {
-  assert.equal(lpSite.phone, '052-431-7164');
-  assert.equal(lpSite.phoneHref, 'tel:+972524317164');
+test('landing-page form failure message: calls go to 052-594-9682 (tel:+972525949682), WhatsApp to 054-431-7164', { skip }, () => {
+  assert.equal(lpSite.phone, '052-594-9682');
+  assert.equal(lpSite.phoneHref, 'tel:+972525949682');
   for (const pg of lpPages) {
     const fail = html(pg.path).match(/<p class="lp-form-error"[\s\S]*?<\/p>/)?.[0] || '';
-    assert.ok(fail.includes('href="tel:+972524317164"'), `${pg.path}: phone link`);
-    assert.match(fail, /href="https:\/\/api\.whatsapp\.com\/send\/\?phone=972524317164&(amp;)?text=/, `${pg.path}: WhatsApp link`);
-    assert.doesNotMatch(fail, /tel:\+972505788634|tel:\+972544317164/, `${pg.path}: another site's number`);
+    assert.ok(fail.includes('href="tel:+972525949682"'), `${pg.path}: phone link`);
+    assert.match(fail, /href="https:\/\/api\.whatsapp\.com\/send\/\?phone=972544317164&(amp;)?text=/, `${pg.path}: WhatsApp link`);
+    assert.doesNotMatch(fail, /tel:\+972505788634|tel:\+972544317164|tel:\+972524317164|phone=972525949682/, `${pg.path}: another site's number`);
   }
 });
 
@@ -103,7 +106,7 @@ test('main site keeps its own number (050-578-8634), never the landing-page one'
   for (const f of ['dist/index.html', 'dist/יצירת-קשר/index.html']) {
     const h = fs.readFileSync(f, 'utf8');
     assert.ok(h.includes('972505788634'), `${f}: main WhatsApp`);
-    assert.ok(!/972524317164|052-431-7164/.test(h), `${f}: landing-page number on the main site`);
+    assert.ok(!/972524317164|052-431-7164|972525949682|052-594-9682|972544317164|054-431-7164/.test(h), `${f}: landing-page number on the main site`);
     const fail = h.match(/<p class="status"[\s\S]*?<\/p>/)[0];
     assert.ok(fail.includes('tel:+972505788634') && fail.includes('wa.me/972505788634'), `${f}: failure message contact links`);
   }

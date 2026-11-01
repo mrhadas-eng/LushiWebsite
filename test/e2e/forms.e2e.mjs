@@ -23,9 +23,9 @@ const VALID = { full_name: 'בדיקה טופס', phone: '050-1234567', email: '
 
 const SITES = [
   { name: 'www', base: 'http://127.0.0.1:8787', pages: [['/', 'home'], ['/יצירת-קשר', 'contact']], form: '.contact-form', submit: '.send', fail: '.status:not(.status-uncertain)', unsure: '.status-uncertain',
-    thanks: '/thankyou', consent: false, wa: { float: '.wa-float', number: '972505788634' }, src: 'website / google / cpc' },
+    thanks: '/thankyou', consent: false, wa: { float: '.wa-float', number: '972505788634' }, tel: '972505788634', src: 'website / google / cpc' },
   { name: 'lp', base: 'http://127.0.0.1:8788', pages: [['/', 'lp-home'], ['/architecture/', 'lp-architecture'], ['/interior-design/', 'lp-interior-design'], ['/renovation/', 'lp-renovation']],
-    form: '.lp-form', submit: '.lp-submit', fail: '.lp-form-error:not(.lp-form-uncertain)', unsure: '.lp-form-uncertain', thanks: '/thankyou/', consent: true, wa: { float: '.lp-wa', number: '972524317164' }, src: 'landing-page / google / cpc' },
+    form: '.lp-form', submit: '.lp-submit', fail: '.lp-form-error:not(.lp-form-uncertain)', unsure: '.lp-form-uncertain', thanks: '/thankyou/', consent: true, wa: { float: '.lp-wa', number: '972544317164' }, tel: '972525949682', src: 'landing-page / google / cpc' },
 ];
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }).catch(() => chromium.launch());
 
@@ -49,6 +49,57 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
     const newEnquiry = () => p.evaluate(() => Object.keys(sessionStorage).filter((k) => k.startsWith('hl_submission:')).forEach((k) => sessionStorage.removeItem(k))).catch(() => {});
     const go = async (path) => { await p.goto(`${S.base}${encodeURI(path)}?utm_source=google&utm_medium=cpc&utm_campaign=t`); apiCalls = 0; };
     const fields = ['full_name', 'phone', 'email', ...(S.consent ? ['consent'] : [])];
+
+    // 0. layout and accessibility on every form page: explicit direction and right alignment per field type, a visible
+    //    label above each field, touch-sized controls on phones, a visible focus change, keyboard order = reading order.
+    const DIRS = { full_name: 'rtl', message: 'rtl', phone: 'ltr', email: 'ltr' };
+    for (const [path] of S.pages) {
+      await go(path);
+      const L = await p.$$eval(`${S.form} input:not([name=website]):not([type=checkbox]), ${S.form} textarea, ${S.form} button[type=submit]`, (els) => els.map((el) => {
+        const cs = getComputedStyle(el), r = el.getBoundingClientRect();
+        const lab = el.closest('label')?.querySelector('.form-label');
+        const lr = lab?.getBoundingClientRect();
+        return { name: el.name || 'submit', dir: cs.direction, align: cs.textAlign, h: r.height, label: lab ? lab.innerText.trim() : '', labelAbove: !!lr && lr.bottom <= r.top + 1 && lr.height > 0 };
+      }));
+      const fieldsL = L.filter((x) => x.name !== 'submit');
+      check(fieldsL.every((x) => x.dir === DIRS[x.name] && x.align === 'right'), t(`${path}: name/message RTL, phone/email LTR, all right-aligned`), fieldsL.map((x) => `${x.name}:${x.dir}/${x.align}`).join(' '));
+      check(fieldsL.every((x) => x.label.length >= 2 && x.labelAbove), t(`${path}: visible label above every field`), fieldsL.map((x) => `${x.name}:"${x.label}"`).join(' '));
+      if (vp === 'mobile') check(L.filter((x) => x.name !== 'message').every((x) => x.h >= 44), t(`${path}: fields and button at least 44px tall on phones`), L.map((x) => `${x.name}:${Math.round(x.h)}`).join(' '));
+      // phone digits keep their order (LTR) and the value is exactly what was typed
+      await p.fill(F('[name=phone]'), '+972 52-594-9682');
+      check((await p.inputValue(F('[name=phone]'))) === '+972 52-594-9682', t(`${path}: phone value kept as typed`));
+      // What is actually drawn, not the CSS value: screenshot the filled field and find the text's dark pixels.
+      // The text must sit against the right edge (browsers default phone fields to LTR + text-align:start = left).
+      for (const [f, v] of [['phone', '+972 52-594-9682'], ['email', 'test@example.com']]) {
+        await p.fill(F(`[name=${f}]`), v); await p.locator(F(`[name=${f}]`)).blur();
+        const shot = (await p.locator(F(`[name=${f}]`)).screenshot()).toString('base64');
+        const ink = await p.evaluate(async (b64) => {
+          const img = new Image(); img.src = `data:image/png;base64,${b64}`; await img.decode();
+          const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+          const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+          const d = g.getImageData(0, 0, c.width, c.height).data; let min = 1e9, max = -1;
+          for (let y = 4; y < c.height - 4; y++) for (let x = 6; x < c.width - 6; x++) { const i = (y * c.width + x) * 4; if (d[i] + d[i + 1] + d[i + 2] < 300) { min = Math.min(min, x); max = Math.max(max, x); } }
+          return { left: min, right: c.width - 1 - max, width: c.width };
+        }, shot);
+        check(ink.right >= 0 && ink.right * 3 < ink.left && ink.right <= 32, t(`${path}: typed ${f} is drawn against the right edge`), `ink ${ink.left}px from left, ${ink.right}px from right of ${ink.width}`);
+        await p.fill(F(`[name=${f}]`), '');
+      }
+      // focus is visible: the focused field looks different from the unfocused one
+      const look = () => p.$eval(F('[name=email]'), (el) => { const cs = getComputedStyle(el); return [cs.outlineStyle, cs.outlineWidth, cs.boxShadow, cs.borderColor].join('|'); });
+      await p.focus(F('[name=full_name]')); const before = await look();
+      await p.focus(F('[name=email]')); const after = await look();
+      check(before !== after, t(`${path}: focused field has a visible focus state`), `${before} → ${after}`);
+      // keyboard: Tab from the first field follows the reading order and reaches the button
+      await p.focus(F('[name=full_name]'));
+      const seq = ['full_name'];
+      for (let i = 0; i < 6; i++) {
+        await p.keyboard.press('Tab');
+        const a = await p.evaluate(() => { const e = document.activeElement; return e?.name || (e?.type === 'submit' ? 'submit' : e?.tagName === 'A' ? 'link' : e?.tagName); });
+        seq.push(a); if (a === 'submit') break;
+      }
+      const expect = S.consent ? ['full_name', 'phone', 'email', 'consent', 'link', 'submit'] : ['full_name', 'email', 'phone', 'message', 'submit'];
+      check(JSON.stringify(seq) === JSON.stringify(expect), t(`${path}: keyboard order follows the form`), seq.join(' → '));
+    }
 
     // 1. empty form: every required field flagged with its own message, focus on the first, nothing sent
     const [path0] = S.pages[0];
@@ -162,7 +213,7 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
         && !p.url().includes('thankyou') && (await ev(p, 'generate_lead')) === 0 && !(await p.$eval(F(S.submit), (el) => el.disabled)),
         t(`CRM ${m}: ${kind === 'not_saved' ? 'retry' : 'uncertain'} message only, values kept, no redirect, no conversion`), txt.slice(0, 30));
       if (m !== 'browser-offline') check((await crmSaved()) - s0 === savedDelta, t(`CRM ${m}: fake CRM stored ${savedDelta} lead(s)${savedDelta ? ' although the visitor saw no success' : ''}`));
-      check(links.includes(`tel:+${S.wa.number}`) && links.some((h) => /whatsapp|wa\.me/.test(h) && h.includes(S.wa.number)) && links.length === 2, t(`CRM ${m}: phone/WhatsApp links use this site's number`), links.join(' '));
+      check(links.includes(`tel:+${S.tel}`) && links.some((h) => /whatsapp|wa\.me/.test(h) && h.includes(S.wa.number)) && links.length === 2, t(`CRM ${m}: phone/WhatsApp links use this site's number`), links.join(' '));
       if (m === 'browser-offline') await p.unroute('**/api/lead');
     }
     await mode('ok');
@@ -229,7 +280,10 @@ for (const [vp, viewport] of [['desktop', { width: 1366, height: 800 }], ['mobil
       for (const [path] of [...S.pages, ['/thankyou/'], ['/privacy/'], ['/accessibility-statement/']]) {
         await p.goto(`${S.base}${path}`);
         const hrefs = await p.$$eval('a[href*="api.whatsapp.com"], a[href*="wa.me"]', (as) => as.map((a) => a.href));
-        check(hrefs.length > 0 && hrefs.every((h) => h.includes('phone=972524317164') && h.includes('text=')), t(`${path}: WhatsApp links use 052-431-7164`), String(hrefs.length));
+        check(hrefs.length > 0 && hrefs.every((h) => h.includes('phone=972544317164') && h.includes('text=')), t(`${path}: WhatsApp links use 054-431-7164`), String(hrefs.length));
+        const tels = await p.$$eval('a[href^="tel:"]', (as) => as.map((a) => a.getAttribute('href')));
+        check(tels.every((h) => h === `tel:+${S.tel}`) && !hrefs.some((h) => h.includes(S.tel)) && !tels.some((h) => h.includes(S.wa.number)),
+          t(`${path}: call links use 052-594-9682, never mixed with WhatsApp`), tels.join(' ') || 'no call links');
         if (path === '/privacy/' || path === '/accessibility-statement/') {
           const mails = await p.$$eval('a[href^="mailto:"]', (as) => as.map((a) => [a.getAttribute('href'), a.textContent.trim()]));
           const body = await p.textContent('main, body');

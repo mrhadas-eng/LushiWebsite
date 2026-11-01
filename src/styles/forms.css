@@ -1,0 +1,26 @@
+/* Shared rules for every lead form: the main site's ContactForm (home page, contact page) and the landing pages'
+   LpLeadForm. Imported by both components. Each form keeps its own look (sizes, borders, colours); this file only
+   fixes what must be the same everywhere.
+
+   Text direction is set explicitly (the dir attribute in the markup and the rules below), never left to the
+   browser:
+   - the form, its labels and its messages: right to left, right-aligned (Hebrew);
+   - name and message fields: right to left, right-aligned (Hebrew input);
+   - phone and email fields: LEFT to right so digits, "+972" and addresses keep their order, but RIGHT-aligned so
+     the value lines up with the labels and the other fields of the RTL form. */
+.contact-form, .lp-form { direction: rtl; text-align: right; }
+.contact-form :is(input[type="text"], textarea),
+.lp-form input[type="text"] { direction: rtl; text-align: right; }
+.contact-form :is(input[type="tel"], input[type="email"]),
+.lp-form :is(input[type="tel"], input[type="email"]) { direction: ltr; text-align: right; }
+
+/* A visible label above every field (placeholders are not used as labels). */
+.form-label { display: block; direction: rtl; text-align: right; }
+.form-label .form-optional { font-weight: 400; opacity: .75; }
+
+/* Messages under a field and the delivery messages: right to left, right-aligned. */
+.field-error, .lp-field-error, .status, .lp-form-error { direction: rtl; text-align: right; }
+
+/* Buttons: a clear keyboard focus ring. */
+.contact-form .send:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.lp-form .lp-submit:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }

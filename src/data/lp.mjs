@@ -9,16 +9,19 @@ export const lpSite = {
   siteName: 'Hagar Lushi | Architecture & Interior Design',
   // Google tag added by WordPress' Site Kit plugin (in addition to GTM-KJRR2DNT); preserved as-is.
   siteKitTagId: 'GT-TQKZV73G',
-  // Landing-page contact number (owner, 2026-10-11): 052-431-7164. The main site keeps 050-578-8634.
-  // The WordPress thank-you page linked to 972544317164; the owner corrected it.
-  phone: '052-431-7164',
-  phoneHref: 'tel:+972524317164',
+  // Landing-page call number (owner, 2026-10-19): 052-594-9682, used by every lp tel: link (the "בטלפון" link in
+  // the form failure and uncertain messages). Calls and WhatsApp use different numbers; never mix them.
+  // The main site keeps 050-578-8634 for both.
+  phone: '052-594-9682',
+  phoneHref: 'tel:+972525949682',
   // A WhatsApp click is not a lead (owner decision D1): the button opens the chat with this message,
   // is tracked as whatsapp_click only, and never sends anything to OfficeCRM or counts generate_lead.
   // (WordPress showed a name/phone pop-up first; it is not recreated because its data was not used.)
+  // WhatsApp number (owner, 2026-10-19): 054-431-7164, as on the WordPress thank-you page. Used by the floating
+  // button, the thank-you button and the form failure message.
   whatsapp: {
-    number: '972524317164',
-    message: 'היי הגר! יש לי פרוייקט שאני רוצה להתייעץ לגביו.',
+    number: '972544317164',
+    message: 'היי הגר! יש לי פרויקט שאני רוצה להתייעץ לגביו.',
   },
   // Contact email shown on the landing pages' legal pages (owner, 2026-10-12). It replaces the addresses
   // in the WordPress text (src/lib/lp-legal.mjs); the policy wording itself is unchanged (pending the owner's review).
@@ -38,7 +41,7 @@ const INTRO_SHORT = [
   ['הפתרון', ' – המשרד שלי הוא משרד בוטיק שמעניק ליווי משלב השיחה הראשונית ועד לסידור המצעים על המיטה (תשאלו לקוחות שלי :)). אני מאמינה שלכל אחד מגיע לקבל את הכי טוב שאני יכולה לתת.'],
 ];
 // The home page says "בעברה", the campaign pages "בעברי" (as on the live site).
-const aboutText = (word) => `אני הגר לושי, הנדסאית אדריכלות ועיצוב פנים, בוגרת שנקר, עוסקת בתחום האדריכלות ועיצוב פנים כבר 15 שנים ו${word} עשרות פרוייקטים פרטיים ומסחריים בארץ ובחו"ל.`;
+const aboutText = (word) => `אני הגר לושי, הנדסאית אדריכלות ועיצוב פנים, בוגרת שנקר, עוסקת בתחום האדריכלות ועיצוב פנים כבר 15 שנים ו${word} עשרות פרויקטים פרטיים ומסחריים בארץ ובחו"ל.`;
 
 export const lpShared = {
   cta: 'תאמו שיחת ייעוץ!',
@@ -57,7 +60,6 @@ export const lpShared = {
   consentBefore: 'קראתי ומאשר/ת את ',
   consentLink: 'מדיניות הפרטיות',
   galleryHeading: 'פרויקטים אחרונים',
-  galleryCaption: 'פרוייקט...',
 };
 
 // ---------------------------------------------------------------- the four landing pages
@@ -68,7 +70,7 @@ export const lpPages = [
   {
     path: '/', slug: '', form: 'lp-home', wpId: 2,
     title: 'Hagar Lushi | Architecture & Interior Design',
-    hero: { tag: 'h2', heading: ['חללים שמספרים את הסיפור שלכם'], button: false, scrollArrow: true,
+    hero: { tag: 'h1', heading: ['חללים שמספרים את הסיפור שלכם'], button: false, scrollArrow: true,
       slides: ['2025/02/4v7a1249-copy-min.jpg', '2025/02/dsc2433-copy.jpg', '2025/02/lushi-ph-netacones-9-min.jpg'] },
     intro: INTRO_FULL,
     about: { text: aboutText('בעברה'), image: '2025/02/תמונה-הגר-לושי.avif' },
@@ -76,7 +78,7 @@ export const lpPages = [
   },
   {
     path: '/architecture/', slug: 'architecture', form: 'lp-architecture', wpId: 387,
-    title: 'הגר לושי | אדרכלות – Hagar Lushi | Architecture & Interior Design',
+    title: 'הגר לושי | אדריכלות – Hagar Lushi | Architecture & Interior Design',
     hero: { tag: 'h1', heading: ['אדריכלות יוקרה ועיצוב', 'בהתאמה אישית'], sub: 'תכנון מוקפד. עיצוב מדויק. ליווי מלא.', button: true,
       slides: [WA('10.34.52'), WA('10.34.54'), WA('10.34.54-1'), WA('10.35.03-1'), WA('10.35.06')] },
     intro: INTRO_FULL,
@@ -86,7 +88,7 @@ export const lpPages = [
   {
     path: '/interior-design/', slug: 'interior-design', form: 'lp-interior-design', wpId: 321,
     title: 'הגר לושי | עיצוב פנים – Hagar Lushi | Architecture & Interior Design',
-    hero: { tag: 'h2', heading: ['עיצוב פנים שמספר את הסיפור שלכם'], button: true,
+    hero: { tag: 'h1', heading: ['עיצוב פנים שמספר את הסיפור שלכם'], button: true,
       slides: [WA('10.34.54-1'), WA('10.35.06-1'), WA('10.35.07')] },
     intro: INTRO_FULL,
     about: { text: aboutText('בעברי'), image: WA('11.06.35') },
@@ -94,8 +96,8 @@ export const lpPages = [
   },
   {
     path: '/renovation/', slug: 'renovation', form: 'lp-renovation', wpId: 406,
-    title: 'הגר לושי | אדרכלות – Hagar Lushi | Architecture & Interior Design',
-    hero: { tag: 'h1', heading: ['שיפוץ מהיסוד בהתאמה אישית', 'מהחזון ועד גמר הפרוייקט'], sub: 'ליווי מלא בתכנון, עיצוב וניהול הפרויקט עד גמר.', button: true,
+    title: 'הגר לושי | שיפוץ – Hagar Lushi | Architecture & Interior Design',
+    hero: { tag: 'h1', heading: ['שיפוץ מהיסוד בהתאמה אישית', 'מהחזון ועד גמר הפרויקט'], sub: 'ליווי מלא בתכנון, עיצוב וניהול הפרויקט עד גמר.', button: true,
       slides: [WA('10.34.52'), WA('10.34.54'), WA('10.34.54-1'), WA('10.35.03-1'), WA('10.35.06')] },
     intro: INTRO_SHORT,
     about: { text: aboutText('בעברי'), image: WA('11.06.35') },

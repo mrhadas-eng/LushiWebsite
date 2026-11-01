@@ -55,9 +55,8 @@ const siteKitId = lpSite.siteKitTagId;
     </header>
     <main id="main"><slot /></main>
     <footer class="lp-footer">
-      <img src={logoWhite.src} alt="Hagar Lushi" width="180" loading="lazy" />
-      <p>{lpSite.footer.rights}</p>
-      <p><a href={lpHref('/accessibility-statement/')}>הצהרת נגישות</a> | <a href={lpHref('/privacy/')}>מדיניות פרטיות</a></p>
+      <img src={logoWhite.src} alt="Hagar Lushi" width="200" loading="lazy" />
+      <p>{lpSite.footer.rights} | <a href={lpHref('/accessibility-statement/')}>הצהרת נגישות</a> | <a href={lpHref('/privacy/')}>מדיניות פרטיות</a></p>
     </footer>
     <LpWhatsApp />
   </body>
@@ -77,14 +76,35 @@ const siteKitId = lpSite.siteKitTagId;
   .lp-skip { position: absolute; inset-inline-start: 8px; top: -60px; background: #fff; color: #000; padding: 8px 14px; z-index: 100; }
   .lp-skip:focus { top: 8px; }
   .lp :focus-visible { outline: 3px solid #1a73e8; outline-offset: 2px; }
-  .lp-header { min-height: 140px; display: flex; align-items: center; justify-content: center; padding: 0 10px; }
+  /* WordPress: a 140px header with the 250px logo 10px from the top; a black 195px footer with the 200px white logo
+     40px down and one #d8d8d8 line (Noto Sans Hebrew 15/22.5px) 25px under it. */
+  .lp-header { min-height: 140px; display: flex; align-items: flex-start; justify-content: center; padding: 10px 10px 0; position: relative; z-index: 1; box-shadow: 0 0 30px rgba(0, 0, 0, .1); }
   .lp-header img { width: 250px; height: auto; }
-  .lp-footer { background: #000; color: #fff; text-align: center; padding: 34px 20px 40px; display: grid; justify-items: center; gap: 10px; }
-  .lp-footer img { width: 180px; height: auto; }
-  .lp-footer p { margin: 0; font-size: 15px; }
-  .lp-footer a { text-decoration: none; }
-  .lp-footer a:hover { text-decoration: underline; }
+  .lp-footer { background: #000; color: #d8d8d8; text-align: center; min-height: 195px; padding: 40px 20px 20px; display: grid; justify-items: center; align-content: start; gap: 25px; }
+  .lp-footer img { width: 200px; height: auto; }
+  .lp-footer p { margin: 0; font-family: 'Noto Sans Hebrew', var(--lp-font); font-size: 15px; line-height: 22.5px; }
+  .lp-footer a { text-decoration: none; border-bottom: 1px dotted #d8d8d8; }
+  .lp-footer a:hover { border-bottom-style: solid; }
   @media (pointer: coarse) { .lp-footer a { display: inline-block; padding-block: 12px; margin-block: -12px; } }
-  @media (max-width: 767px) { .lp-header { min-height: 100px; } .lp-header img { width: 190px; } }
+  @media (max-width: 767px) {
+    .lp-header { min-height: 100px; } .lp-header img { width: 170px; }
+    .lp-footer { min-height: 199px; gap: 40px; } .lp-footer img { width: 160px; } .lp-footer p { font-size: 14px; line-height: 21px; max-width: 190px; }
+  }
+  /* Legal pages (the exported Elementor markup), as on WordPress: 70px above the first block, content 1140px wide,
+     the page title Noto Sans Hebrew 32/41.6px 600 centred, headings in the text 32/38.4px 500, paragraphs 17/25.5px
+     with 14.4px between them. */
+  .lp-legal { color: var(--lp-ink); font-size: 17px; line-height: 25.5px; }
+  .lp-legal > div > .e-con { padding: 70px 20px; }
+  .lp-legal > div > .e-con + .e-con { padding-top: 10px; }
+  .lp-legal .e-con-inner { max-width: 1140px; margin: 0 auto; }
+  .lp-legal .elementor-widget-heading h2 { margin: 0 0 40px; font-family: 'Noto Sans Hebrew', var(--lp-font); font-size: 32px; line-height: 41.6px; font-weight: 600; text-align: center; }
+  .lp-legal .elementor-widget-text-editor h1, .lp-legal .elementor-widget-text-editor h2, .lp-legal .elementor-widget-text-editor h3 { margin: 8px 0 16px; font-size: 32px; line-height: 38.4px; font-weight: 500; }
+  .lp-legal p { margin: 0 0 14.4px; }
+  .lp-legal a { text-decoration: underline; word-break: break-word; }
+  .lp-legal img { display: none; }
+  @media (max-width: 767px) {
+    .lp-legal > div > .e-con { padding: 40px 20px; }
+    .lp-legal .elementor-widget-heading h2, .lp-legal .elementor-widget-text-editor h2 { font-size: 26px; line-height: 34px; }
+  }
   @media (prefers-reduced-motion: reduce) { .lp * { transition: none !important; animation: none !important; } }
 </style>
