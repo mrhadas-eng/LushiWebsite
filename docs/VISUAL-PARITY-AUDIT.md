@@ -98,7 +98,7 @@ No font file is missing from the build, blocked, served with a wrong type or loa
 | Project galleries | Wix shows the first **24** photos of a project gallery on desktop and **25** on phones; the rest only in the full-screen viewer. Same now (all photos stay in the viewer). The הבן-של-הנגר collage is cut at 8961px on desktop as on Wix | page heights equal on all 18 projects |
 | Forms | No " *" in the placeholders (as on Wix); required fields keep a hidden "(שדה חובה)" in the label, `aria-required` and the same validation | `forms.e2e.mjs` 336/336 |
 | Footer year | © 2025 as on Wix (`site.copyrightYear`) | |
-| Landing legal / thank-you / 404 | Legal pages styled as on WordPress (the accessibility statement had no styles at all); thank-you rebuilt as on WordPress (flush right, envelope icon, grey WhatsApp button); 404 in the WordPress theme style | WordPress measurements in this doc; `side-d-lp-thankyou` |
+| Landing legal / thank-you / 404 | Legal pages styled as on WordPress (the accessibility statement had no styles at all); thank-you first rebuilt as on WordPress (flush right, envelope icon, grey WhatsApp button), then redesigned on 2026-11-01 (owner: a centred card, dark WhatsApp button; texts, URL and tracking unchanged); 404 in the WordPress theme style | WordPress measurements in this doc; `side-d-lp-thankyou` |
 
 Forms and states: validation, consent, lead submission, honeypot, outcomes and tracking are unchanged; only CSS and
 layout changed. Checked with `forms.e2e.mjs` (336 checks), `main-site.e2e.mjs` (44) and `preview-routing.e2e.mjs`
@@ -124,7 +124,7 @@ passes the responsive checks at 768/820/1024/1180 (0 problems in 315 page views)
 | 404 (www) | 404 | **BLOCKED** | — | — | Wix shows its own English platform error page ("This page isn't available"), not a site design; our branded 404 is kept |
 | lp `/architecture/` | landing | WordPress | PARTIAL | PARTIAL | measured; within a few px except hover captions (WordPress has a title per photo, we show one caption) and 44px phone fields (WordPress 35px; kept 44px for touch) |
 | lp `/`, `/interior-design/`, `/renovation/` | landing | WordPress | PARTIAL | PARTIAL | same template; hero and section heights measured, not compared item by item |
-| lp `/thankyou/` | lp thank-you | WordPress | PARTIAL | PARTIAL | rebuilt to WordPress; the WhatsApp button links to 054-431-7164 as on WordPress (owner, 2026-10-19) |
+| lp `/thankyou/` | lp thank-you | WordPress | PARTIAL | PARTIAL | redesigned on purpose, no longer WordPress parity (owner, 2026-11-01); the WhatsApp button links to 054-431-7164 as on WordPress (owner, 2026-10-19) |
 | lp `/privacy/`, `/accessibility-statement/` | lp legal | WordPress | PARTIAL | PARTIAL | styles measured; long privacy text not compared line by line |
 | lp 404 | lp 404 | WordPress | PARTIAL | PARTIAL | WordPress text "העמוד המבוקש לא נמצא." / "עושה רושם…" differs from ours "העמוד לא נמצא" + home link (text change needs approval) |
 
